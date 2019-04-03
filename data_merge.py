@@ -215,6 +215,7 @@ class MRI_chosun_data():
 
         when we use the class option as NC vs AD, we need to remove MCI line.
         '''
+        print('start labeling...' )
         label_info = np.array(label_info)
         self.label_list = []
         # self.class_array = self.get_class_array(class_option)
@@ -240,7 +241,7 @@ class MRI_chosun_data():
         else:
             print('diagnosis type is wrong. : ', self.diag_type)
             assert False
-
+        print('class option : {} / class array : {}'.format(class_option, self.class_array))
 
         '''
         remove the -1 line of label and data
@@ -268,6 +269,10 @@ class MRI_chosun_data():
     def shuffle_data(self, data, label):
         assert len(data)==len(label)
         random_list = [i for i in range(len(data))]
+        '''
+        choose between shuffle and shuffle_static
+        # random_list = shuffle_static( ... )
+        '''
         shuffle(random_list)
         # print(random_list)
         self.shuffle_data, self.shuffle_label = [],[]
@@ -278,16 +283,22 @@ class MRI_chosun_data():
         assert len(label) == len(self.shuffle_label)
         return self.shuffle_data, self.shuffle_label
 
-    def split_data_by_testnum(self, data, label, test_num):
+    def split_data_by_num(self, data, label, test_num):
+        '''
+        :param data:
+        :param label:
+        :param test_num:
+        :return:just one train and test set.
+        '''
         label_set = list(set(label))
         print('split the data into train and test by test number. test number : {} label set :{}'\
               .format(test_num, label_set))
-        print(type(label_set))
+        # print(type(label_set))
         label_count = [0 for _ in range(len(label_set))]
         self.test_data, self.test_label = [], []
         self.train_data, self.train_label = [], []
         for i, l in enumerate(label):
-            print(i,l,label_count)
+            # print(i,l,label_count)
             if label_count[l] < test_num:
                 label_count[l] += 1
                 self.test_data.append(data[i])
@@ -297,18 +308,154 @@ class MRI_chosun_data():
             self.train_data.append(data[i])
             self.train_label.append(label[i])
 
-        print(len(self.train_data), len(self.train_label), len(self.test_data), len(self.test_label))
+        print('train data : {} / train label : {} / test data : {} / test label : {}'\
+            .format(len(self.train_data), len(self.train_label), len(self.test_data), len(self.test_label)))
         return self.train_data, self.train_label, \
                self.test_data, self.test_label
 
-    def split_data_by_ford(self, data, label, ford_num, ford_index):
-        pass
+    def split_data_by_ford(self, data, label, ford_num):
+        '''
+        :param data:
+        :param label:
+        :param ford_num:
+        :return: return all possible train and test set according to the ford number.
+        '''
+        label_set = list(set(label))
+        print('split the data into train and test by ford number. ford number : {} label set :{}' \
+              .format(ford_num, label_set))
+        ford_data = [[] for _ in range(ford_num)]
+        separate_data = [[] for _ in range(len(label_set))]
+        separate_label = [[] for _ in range(len(label_set))]
+        # separate the data into different label list
+        for i, l in enumerate(label):
+            # print(i,l,label_count)
+            separate_data[l].append(data[i])
+            separate_label[l].append(label[i])
+        print(separate_label)
+        label_count = [len(i) for i in separate_label]
+        test_count = [count//ford_num for count in label_count]
+        print(label_count, test_count)
+        smaller_data_num = min(label_count)
+        test_num = smaller_data_num//ford_num
+
+        whole_set = []
+        for ford_index in range(ford_num):
+            ford_set = []
+            train_data, train_label, test_data, test_label = [], [], [], []
+            for i, one_label in enumerate(separate_data):
+                if ford_index == ford_num - 1:
+                    train_data = train_data + one_label[:test_count[i] * ford_index]
+                    train_label = train_label + separate_label[i][:test_count[i] * ford_index]
+                    test_data = test_data + one_label[test_count[i] * ford_index:]
+                    test_label = test_label + separate_label[i][test_count[i] * ford_index:]
+                    pass
+                else:
+                    train_data = train_data + one_label[:test_count[i] * ford_index] + one_label[test_count[i] * (ford_index + 1):]
+                    train_label = train_label + separate_label[i][:test_count[i] * ford_index] + separate_label[i][test_count[i] * (ford_index + 1):]
+                    test_data = test_data + one_label[test_count[i] * ford_index:test_count[i] * (ford_index + 1)]
+                    test_label = test_label + separate_label[i][test_count[i] * ford_index:test_count[i] * (ford_index + 1)]
+                    # train_data = np.concatenate((one_label[:test_num * ford_index], one_label[test_num * (ford_index + 1):]))
+                    # train_label = np.concatenate((one_label[:test_num * ford_index], one_label[test_num * (ford_index + 1):]))
+                    # test_data = one_label[test_num * ford_index:test_num * (ford_index + 1)]
+                    # test_label = one_label[test_num * ford_index:test_num * (ford_index + 1)]
+            print(train_label)
+            print(test_label)
+            print(len(train_label)+len(test_label), len(train_label), len(test_label))
+            whole_set.append([train_data, train_label, test_data, test_label])
+
+        return whole_set
 
 #%%
-def create_random_list(length):
-    x = [i for i in range(length)]
-    shuffle(x)
-    return x
+
+def split_train_test(data, label, ford_num, ford_index):
+    print('split the dataset into train and test sets.')
+    sample_num = len(data)
+    test_num = sample_num // ford_num
+    train_num = sample_num - test_num
+    # X = np.array(get_random_sample(X, sample_num))
+    # Y = np.array(get_random_sample(Y, sample_num))
+    X_ = np.array(data)
+    Y_ = np.array(label)
+    l1 , l2 = len(X_), len(X_[0])
+
+    delete_col_count = 0
+    print(l1, l2)
+    print('remove 0 value columns.')
+    for i in range(l2):
+        col_index = l2 - i - 1
+        for j in range(l1):
+            if X_[j][col_index]:
+                break
+            # print('delete column.')
+            delete_col_count += 1
+            X_ = np.delete(X_, col_index, 1)
+    print('removed {} columns.'.format(delete_col_count))
+    print(len(data[0]), len(X_[0]))
+
+    X_ = normalize(X_)
+    # X_, Y_ = shuffle_two_arrays(X_, Y_)
+
+    # assert ford_index < ford_num-1
+    if ford_index == ford_num-1:
+        train_data = X_[:test_num * ford_index]
+        train_label = Y_[:test_num * ford_index]
+        test_data = X_[test_num * ford_index:]
+        test_label = Y_[test_num * ford_index:]
+        pass
+    else:
+        train_data = np.concatenate((X_[:test_num*ford_index],X_[test_num*(ford_index+1):]))
+        train_label = np.concatenate((Y_[:test_num*ford_index],Y_[test_num*(ford_index+1):]))
+        test_data = X_[test_num * ford_index:test_num * (ford_index + 1)]
+        test_label = Y_[test_num * ford_index:test_num * (ford_index + 1)]
+
+from imblearn.over_sampling import *
+from imblearn.combine import *
+def over_sampling(X_imb, Y_imb, sampling_option):
+    print('starts over sampling ...', sampling_option)
+    if sampling_option == 'ADASYN':
+        X_samp, Y_samp = ADASYN(random_state=0).fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'SMOTE':
+        X_samp, Y_samp = SMOTE(random_state=4).fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'SMOTEENN':
+        X_samp, Y_samp = SMOTEENN(random_state=0).fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'SMOTETomek':
+        X_samp, Y_samp = SMOTETomek(random_state=4).fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'None':
+        X_samp, Y_samp = X_imb, Y_imb
+    else :
+        print('sampling option is not proper.', sampling_option)
+        assert False
+    imbalance_num = len(Y_imb)
+    balance_num = len(Y_samp)
+    print('over sampling from {:5} -> {:5}.'.format(imbalance_num, balance_num))
+    return X_samp, Y_samp
+
+def shuffle_static(arr1, arr2):
+    return shuffle(arr1, arr2, random_state=0)
+
+def valence_class(data, label, class_num):
+    print('Valence the number of train and test dataset')
+    length = len(data)
+    label_count = [0 for i in range(class_num)]
+    label_count_new = [0 for i in range(class_num)]
+
+    for i in sorted(label):
+        label_count[i] += 1
+
+    # print('label count : ', label_count)
+    min_count = min(label_count)
+    print(min_count)
+    new_data = []
+    new_label = []
+    for i, k in enumerate(label):
+        if label_count_new[k] > min_count:
+            continue
+        new_data.append(data[i])
+        new_label.append(label[i])
+        label_count_new[k] += 1
+    # print('new label count : ', label_count_new)
+    print('down sampling from {} -> {}.'.format(label_count, label_count_new))
+    return np.array(new_data), np.array(new_label)
 
 @datetime_decorator
 def test_something_2():
@@ -323,29 +470,27 @@ def test_something_2():
     loader.get_label_info_excel()
     loader.merge_info()
 
-def dataloader(class_option : str, option_num, is_merge=False):
-    loader = MRI_chosun_data()
-    data = loader.read_excel_data()
-    return loader.extr_data(data, is_merge, class_option, option_num)
+def normalize(X_):
+    return (X_-X_.min(0))/X_.max(axis=0)
 
 def NN_dataloader():
     '''
-    1. read excel data
-    2. squeeze 3 lines into 1 lines according to the options P V T
+    1. read excel data (O)
+    2. squeeze 3 lines into 1 lines according to the options P V T merge (O)
     3. remove zero value only column (O)
     3. make label list (O)
     4. shuffle (O)
     5. normalization
-    6. split train and test dataset
+    6. split train and test dataset (O)
     :return: train and test data and lable
     '''
 
     # "clinic" or "new" or "PET"
     # 'PET pos vs neg', 'NC vs MCI vs AD' 'NC vs mAD vs aAD vs ADD'
-    # diag_type = "PET"
-    # class_option = 'PET pos vs neg'
-    diag_type = "new"
-    class_option = 'NC vs mAD vs aAD vs ADD'
+    diag_type = "PET"
+    class_option = 'PET pos vs neg'
+    # diag_type = "new"
+    # class_option = 'NC vs mAD vs aAD vs ADD'
     # diag_type = "clinic"
     # class_option = 'NC vs AD' #'NC vs MCI vs AD'
 
@@ -360,11 +505,20 @@ def NN_dataloader():
     loader.squeeze_excel(excel_option=excel_option)
     data, label_info = loader.remove_zero_column()
     data, label = loader.define_label(label_info, class_option)
-    shuffle_data, shuffle_label = loader.shuffle_data(data, label)
-
-    test_num = 10
-    loader.split_data_by_testnum(shuffle_data, shuffle_label, test_num)
-    pass
+    data = normalize(data)
+    '''
+    when split the data by ford number, should we split the data earlier than shuffle??
+    '''
+    is_split_by_num = False
+    if is_split_by_num:
+        shuffle_data, shuffle_label = loader.shuffle_data(data, label)
+        test_num = 20
+        loader.split_data_by_num(shuffle_data, shuffle_label, test_num)
+    else:
+        shuffle_data, shuffle_label = loader.shuffle_data(data, label)
+        ford_num = 5
+        ford_index = 0
+        loader.split_data_by_ford(shuffle_data, shuffle_label, ford_num)
 
 def CNN_dataloader():
     '''
@@ -390,7 +544,6 @@ def CNN_dataloader():
     pass
 
 if __name__ == '__main__':
-    create_random_list(12)
     NN_dataloader()
     # test_something_2()
     assert False
@@ -416,18 +569,18 @@ if __name__ == '__main__':
 #     data, label = dataloader(class_option[class_option_index], option_num, is_merge=is_merge)
 #     # assert False
 #     data, label = shuffle_two_arrays(data, label)
-#     X_train, Y_train, X_test, Y_test = split_train_test(data, label, ford_num, ford_index)
-#     # print(len(data[0]), len(X_train[0]))
-#     # X_train, Y_train = valence_class(X_train, Y_train, class_num)
-#     # X_test, Y_test = valence_class(X_test, Y_test, class_num)
-#     print(len(Y_train))
-#     X_train, Y_train = over_sampling(X_train, Y_train, sampling_option)
-#     print(len(Y_train))
+#     train_data, train_label, test_data, test_label = split_train_test(data, label, ford_num, ford_index)
+#     # print(len(data[0]), len(train_data[0]))
+#     # train_data, train_label = valence_class(train_data, train_label, class_num)
+#     # test_data, test_label = valence_class(test_data, test_label, class_num)
+#     print(len(train_label))
+#     train_data, train_label = over_sampling(train_data, train_label, sampling_option)
+#     print(len(train_label))
 #
-#     train_num = len(Y_train)
-#     test_num = len(Y_test)
-#     feature_num = len(X_train[0])
-#     print(X_train.shape, X_test.shape)
+#     train_num = len(train_label)
+#     test_num = len(test_label)
+#     feature_num = len(train_data[0])
+#     print(train_data.shape, test_data.shape)
 
 '''
 <<numpy array column api>> 

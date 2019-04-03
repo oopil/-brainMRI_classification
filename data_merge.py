@@ -7,12 +7,14 @@ import numpy as np
 class MRI_chosun_data():
     def __init__(self):
         self.class_array = []
-        self.diag_type = "clinic" # or "new" or "PET"
+        self.nn_data = []
+        self.cnn_data = []
+        self.diag_type = "None" # or "new" or "PET"
         self.clinic_diag_index = 5
         self.new_diag_index=6
         self.pet_diag_index=3 # ???
 
-        self.option = ['P', 'T', 'V']
+        self.excel_option = ['P', 'T', 'V', 'merge']
         self.opt_dict_clinic = {
             'AD': 0,
             'CN': 1,
@@ -45,7 +47,10 @@ class MRI_chosun_data():
         self.class_option_dict_pet = {
             'pos vs neg': ['positive', 'negative']
         }
-
+#%%
+    def set_diagnosis_type(self, type):
+        self.diag_type = type
+#%%
     def read_excel_data(self, excel_path):
         xl_file_name = excel_path
         xl_password = '!adai2018@#'
@@ -68,11 +73,11 @@ class MRI_chosun_data():
         ['MRI_id', 'gender', 'age', 'education', 'amyloid PET result', 'Clinic Diagnosis', 'New Diag',
         'mtype', 'c4', ...]
         '''
-        self.label_info_list = \
+        self.cnn_data = \
             [[self.data_excel[i][0],self.data_excel[i][4],self.data_excel[i][5],self.data_excel[i][6]]\
              for i in range(1, len(self.data_excel)) if i%3 == 0]
-        print('label infomation length : {}' .format(len(self.label_info_list)))
-        return self.label_info_list
+        print('label infomation length : {}' .format(len(self.cnn_data)))
+        return self.cnn_data
 
     def extr_input_path_list(self, base_folder_path):
         folder_name = ['aAD', 'ADD', 'mAD', 'NC']
@@ -85,27 +90,64 @@ class MRI_chosun_data():
         del bot
         return self.input_image_path_list
 
-    def merge_path_and_label(self):
+    def merge_info(self):
         '''
         merge the real data path and excel label information.
         '''
-        for i in range(10):
-            print(self.input_image_path_list[i][1], self.label_info_list[i])
-
-        excel_np =  np.array(self.label_info_list)
+        excel_np =  np.array(self.cnn_data)
         excel_id_col = list(excel_np[:,0])
-        # print(excel_id_col)
-        # assert False
         for i, path in enumerate(self.input_image_path_list):
-            # self.input_image_path_list is aligned with the order [aAD, ADD, mAD NC]
+            '''
+            self.input_image_path_list is aligned with the order [aAD, ADD, mAD NC]
+            '''
             id ,input_path = path[1], path[2]
             excel_index = excel_id_col.index(id)
-            self.label_info_list[excel_index].append(input_path)
-            # print(i, excel_index, id, path)
+            self.cnn_data[excel_index].append(input_path)
 
-        for i in range(10):
-            print(self.label_info_list[i])
+        # for i in range(10):
+        #     print(self.cnn_data[i])
 
+    def squeeze_excel(self, excel_option):
+        '''
+        because there are 3 line for each patient basically,
+        we have to choose how to handle it.
+
+        choose only one line or merge all of them
+        :param option:
+        :return:
+        '''
+        print('squeeze the excel.')
+        if not excel_option in self.excel_option:
+            print('the excel option in not proper.')
+            print(excel_option, self.excel_option)
+            assert False
+
+        option_index = self.excel_option.index(excel_option)
+        print(excel_option, option_index)
+        for i in range(1,len(self.data_excel)):
+            label_info = self.data_excel[i][4:7]
+            print(label_info)
+            if i%3 == option_index:
+                line = self.data_excel[i][8:]
+
+            if option_index == 3 and i%3 == 1:
+                line = [self.data_excel[i+k][8:] for k in range(3)]
+                print(line)
+            self.nn_data.append()
+            # print(i, line[:3])
+        # print(len(self.data_excel))
+            # assert False
+
+    def define_label(self, label_info):
+        pass
+
+    def extr_nn_data(self):
+        label_info = self.cnn_data[excel_index][1:4]  # beta amyloid / new / clinic diagnosis
+        label = self.define_label(label_info)
+        self.cnn_data[excel_index].append(label)
+
+    def extr_cnn_data(self):
+        pass
 
 
 
@@ -239,6 +281,12 @@ class MRI_chosun_data():
         elif self.diag_type == "PET":
             assert False
 
+    def shuffle(self):
+        pass
+
+    def split_train_and_test(self):
+        pass
+
     def is_all_zero(self, l:list, idx:int)->bool:
         for e in l:
             if e[idx]:
@@ -248,6 +296,7 @@ class MRI_chosun_data():
 @datetime_decorator
 def test_something_2():
     loader = MRI_chosun_data()
+    loader.set_diagnosis_type('new')
     base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
     # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
     excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
@@ -255,15 +304,58 @@ def test_something_2():
     path_list = loader.extr_input_path_list(base_folder_path)
     print(path_list[0])
     loader.get_label_info_excel()
-    loader.merge_path_and_label()
+    loader.merge_info()
 
 def dataloader(class_option : str, option_num, is_merge=False):
     loader = MRI_chosun_data()
     data = loader.read_excel_data()
     return loader.extr_data(data, is_merge, class_option, option_num)
 
+def NN_dataloader():
+    '''
+    1. read excel data
+    2. squeeze 3 lines into 1 lines according to the options P V T
+    3. make label list
+    4. shuffle
+    5. split train and test dataset
+    :return: train and test data and lable
+    '''
+    loader = MRI_chosun_data()
+    loader.set_diagnosis_type('new')
+    base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
+    # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
+    excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
+
+    excel_option = 'merge' # P V T merge
+    loader.read_excel_data(excel_path)
+    loader.squeeze_excel(excel_option=excel_option)
+    pass
+
+def CNN_dataloader():
+    '''
+    1. read excel data
+    2. read input file path from dataset folder path
+    3. merge excel and path information
+    4. make label list
+    5. shuffle
+    6. split train and test dataset
+    :return: train and test data and lable
+    '''
+    loader = MRI_chosun_data()
+    loader.set_diagnosis_type('new')
+    base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
+    # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
+    excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
+    loader.read_excel_data(excel_path)
+    path_list = loader.extr_input_path_list(base_folder_path)
+    print(path_list[0])
+    loader.get_label_info_excel()
+    loader.merge_info()
+    pass
+
 if __name__ == '__main__':
-    test_something_2()
+    NN_dataloader()
+    # test_something_2()
     assert False
 
 #

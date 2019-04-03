@@ -86,7 +86,9 @@ class MRI_chosun_data():
         return self.input_image_path_list
 
     def merge_path_and_label(self):
-
+        '''
+        merge the real data path and excel label information.
+        '''
         for i in range(10):
             print(self.input_image_path_list[i][1], self.label_info_list[i])
 
@@ -96,9 +98,16 @@ class MRI_chosun_data():
         # assert False
         for i, path in enumerate(self.input_image_path_list):
             # self.input_image_path_list is aligned with the order [aAD, ADD, mAD NC]
-            id = path[1]
+            id ,input_path = path[1], path[2]
             excel_index = excel_id_col.index(id)
-            print(i, id, path, excel_index)
+            self.label_info_list[excel_index].append(input_path)
+            # print(i, excel_index, id, path)
+
+        for i in range(10):
+            print(self.label_info_list[i])
+
+
+
 
     def get_class_name(self, l:list, idx:int) -> list:
         temp = []
@@ -236,6 +245,7 @@ class MRI_chosun_data():
                 return False
         return True
 
+@datetime_decorator
 def test_something_2():
     loader = MRI_chosun_data()
     base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'

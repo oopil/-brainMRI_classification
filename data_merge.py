@@ -229,15 +229,6 @@ class MRI_chosun_data():
                 return False
         return True
 
-    def is_male(self, gender:str):
-        if gender == 'M': return True
-        elif gender == 'F': return False
-        else :
-            print('wrong sex is detected.')
-            print(gender)
-            assert False
-
-
 def test_something_2():
     loader = MRI_chosun_data()
     base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
@@ -248,6 +239,16 @@ def test_something_2():
     print(path_list[0])
     loader.get_label_info_excel()
     loader.merge_path_and_label()
+
+def dataloader(class_option : str, option_num, is_merge=False):
+    loader = MRI_chosun_data()
+    data = loader.read_excel_data()
+    return loader.extr_data(data, is_merge, class_option, option_num)
+
+if __name__ == '__main__':
+    test_something_2()
+    assert False
+
 #
 # def test_something():
 #     is_merge = True  # True
@@ -281,18 +282,6 @@ def test_something_2():
 #     test_num = len(Y_test)
 #     feature_num = len(X_train[0])
 #     print(X_train.shape, X_test.shape)
-
-def dataloader(class_option : str, option_num, is_merge=False):
-    loader = MRI_chosun_data()
-    data = loader.read_excel_data()
-    return loader.extr_data(data, is_merge, class_option, option_num)
-
-
-
-
-if __name__ == '__main__':
-    test_something_2()
-    assert False
 
 '''
 <<numpy array column api>> 

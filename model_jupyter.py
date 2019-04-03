@@ -8,6 +8,10 @@ import sys
 import tensorflow as tf
 import pandas as pd
 import argparse
+
+'''
+sys.path.append is needed only when using jupyter notebook
+'''
 sys.path.append('/home/sp/PycharmProjects/chosun_AD')
 from data import *
 

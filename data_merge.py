@@ -1,6 +1,7 @@
 from sklearn.utils import shuffle
 from class_metabot import *
 from decorator import *
+from random import shuffle
 import openpyxl
 import numpy as np
 
@@ -200,6 +201,8 @@ class MRI_chosun_data():
         for i, c in enumerate(self.class_array):
             if c in label:
                 return i
+        if 'NC' in label or 'AD' in label:
+            return -1
         print('there is no appropriate label name. :')
         print(self.class_array, label)
         assert False
@@ -260,16 +263,26 @@ class MRI_chosun_data():
 
         # print(self.nn_data[0])
         print(self.label_list)
-        return self.label_list
+        return self.nn_data, self.label_list
 
-    def count_col_data(self, l:list, type:str, index:int) -> None:
-        count = 0
-        for e in l:
-            if e[index] == type:
-                count += 1
-        print('it has ', int(count/3), type, 's.')
+    def shuffle_data(self, data, label):
+        assert len(data)==len(label)
+        random_list = [i for i in range(len(data))]
+        shuffle(random_list)
+        # print(random_list)
+        self.shuffle_data, self.shuffle_label = [],[]
+        for index in random_list:
+            self.shuffle_data.append(data[index])
+            self.shuffle_label.append(label[index])
+
+        assert len(label) == len(self.shuffle_label)
+        return self.shuffle_data, self.shuffle_label
 
 #%%
+def create_random_list(length):
+    x = [i for i in range(length)]
+    shuffle(x)
+    return x
 
 @datetime_decorator
 def test_something_2():
@@ -294,8 +307,8 @@ def NN_dataloader():
     1. read excel data
     2. squeeze 3 lines into 1 lines according to the options P V T
     3. remove zero value only column (O)
-    3. make label list
-    4. shuffle
+    3. make label list (O)
+    4. shuffle (O)
     5. normalization
     6. split train and test dataset
     :return: train and test data and lable
@@ -320,7 +333,8 @@ def NN_dataloader():
     loader.read_excel_data(excel_path)
     loader.squeeze_excel(excel_option=excel_option)
     data, label_info = loader.remove_zero_column()
-    loader.define_label(label_info, class_option)
+    data, label_info = loader.define_label(label_info, class_option)
+    loader.shuffle_data(data, label_info)
     pass
 
 def CNN_dataloader():
@@ -347,6 +361,7 @@ def CNN_dataloader():
     pass
 
 if __name__ == '__main__':
+    create_random_list(12)
     NN_dataloader()
     # test_something_2()
     assert False

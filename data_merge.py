@@ -1,5 +1,6 @@
 from sklearn.utils import shuffle
 from class_metabot import *
+from decorator import *
 import openpyxl
 import numpy as np
 
@@ -85,13 +86,19 @@ class MRI_chosun_data():
         return self.input_image_path_list
 
     def merge_path_and_label(self):
+
         for i in range(10):
             print(self.input_image_path_list[i][1], self.label_info_list[i])
-        pass
 
+        excel_np =  np.array(self.label_info_list)
+        excel_id_col = list(excel_np[:,0])
+        # print(excel_id_col)
+        # assert False
         for i, path in enumerate(self.input_image_path_list):
+            # self.input_image_path_list is aligned with the order [aAD, ADD, mAD NC]
             id = path[1]
-            excel_index = self.label_info_list.index(id)
+            excel_index = excel_id_col.index(id)
+            print(i, id, path, excel_index)
 
     def get_class_name(self, l:list, idx:int) -> list:
         temp = []

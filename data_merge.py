@@ -278,6 +278,32 @@ class MRI_chosun_data():
         assert len(label) == len(self.shuffle_label)
         return self.shuffle_data, self.shuffle_label
 
+    def split_data_by_testnum(self, data, label, test_num):
+        label_set = list(set(label))
+        print('split the data into train and test by test number. test number : {} label set :{}'\
+              .format(test_num, label_set))
+        print(type(label_set))
+        label_count = [0 for _ in range(len(label_set))]
+        self.test_data, self.test_label = [], []
+        self.train_data, self.train_label = [], []
+        for i, l in enumerate(label):
+            print(i,l,label_count)
+            if label_count[l] < test_num:
+                label_count[l] += 1
+                self.test_data.append(data[i])
+                self.test_label.append(label[i])
+                continue
+
+            self.train_data.append(data[i])
+            self.train_label.append(label[i])
+
+        print(len(self.train_data), len(self.train_label), len(self.test_data), len(self.test_label))
+        return self.train_data, self.train_label, \
+               self.test_data, self.test_label
+
+    def split_data_by_ford(self, data, label, ford_num, ford_index):
+        pass
+
 #%%
 def create_random_list(length):
     x = [i for i in range(length)]
@@ -333,8 +359,11 @@ def NN_dataloader():
     loader.read_excel_data(excel_path)
     loader.squeeze_excel(excel_option=excel_option)
     data, label_info = loader.remove_zero_column()
-    data, label_info = loader.define_label(label_info, class_option)
-    loader.shuffle_data(data, label_info)
+    data, label = loader.define_label(label_info, class_option)
+    shuffle_data, shuffle_label = loader.shuffle_data(data, label)
+
+    test_num = 10
+    loader.split_data_by_testnum(shuffle_data, shuffle_label, test_num)
     pass
 
 def CNN_dataloader():

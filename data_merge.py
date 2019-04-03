@@ -8,7 +8,9 @@ class MRI_chosun_data():
     def __init__(self):
         self.class_array = []
         self.nn_data = []
+        self.nn_label = []
         self.cnn_data = []
+        self.cnn_label = []
         self.diag_type = "None" # or "new" or "PET"
         self.clinic_diag_index = 5
         self.new_diag_index=6
@@ -113,6 +115,7 @@ class MRI_chosun_data():
         we have to choose how to handle it.
 
         choose only one line or merge all of them
+        and then remove only zero column
         :param option:
         :return:
         '''
@@ -125,18 +128,62 @@ class MRI_chosun_data():
         option_index = self.excel_option.index(excel_option)
         print(excel_option, option_index)
         for i in range(1,len(self.data_excel)):
-            label_info = self.data_excel[i][4:7]
-            print(label_info)
-            if i%3 == option_index:
+
+            # print(label_info)
+            if (i-1)%3 == option_index:
                 line = self.data_excel[i][8:]
+                label_info = self.data_excel[i][4:7]
+                new_line = line
+                self.nn_data.append(new_line)
+                self.nn_label.append(label_info)
+                # print(len(self.data_excel[i]), len(line))
+                # print(new_line)
 
             if option_index == 3 and i%3 == 1:
                 line = [self.data_excel[i+k][8:] for k in range(3)]
-                print(line)
-            self.nn_data.append()
-            # print(i, line[:3])
-        # print(len(self.data_excel))
+                label_info = self.data_excel[i][4:7]
+                new_line = line[0] + line[1] + line[2]
+                self.nn_data.append(new_line)
+                self.nn_label.append(label_info)
+                # print(len(self.data_excel[i][:10]), len(line[0]), len(line[1]), len(line[2]))
+                # print(new_line)
+        return self.nn_data, self.nn_label
+
+    def remove_zero_column(self):
+        self.nn_data = np.array(self.nn_data)
+        l1, l2 = len(self.nn_data), len(self.nn_data[0])
+        delete_col_count = 0
+        print(l1, l2)
+        print('remove zero value only columns.')
+        for col in range(l2):
+            is_zero_col = True
+            col_index = l2 - col - 1
+            for row in range(l1):
+                print(type(self.nn_data[row][4]))
+                if self.nn_data[row][col_index]:
+                    print(self.nn_data[row][4])
+                    # print(self.nn_data[row][col_index])
+                    is_zero_col = False
+                    break
+
+            if is_zero_col:
+                print('delete column.')
+                delete_col_count += 1
+                self.nn_data = np.delete(self.nn_data, col_index, 1)
             # assert False
+        print('removed {} columns.'.format(delete_col_count))
+        print(len(self.nn_data), len(self.nn_data[0]))
+
+        return self.nn_data
+
+    def divide_data_and_label(self):
+        self.nn_data = np.array(self.nn_data)
+        print(type(self.nn_data[0][4]), self.nn_data[0][4])
+        print('divide the nn_data into nn_data and label.')
+        orig_length = len(self.nn_data[0])
+        self.nn_label = self.nn_data[:,:4]
+        self.nn_data = self.nn_data[:,4:]
+        print(orig_length, len(self.nn_label), len(self.nn_data))
 
     def define_label(self, label_info):
         pass
@@ -316,8 +363,10 @@ def NN_dataloader():
     1. read excel data
     2. squeeze 3 lines into 1 lines according to the options P V T
     3. make label list
+    3. remove zero value only column
     4. shuffle
-    5. split train and test dataset
+    5. normalization
+    6. split train and test dataset
     :return: train and test data and lable
     '''
     loader = MRI_chosun_data()
@@ -326,9 +375,11 @@ def NN_dataloader():
     # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
     excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
 
-    excel_option = 'merge' # P V T merge
+    excel_option = 'P' # P V T merge
     loader.read_excel_data(excel_path)
     loader.squeeze_excel(excel_option=excel_option)
+    loader.remove_zero_column()
+    loader.define_label()
     pass
 
 def CNN_dataloader():
@@ -338,7 +389,8 @@ def CNN_dataloader():
     3. merge excel and path information
     4. make label list
     5. shuffle
-    6. split train and test dataset
+    5. normalization
+    7. split train and test dataset
     :return: train and test data and lable
     '''
     loader = MRI_chosun_data()

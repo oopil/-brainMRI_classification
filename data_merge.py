@@ -11,7 +11,7 @@ class MRI_chosun_data():
         self.nn_label = []
         self.cnn_data = []
         self.cnn_label = []
-        self.diag_type = "None" # or "new" or "PET"
+        self.diag_type = "None" # or "clinic" or "new" or "PET"
         self.clinic_diag_index = 5
         self.new_diag_index=6
         self.pet_diag_index=3 # ???
@@ -39,15 +39,12 @@ class MRI_chosun_data():
         }
 
         self.class_option_dict_new = {
-            # 'NC vs AD': ['CN', 'AD'],
-            # 'NC vs MCI': ['CN', 'MCI'],
-            # 'MCI vs AD': ['MCI', 'AD'],
-            # 'NC vs MCI vs AD': ['CN', 'MCI', 'AD'],
-            'NC vs mAD vs aAD vs AD': ['NC', 'mAD', 'aAD', 'ADD']
+            'NC vs ADD': ['NC', 'ADD'],
+            'NC vs mAD vs aAD vs ADD': ['NC', 'mAD', 'aAD', 'ADD']
         }
 
         self.class_option_dict_pet = {
-            'pos vs neg': ['positive', 'negative']
+            'PET pos vs neg': ['positive', 'negative']
         }
 #%%
     def set_diagnosis_type(self, type):
@@ -126,7 +123,7 @@ class MRI_chosun_data():
             assert False
 
         option_index = self.excel_option.index(excel_option)
-        print(excel_option, option_index)
+        print('excel option : ',excel_option, option_index)
         for i in range(1,len(self.data_excel)):
 
             # print(label_info)
@@ -153,192 +150,117 @@ class MRI_chosun_data():
         self.nn_data = np.array(self.nn_data)
         l1, l2 = len(self.nn_data), len(self.nn_data[0])
         delete_col_count = 0
-        print(l1, l2)
         print('remove zero value only columns.')
+        print('matrix size',l1, l2)
         for col in range(l2):
             is_zero_col = True
             col_index = l2 - col - 1
             for row in range(l1):
-                print(type(self.nn_data[row][4]))
+                # print(type(self.nn_data[row][4]))
                 if self.nn_data[row][col_index]:
-                    print(self.nn_data[row][4])
+                    # print(self.nn_data[row][4])
                     # print(self.nn_data[row][col_index])
                     is_zero_col = False
                     break
 
             if is_zero_col:
-                print('delete column.')
+                # print('delete column.')
                 delete_col_count += 1
                 self.nn_data = np.delete(self.nn_data, col_index, 1)
             # assert False
         print('removed {} columns.'.format(delete_col_count))
-        print(len(self.nn_data), len(self.nn_data[0]))
+        print('{:<5}=>{:<5}' .format(l2, len(self.nn_data[0])) )
+        return self.nn_data, self.nn_label
 
-        return self.nn_data
-
-    def divide_data_and_label(self):
-        self.nn_data = np.array(self.nn_data)
-        print(type(self.nn_data[0][4]), self.nn_data[0][4])
-        print('divide the nn_data into nn_data and label.')
-        orig_length = len(self.nn_data[0])
-        self.nn_label = self.nn_data[:,:4]
-        self.nn_data = self.nn_data[:,4:]
-        print(orig_length, len(self.nn_label), len(self.nn_data))
-
-    def define_label(self, label_info):
-        pass
-
-    def extr_nn_data(self):
-        label_info = self.cnn_data[excel_index][1:4]  # beta amyloid / new / clinic diagnosis
-        label = self.define_label(label_info)
-        self.cnn_data[excel_index].append(label)
-
-    def extr_cnn_data(self):
-        pass
-
-
-
-    def get_class_name(self, l:list, idx:int) -> list:
-        temp = []
-        index = 0
-        print(len(l))
-        for e in l:
-            index  += 1
-            if index == 1:
-                continue
-            temp.append(e[idx])
-
-        temp = list(set(temp))
-        print('get names of class')
-        print(temp)
-        return temp
-
-    def count_col_data(self, l:list, type:str, index:int) -> None:
-        count = 0
-        for e in l:
-            if e[index] == type:
-                count += 1
-        print('it has ', int(count/3), type, 's.')
-
-    def get_class_array(self, class_option):
-        if self.diag_type == "clinic":
-            return self.class_option_dict_clinic[class_option]
-
-    def extr_data(self, data, is_merge, class_option, option_num=0) :
-        self.class_array = self.get_class_array(class_option)
-        class_num = len(self.class_array)
-        print('remove some data to use it ... ')
-        remove_idx_l = [0,1,4,5,6,7]
-        if self.diag_type == "clinic":
-            opt_dict = self.opt_dict_clinic
-            class_index = 5
-        elif self.diag_type == "new":
-            opt_dict = self.opt_dict_new
-            class_index = 6
-        # print(data[0])
-        data.remove(data[0]) # remove feature line
-        # print(data[0])
-
-        option = option_num  # P T V options
-        new_data = []
-        new_label = []
-        if is_merge:
-            length = len(data)
-            assert length % 3 == 0
-            for i in range(length//3):
-                # extract only one option features among P, V, T options
-                # remove MCI instances
-
-                label = self.get_class(class_num, data[i*3][class_index])
-                if label == -1:
-                    continue
-                    # label.append(self.get_class(class_num, data[i][class_index]))
-                new_element = []
-                for option in range(3): # from the option features P V T
-                    for j in range(len(data[i*3+option])):
-                        if j in remove_idx_l:
-                            continue
-                        new_element.append(data[i*3+option][j])
-                    # print(len(new_element))
-
-                new_data.append(new_element)
-                new_label.append(label)
-            pass
-        else:
-            for i in range(len(data)):
-                # extract only one option features among P, V, T options
-                # remove MCI instances
-                label = self.get_class(class_num, data[i][class_index])
-                if i % 3 != option or label == -1:
-                    continue
-                    # label.append(self.get_class(class_num, data[i][class_index]))
-
-                new_element = []
-                for j in range(len(data[i])):
-                    if j in remove_idx_l:
-                        continue
-                    new_element.append(data[i][j])
-
-                new_data.append(new_element)
-                new_label.append(label)
-        # print(new_data[0])
-        # print(label)
-        print(len(new_data), len(new_label))
-        # print(len(new_data[0]), new_data[0])
-        print(len(new_data[0]))
-        return new_data, new_label
-
-    def get_class(self, class_num, class_name) -> int:
-        if self.diag_type == "clinic":
-            pass
-        elif self.diag_type == "new":
-            print('this code is not prepared yet.')
-            assert False
-
+#%%
+    def label_pet(self, label, class_array):
         for i, c in enumerate(self.class_array):
-            if c in class_name:
+            if c in label:
                 return i
-
-        if 'MCI' in class_name or 'AD' in class_name or 'CN' in class_name:
-            return -1
-
-        print('AD' in class_name)
-        print(self.class_array , class_name)
+                self.label_list.append(i)
+                # print(c, label)
+                break
+        print('there is no appropriate label name. :')
+        print(self.class_array, label)
         assert False
 
-    def get_class_3d(self, class_option, class_name) -> int:
-        class_array = self.get_class_array(class_option)
-        if self.diag_type == "clinic":
-            for i, c in enumerate(class_array):
-                if c in class_name:
-                    return i
+    def label_clinic(self, label, class_array):
+        for i, c in enumerate(self.class_array):
+            if c in label:
+                return i
+                self.label_list.append(i)
+                # print(c, label)
+                break
+        print('there is no appropriate label name. :')
+        print(self.class_array, label)
+        assert False
 
-            if 'MCI' in class_name or 'AD' in class_name or 'CN' in class_name:
-                return -1
+    def label_new(self, label, class_array):
+        for i, c in enumerate(self.class_array):
+            if c in label:
+                return i
+                self.label_list.append(i)
+                # print(c, label)
+                break
+        print('there is no appropriate label name. :')
+        print(self.class_array, label)
+        assert False
 
-            print('inappropriate class name : ')
-            print(self.diag_type, class_array, class_name)
+
+    def define_label(self, label_info, class_option):
+        '''
+        :param label_info: it has 3 columns : pet, new, clinic
+        :param class_option:  'PET pos vs neg', 'NC vs MCI vs AD' 'NC vs mAD vs aAD vs ADD'
+        :return:
+        '''
+        label_info = np.array(label_info)
+        self.label_list = []
+        # self.class_array = self.get_class_array(class_option)
+
+        print(self.class_array, self.get_class_array(class_option), class_option)
+        if self.diag_type == 'PET':
+            self.class_array = self.class_option_dict_pet[class_option]
+            label_name = label_info[:,0]
+            print(label_name, self.class_array)
+            # assert False
+            for i, label in enumerate(label_name):
+                self.label_list.append(self.label_pet(label, self.class_array))
+
+        elif self.diag_type == 'new':
+            self.class_array = self.class_option_dict_new[class_option]
+            label_name = label_info[:,2]
+            for i, label in enumerate(label_name):
+                for i, c in enumerate(self.class_array):
+                    if c in label:
+                        self.label_list.append(i)
+                        break
+                print('there is no appropriate label name. :')
+                print(self.class_array, label)
+                assert False
+
+        elif self.diag_type == 'clinic':
+            self.class_array = self.class_option_dict_clinic[class_option]
+            label_name = label_info[:,1]
+            for i, label in enumerate(label_name):
+                for i, c in enumerate(self.class_array):
+                    if c in label:
+                        self.label_list.append(i)
+                        break
+                    if 'MCI' in label_name or 'AD' in label_name or 'CN' in label_name:
+                        self.label_list.append(-1)
+                        break
+                print('there is no appropriate label name. :')
+                print(self.class_array, label)
+                assert False
+
+        else:
+            print('diagnosis type is wrong. : ', self.diag_type)
             assert False
-            pass
 
-        elif self.diag_type == "new":
-            print('this code is not prepared yet.')
-            assert False
+        print(self.label_list)
+        return self.label_list
 
-        elif self.diag_type == "PET":
-            assert False
-
-    def shuffle(self):
-        pass
-
-    def split_train_and_test(self):
-        pass
-
-    def is_all_zero(self, l:list, idx:int)->bool:
-        for e in l:
-            if e[idx]:
-                return False
-        return True
+#%%
 
 @datetime_decorator
 def test_something_2():
@@ -362,24 +284,27 @@ def NN_dataloader():
     '''
     1. read excel data
     2. squeeze 3 lines into 1 lines according to the options P V T
+    3. remove zero value only column (O)
     3. make label list
-    3. remove zero value only column
     4. shuffle
     5. normalization
     6. split train and test dataset
     :return: train and test data and lable
     '''
+
+    diag_type = "PET"# or "clinic" or "new" or "PET"
     loader = MRI_chosun_data()
-    loader.set_diagnosis_type('new')
+    loader.set_diagnosis_type(diag_type)
     base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
     # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
     excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
 
     excel_option = 'P' # P V T merge
+    class_option = 'PET pos vs neg'
     loader.read_excel_data(excel_path)
     loader.squeeze_excel(excel_option=excel_option)
-    loader.remove_zero_column()
-    loader.define_label()
+    data, label_info = loader.remove_zero_column()
+    loader.define_label(label_info, class_option)
     pass
 
 def CNN_dataloader():

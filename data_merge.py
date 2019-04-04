@@ -152,7 +152,7 @@ class MRI_chosun_data():
         l1, l2 = len(self.nn_data), len(self.nn_data[0])
         delete_col_count = 0
         print('remove zero value only columns.')
-        print('matrix size',l1, l2)
+        print('matrix size',l1, 'X', l2)
         for col in range(l2):
             is_zero_col = True
             col_index = l2 - col - 1
@@ -215,6 +215,8 @@ class MRI_chosun_data():
 
         when we use the class option as NC vs AD, we need to remove MCI line.
         '''
+        is_print = False
+        if is_print: pass
         print('start labeling...' )
         label_info = np.array(label_info)
         self.label_list = []
@@ -248,8 +250,10 @@ class MRI_chosun_data():
         '''
         print('remove the -1 line of label and data.')
         self.label_list = np.array(self.label_list)
-        print(self.label_list)
-        print(len(self.nn_data),len(self.label_list))
+
+        if is_print:
+            print(self.label_list)
+            print(len(self.nn_data),len(self.label_list))
         label_length = len(self.label_list)
         for row in range(len(self.label_list)):
             row_index = label_length - row - 1
@@ -259,11 +263,13 @@ class MRI_chosun_data():
                 self.nn_data = np.delete(self.nn_data, row_index, 0)
                 self.label_list = np.delete(self.label_list, row_index, 0)
             pass
-        print(len(self.nn_data),len(self.label_list))
-        print(type(self.nn_data),type(self.label_list))
 
-        # print(self.nn_data[0])
-        print(self.label_list)
+        if is_print:
+            print(len(self.nn_data),len(self.label_list))
+            print(type(self.nn_data),type(self.label_list))
+            # print(self.nn_data[0])
+            print(self.label_list)
+
         return self.nn_data, self.label_list
 
     def shuffle_data(self, data, label):
@@ -313,17 +319,17 @@ class MRI_chosun_data():
         return self.train_data, self.train_label, \
                self.test_data, self.test_label
 
-    def split_data_by_ford(self, data, label, ford_num):
+    def split_data_by_fold(self, data, label, fold_num):
         '''
         :param data:
         :param label:
-        :param ford_num:
-        :return: return all possible train and test set according to the ford number.
+        :param fold_num:
+        :return: return all possible train and test set according to the fold number.
         '''
+
         label_set = list(set(label))
-        print('split the data into train and test by ford number. ford number : {} label set :{}' \
-              .format(ford_num, label_set))
-        ford_data = [[] for _ in range(ford_num)]
+        print('split the data into train and test by fold number. fold number : {} label set :{}' \
+              .format(fold_num, label_set))
         separate_data = [[] for _ in range(len(label_set))]
         separate_label = [[] for _ in range(len(label_set))]
         # separate the data into different label list
@@ -333,81 +339,33 @@ class MRI_chosun_data():
             separate_label[l].append(label[i])
         print(separate_label)
         label_count = [len(i) for i in separate_label]
-        test_count = [count//ford_num for count in label_count]
+        test_count = [count//fold_num for count in label_count]
         print(label_count, test_count)
         smaller_data_num = min(label_count)
-        test_num = smaller_data_num//ford_num
+        test_num = smaller_data_num//fold_num
 
         whole_set = []
-        for ford_index in range(ford_num):
-            ford_set = []
+        for fold_index in range(fold_num):
             train_data, train_label, test_data, test_label = [], [], [], []
             for i, one_label in enumerate(separate_data):
-                if ford_index == ford_num - 1:
-                    train_data = train_data + one_label[:test_count[i] * ford_index]
-                    train_label = train_label + separate_label[i][:test_count[i] * ford_index]
-                    test_data = test_data + one_label[test_count[i] * ford_index:]
-                    test_label = test_label + separate_label[i][test_count[i] * ford_index:]
+                if fold_index == fold_num - 1:
+                    train_data = train_data + one_label[:test_count[i] * fold_index]
+                    train_label = train_label + separate_label[i][:test_count[i] * fold_index]
+                    test_data = test_data + one_label[test_count[i] * fold_index:]
+                    test_label = test_label + separate_label[i][test_count[i] * fold_index:]
                     pass
                 else:
-                    train_data = train_data + one_label[:test_count[i] * ford_index] + one_label[test_count[i] * (ford_index + 1):]
-                    train_label = train_label + separate_label[i][:test_count[i] * ford_index] + separate_label[i][test_count[i] * (ford_index + 1):]
-                    test_data = test_data + one_label[test_count[i] * ford_index:test_count[i] * (ford_index + 1)]
-                    test_label = test_label + separate_label[i][test_count[i] * ford_index:test_count[i] * (ford_index + 1)]
-                    # train_data = np.concatenate((one_label[:test_num * ford_index], one_label[test_num * (ford_index + 1):]))
-                    # train_label = np.concatenate((one_label[:test_num * ford_index], one_label[test_num * (ford_index + 1):]))
-                    # test_data = one_label[test_num * ford_index:test_num * (ford_index + 1)]
-                    # test_label = one_label[test_num * ford_index:test_num * (ford_index + 1)]
-            print(train_label)
-            print(test_label)
+                    train_data = train_data + one_label[:test_count[i] * fold_index] + one_label[test_count[i] * (fold_index + 1):]
+                    train_label = train_label + separate_label[i][:test_count[i] * fold_index] + separate_label[i][test_count[i] * (fold_index + 1):]
+                    test_data = test_data + one_label[test_count[i] * fold_index:test_count[i] * (fold_index + 1)]
+                    test_label = test_label + separate_label[i][test_count[i] * fold_index:test_count[i] * (fold_index + 1)]
+            # print(train_label)
+            # print(test_label)
             print(len(train_label)+len(test_label), len(train_label), len(test_label))
             whole_set.append([train_data, train_label, test_data, test_label])
-
         return whole_set
 
 #%%
-
-def split_train_test(data, label, ford_num, ford_index):
-    print('split the dataset into train and test sets.')
-    sample_num = len(data)
-    test_num = sample_num // ford_num
-    train_num = sample_num - test_num
-    # X = np.array(get_random_sample(X, sample_num))
-    # Y = np.array(get_random_sample(Y, sample_num))
-    X_ = np.array(data)
-    Y_ = np.array(label)
-    l1 , l2 = len(X_), len(X_[0])
-
-    delete_col_count = 0
-    print(l1, l2)
-    print('remove 0 value columns.')
-    for i in range(l2):
-        col_index = l2 - i - 1
-        for j in range(l1):
-            if X_[j][col_index]:
-                break
-            # print('delete column.')
-            delete_col_count += 1
-            X_ = np.delete(X_, col_index, 1)
-    print('removed {} columns.'.format(delete_col_count))
-    print(len(data[0]), len(X_[0]))
-
-    X_ = normalize(X_)
-    # X_, Y_ = shuffle_two_arrays(X_, Y_)
-
-    # assert ford_index < ford_num-1
-    if ford_index == ford_num-1:
-        train_data = X_[:test_num * ford_index]
-        train_label = Y_[:test_num * ford_index]
-        test_data = X_[test_num * ford_index:]
-        test_label = Y_[test_num * ford_index:]
-        pass
-    else:
-        train_data = np.concatenate((X_[:test_num*ford_index],X_[test_num*(ford_index+1):]))
-        train_label = np.concatenate((Y_[:test_num*ford_index],Y_[test_num*(ford_index+1):]))
-        test_data = X_[test_num * ford_index:test_num * (ford_index + 1)]
-        test_label = Y_[test_num * ford_index:test_num * (ford_index + 1)]
-
 from imblearn.over_sampling import *
 from imblearn.combine import *
 def over_sampling(X_imb, Y_imb, sampling_option):
@@ -422,7 +380,7 @@ def over_sampling(X_imb, Y_imb, sampling_option):
         X_samp, Y_samp = SMOTETomek(random_state=4).fit_sample(X_imb, Y_imb)
     elif sampling_option == 'None':
         X_samp, Y_samp = X_imb, Y_imb
-    else :
+    else:
         print('sampling option is not proper.', sampling_option)
         assert False
     imbalance_num = len(Y_imb)
@@ -473,7 +431,8 @@ def test_something_2():
 def normalize(X_):
     return (X_-X_.min(0))/X_.max(axis=0)
 
-def NN_dataloader():
+def NN_dataloader(diag_type, class_option, base_folder_path, \
+                  excel_path, excel_option, test_num, fold_num, is_split_by_num):
     '''
     1. read excel data (O)
     2. squeeze 3 lines into 1 lines according to the options P V T merge (O)
@@ -487,8 +446,8 @@ def NN_dataloader():
 
     # "clinic" or "new" or "PET"
     # 'PET pos vs neg', 'NC vs MCI vs AD' 'NC vs mAD vs aAD vs ADD'
-    diag_type = "PET"
-    class_option = 'PET pos vs neg'
+    # diag_type = "PET"
+    # class_option = 'PET pos vs neg'
     # diag_type = "new"
     # class_option = 'NC vs mAD vs aAD vs ADD'
     # diag_type = "clinic"
@@ -496,29 +455,35 @@ def NN_dataloader():
 
     loader = MRI_chosun_data()
     loader.set_diagnosis_type(diag_type)
-    base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
+    # base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
     # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
-    excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
+    # excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
 
-    excel_option = 'P' # P V T merge
+    # excel_option = 'merge' # P V T merge
     loader.read_excel_data(excel_path)
     loader.squeeze_excel(excel_option=excel_option)
     data, label_info = loader.remove_zero_column()
     data, label = loader.define_label(label_info, class_option)
     data = normalize(data)
     '''
-    when split the data by ford number, should we split the data earlier than shuffle??
+    when split the data by fold number, should we split the data earlier than shuffle??
     '''
-    is_split_by_num = False
+    # is_split_by_num = False
     if is_split_by_num:
         shuffle_data, shuffle_label = loader.shuffle_data(data, label)
-        test_num = 20
-        loader.split_data_by_num(shuffle_data, shuffle_label, test_num)
+        # test_num = 20
+        '''
+            return only one train and test set
+        '''
+        return loader.split_data_by_num(shuffle_data, shuffle_label, test_num)
     else:
         shuffle_data, shuffle_label = loader.shuffle_data(data, label)
-        ford_num = 5
-        ford_index = 0
-        loader.split_data_by_ford(shuffle_data, shuffle_label, ford_num)
+        # fold_num = 5
+        # fold_index = 0
+        '''
+            return all train and test sets devided by fold. 
+        '''
+        return loader.split_data_by_fold(shuffle_data, shuffle_label, fold_num)
 
 def CNN_dataloader():
     '''
@@ -564,12 +529,12 @@ if __name__ == '__main__':
 #     class_option_index = 3
 #     class_num = class_option_index // 3 + 2
 #     sampling_option = 'ADASYN'
-#     ford_num = 3
-#     ford_index = 0
+#     fold_num = 3
+#     fold_index = 0
 #     data, label = dataloader(class_option[class_option_index], option_num, is_merge=is_merge)
 #     # assert False
 #     data, label = shuffle_two_arrays(data, label)
-#     train_data, train_label, test_data, test_label = split_train_test(data, label, ford_num, ford_index)
+#     train_data, train_label, test_data, test_label = split_train_test(data, label, fold_num, fold_index)
 #     # print(len(data[0]), len(train_data[0]))
 #     # train_data, train_label = valence_class(train_data, train_label, class_num)
 #     # test_data, test_label = valence_class(test_data, test_label, class_num)

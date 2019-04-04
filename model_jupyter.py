@@ -244,6 +244,9 @@ with graph.as_default():
         writer.add_graph(sess.graph)
         # TRAINING PORTION OF THE SESSION
         # one hot encoding
+        '''
+        search for tf.one_hot
+        '''
         Y_train = pd.get_dummies(Y_train)
         Y_train = np.array(Y_train)
         Y_test = pd.get_dummies(Y_test)

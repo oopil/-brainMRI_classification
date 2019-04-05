@@ -2,121 +2,15 @@
 # coding: utf-8
 
 # In[31]:
-
-
 import sys
 import tensorflow as tf
 import pandas as pd
 import argparse
-
+sys.path.append('/home/sp/PycharmProjects/chosun_AD')
+from data_merge import *
 '''
 sys.path.append is needed only when using jupyter notebook
 '''
-sys.path.append('/home/sp/PycharmProjects/chosun_AD')
-from data import *
-
-
-# In[32]:
-
-
-def parse_args()->argparse:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--class_option_index', type=int, default='0')
-    parser.add_argument('--ford_num', type=int, default='5')
-    parser.add_argument('--ford_index', type=int, default='0')
-    parser.add_argument('--keep_prob', type=float, default='0.9')
-    parser.add_argument('--lr', type=float, default='0.01')
-    parser.add_argument('--epochs', type=int, default='2000')
-    parser.add_argument('--save_freq', type=int, default='300')
-    parser.add_argument('--print_freq', type=int, default='100')
-    
-    return parser.parse_args()
-
-
-# In[33]:
-
-def batch_norm(x, is_training=True, scope='batch_norm'):
-    # mean, var = tf.nn.moments(x, axes=0)
-    return tf.contrib.layers.batch_norm(x, decay=0.9, epsilon=1e-05,
-                                        center=True, scale=True, updates_collections=None,
-                                        is_training=is_training)
-    # return tf.nn.batch_normalization(x,mean=mean,variance=var,\
-    #                                  offset=0.01, scale=1, variance_epsilon=1e-05)
-
-def accuracy(predictions, labels):
-    return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])
-
-#Helper functions to define weights and biases
-def init_weights(shape):
-    '''
-    Input: shape -  this is the shape of a matrix used to represent weigts for the arbitrary layer
-    Output: wights randomly generated with size = shape
-    '''
-    return tf.Variable(tf.truncated_normal(shape, 0, 0.05))
-
-
-def init_weights_res(shape):
-    '''
-    Input: shape -  this is the shape of a matrix used to represent weigts for the arbitrary layer
-    Output: wights randomly generated with size = shape
-    '''
-    return tf.Variable(tf.truncated_normal(shape, 0, 0.1))
-
-def init_biases(shape):
-    '''
-    Input: shape -  this is the shape of a vector used to represent biases for the arbitrary layer
-    Output: a vector for biases (all zeros) lenght = shape
-    '''
-    return tf.Variable(tf.zeros(shape))
-
-def fully_connected_res_layer(inputs, input_shape, output_shape, keep_prob, activation=tf.nn.relu):
-    '''
-    This function is used to create tensorflow fully connected layer.
-
-    Inputs: inputs - input data to the layer
-            input_shape - shape of the inputs features (number of nodes from the previous layer)
-            output_shape - shape of the layer
-            activatin - used as an activation function for the layer (non-liniarity)
-    Output: layer - tensorflow fully connected layer
-
-    '''
-    # definine weights and biases
-    weights = init_weights_res([input_shape, output_shape])
-    biases = init_biases([output_shape])
-    # x*W + b <- computation for the layer values
-    layer = tf.matmul(inputs, weights) + biases + inputs
-    layer = tf.nn.dropout(layer, keep_prob=keep_prob)
-    # if activation argument is not None, we put layer values through an activation function
-    if activation != None:
-        layer = activation(layer)
-
-    return layer
-
-def fully_connected_layer(inputs, input_shape, output_shape, keep_prob, activation=tf.nn.relu):
-    '''
-    This function is used to create tensorflow fully connected layer.
-
-    Inputs: inputs - input data to the layer
-            input_shape - shape of the inputs features (number of nodes from the previous layer)
-            output_shape - shape of the layer
-            activatin - used as an activation function for the layer (non-liniarity)
-    Output: layer - tensorflow fully connected layer
-
-    '''
-    # definine weights and biases
-    weights = init_weights([input_shape, output_shape])
-    biases = init_biases([output_shape])
-    # x*W + b <- computation for the layer values
-    layer = tf.matmul(inputs, weights) + biases
-    # layer = batch_norm(layer)
-    layer = tf.nn.dropout(layer, keep_prob=keep_prob)
-    # if activation argument is not None, we put layer values through an activation function
-    if activation != None:
-        layer = activation(layer)
-
-    return layer
-
-
 # In[34]:
 
 
@@ -167,6 +61,8 @@ save_freq = args.save_freq
 Log
 
 1. batch normalization seems to have no positive effect on validation.
+2. i need to try attention mechanism here
+3. before that, i need to find the simplest model first.
 '''
 # batch_size = 50
 
@@ -346,6 +242,94 @@ print(1)
 
 # In[40]:
 
+def main():
+    '''
+        set the data option and load dataset
+    '''
+    base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
+    # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
+    excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
+    # "clinic" or "new" or "PET"
+    # 'PET pos vs neg', 'NC vs MCI vs AD' 'NC vs mAD vs aAD vs ADD'
+    # diag_type = "PET"
+    # class_option = 'PET pos vs neg'
+    diag_type = "new"
+    class_option = 'NC vs ADD'#'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
+    # diag_type = "clinic"
+    # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
+    class_split = class_option.split('vs')
+    class_num = len(class_split)
+    excel_option = 'merge'  # P V T merge
+    test_num = 20
+    fold_num = 5
+    is_split_by_num = False # split the dataset by fold.
+    # sampling_option = 'SMOTENC'
+    # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
+    sampling_option_str = 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'# ADASYN
+    sampling_option_split = sampling_option_str.split(' ')
+
+    whole_set = NN_dataloader(diag_type, class_option, base_folder_path, \
+                              excel_path, excel_option, test_num, fold_num, is_split_by_num)
+    whole_set = np.array(whole_set)
+
+    result_file_name = \
+    '/home/sp/PycharmProjects/brainMRI_classification/regression_result/chosun_MRI_excel_logistic_regression_result_'\
+    +diag_type +'_'+ class_option
+    '''
+    if there is space in the file name, i can't use it in the linux command.
+    '''
+    is_remove_result_file = True
+    if is_remove_result_file:
+        # command = 'rm {}'.format(result_file_name)
+        # print(command)
+        subprocess.call(['rm',result_file_name])
+        # os.system(command)
+    # assert False
+    line_length = 100
+
+    total_test_accur = []
+    for sampling_option in sampling_option_split:
+        results = []
+        test_accur_list = []
+        results.append('\n\t\t<<< class option : {} / oversample : {} >>>\n'.format(class_option, sampling_option))
+        date = str(datetime.datetime.now())+'\n'
+        results.append(date)
+        # assert False
+        print(len(whole_set))
+        for fold_index, one_fold_set in enumerate(whole_set):
+            train_num, test_num = len(one_fold_set[0]), len(one_fold_set[2])
+            contents = []
+            contents.append(
+                'fold : {}/{:<3},'.format(fold_index, fold_num))
+            line, test_accur = logistic_regression(one_fold_set, sampling_option, class_num)
+            contents.append(line)
+            test_accur_list.append(test_accur)
+            results.append(contents)
+
+        test_accur_avg = int(sum(test_accur_list)/len(test_accur_list))
+        results.append('{} : {}\n'.format('avg test accur',test_accur_avg))
+        results.append('=' * line_length + '\n')
+        total_test_accur.append(test_accur_avg)
+
+        file = open(result_file_name, 'a+t')
+        # print('<< results >>')
+        for result in results:
+            file.writelines(result)
+            # print(result)
+        # print(contents)
+        file.close()
+    print_result_file(result_file_name)
+    print(total_test_accur)
+
+def print_result_file(result_file_name):
+    file = open(result_file_name, 'rt')
+    lines = file.readlines()
+    for line in lines:
+        print(line)
+    file.close()
+
+if __name__ == '__main__':
+    main()
 
 '''
 keep_prob = 0.9 # 0.9

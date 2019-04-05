@@ -10,7 +10,6 @@ class DatetimeDecorator:
         print
         datetime.datetime.now()
 
-
 def datetime_decorator(func):
     def decorated():
             print(datetime.datetime.now())

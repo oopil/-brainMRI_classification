@@ -33,14 +33,19 @@ class MRI_chosun_data():
         }
 
         self.class_option_dict_clinic = {
-            'NC vs AD': ['CN', 'AD'],
-            'NC vs MCI': ['CN', 'MCI'],
+            'CN vs AD': ['CN', 'AD'],
+            'CN vs MCI': ['CN', 'MCI'],
             'MCI vs AD': ['MCI', 'AD'],
-            'NC vs MCI vs AD': ['CN', 'MCI', 'AD']
+            'CN vs MCI vs AD': ['CN', 'MCI', 'AD']
         }
 
         self.class_option_dict_new = {
             'NC vs ADD': ['NC', 'ADD'],
+            'NC vs mAD': ['NC', 'mAD'],
+            'NC vs aAD': ['NC', 'aAD'],
+            'mAD vs ADD': ['mAD', 'ADD'],
+
+            'NC vs mAD vs ADD': ['NC', 'mAD', 'ADD'],
             'NC vs mAD vs aAD vs ADD': ['NC', 'mAD', 'aAD', 'ADD']
         }
 
@@ -406,13 +411,12 @@ def valence_class(data, label, class_num):
     new_data = []
     new_label = []
     for i, k in enumerate(label):
-        if label_count_new[k] > min_count:
-            continue
-        new_data.append(data[i])
-        new_label.append(label[i])
-        label_count_new[k] += 1
+        if label_count_new[k] < min_count:
+            new_data.append(data[i])
+            new_label.append(label[i])
+            label_count_new[k] += 1
     # print('new label count : ', label_count_new)
-    print('down sampling from {} -> {}.'.format(label_count, label_count_new))
+    print('down sampling : {} -> {}.'.format(label_count, label_count_new))
     return np.array(new_data), np.array(new_label)
 
 @datetime_decorator

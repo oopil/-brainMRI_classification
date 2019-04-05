@@ -1,11 +1,11 @@
 import os
 import argparse
 import datetime
+import subprocess
 from data_merge import *
 from sklearn.linear_model import LogisticRegression
-from data import *
 
-def logistic_regression(one_dataset, sampling_option, class_num):
+def logistic_regression(one_dataset, sampling_option, class_num)->str and int:
     train_data, train_label, test_data, test_label = one_dataset
     test_data, test_label = valence_class(test_data, test_label, class_num)
     train_data, train_label = over_sampling(train_data, train_label, sampling_option)
@@ -46,7 +46,7 @@ def logistic_regression(one_dataset, sampling_option, class_num):
     print('the probability is {}'.format(test_accur))
     return 'train and test number : {} / {:<5}'.format(len(train_label),len(test_label))+\
            ',top Test  : {:<10}' .format(test_accur // 1)+\
-           ',top Train : {:<10}\n'.format(train_accur // 1)
+           ',top Train : {:<10}\n'.format(train_accur // 1), test_accur
 
 def main():
     '''
@@ -60,57 +60,72 @@ def main():
     # diag_type = "PET"
     # class_option = 'PET pos vs neg'
     diag_type = "new"
-    class_option = 'NC vs aAD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
+    class_option = 'NC vs ADD'#'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     # diag_type = "clinic"
-    # class_option = 'CN vs MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'NC vs AD' #'CN vs MCI vs AD'
+    # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
     class_split = class_option.split('vs')
     class_num = len(class_split)
     excel_option = 'merge'  # P V T merge
     test_num = 20
     fold_num = 5
     is_split_by_num = False # split the dataset by fold.
-    sampling_option = 'None'  # None ADASYN SMOTE SMOTEENN SMOTETomek
+    # sampling_option = 'SMOTENC'
+    # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
+    sampling_option_str = 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'# ADASYN
+    sampling_option_split = sampling_option_str.split(' ')
 
     whole_set = NN_dataloader(diag_type, class_option, base_folder_path, \
                               excel_path, excel_option, test_num, fold_num, is_split_by_num)
     whole_set = np.array(whole_set)
 
     result_file_name = \
-    '/home/sp/PycharmProjects/brainMRI_classification/chosun_MRI_excel_logistic_regression_result_' + class_option
+    '/home/sp/PycharmProjects/brainMRI_classification/regression_result/chosun_MRI_excel_logistic_regression_result_'\
+    +diag_type +'_'+ class_option
     '''
     if there is space in the file name, i can't use it in the linux command.
     '''
-    # is_remove_result_file = True
-    # if is_remove_result_file:
-    #     command = 'rm {}'.format(result_file_name)
-    #     print(command)
-    #     os.system(command)
-
-    line_length = 100
-    results = []
-    results.append('\n\t\t<<< class option : {} / oversample : {} >>>\n'.format(class_option, sampling_option))
-    date = str(datetime.datetime.now())+'\n'
-    results.append(date)
+    is_remove_result_file = True
+    if is_remove_result_file:
+        # command = 'rm {}'.format(result_file_name)
+        # print(command)
+        subprocess.call(['rm',result_file_name])
+        # os.system(command)
     # assert False
-    print(len(whole_set))
-    for fold_index, one_fold_set in enumerate(whole_set):
-        train_num, test_num = len(one_fold_set[0]), len(one_fold_set[2])
-        contents = []
-        contents.append(
-            'fold : {}/{:<3},'.format(fold_index, fold_num))
-        contents.append(logistic_regression(one_fold_set, sampling_option, class_num))
-        results.append(contents)
-    results.append('=' * line_length + '\n')
+    line_length = 100
 
-    file = open(result_file_name, 'a+t')
-    # print('<< results >>')
-    for result in results:
-        file.writelines(result)
-        # print(result)
-    # print(contents)
-    file.close()
+    total_test_accur = []
+    for sampling_option in sampling_option_split:
+        results = []
+        test_accur_list = []
+        results.append('\n\t\t<<< class option : {} / oversample : {} >>>\n'.format(class_option, sampling_option))
+        date = str(datetime.datetime.now())+'\n'
+        results.append(date)
+        # assert False
+        print(len(whole_set))
+        for fold_index, one_fold_set in enumerate(whole_set):
+            train_num, test_num = len(one_fold_set[0]), len(one_fold_set[2])
+            contents = []
+            contents.append(
+                'fold : {}/{:<3},'.format(fold_index, fold_num))
+            line, test_accur = logistic_regression(one_fold_set, sampling_option, class_num)
+            contents.append(line)
+            test_accur_list.append(test_accur)
+            results.append(contents)
 
+        test_accur_avg = int(sum(test_accur_list)/len(test_accur_list))
+        results.append('{} : {}\n'.format('avg test accur',test_accur_avg))
+        results.append('=' * line_length + '\n')
+        total_test_accur.append(test_accur_avg)
+
+        file = open(result_file_name, 'a+t')
+        # print('<< results >>')
+        for result in results:
+            file.writelines(result)
+            # print(result)
+        # print(contents)
+        file.close()
     print_result_file(result_file_name)
+    print(total_test_accur)
 
 def print_result_file(result_file_name):
     file = open(result_file_name, 'rt')

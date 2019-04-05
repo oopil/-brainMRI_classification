@@ -44,7 +44,7 @@ class MRI_chosun_data():
             'NC vs mAD': ['NC', 'mAD'],
             'NC vs aAD': ['NC', 'aAD'],
             'mAD vs ADD': ['mAD', 'ADD'],
-
+            'aAD vs ADD': ['aAD', 'ADD'],
             'NC vs mAD vs ADD': ['NC', 'mAD', 'ADD'],
             'NC vs mAD vs aAD vs ADD': ['NC', 'mAD', 'aAD', 'ADD']
         }
@@ -376,13 +376,17 @@ from imblearn.combine import *
 def over_sampling(X_imb, Y_imb, sampling_option):
     print('starts over sampling ...', sampling_option)
     if sampling_option == 'ADASYN':
-        X_samp, Y_samp = ADASYN(random_state=0).fit_sample(X_imb, Y_imb)
+        X_samp, Y_samp = ADASYN().fit_sample(X_imb, Y_imb)
     elif sampling_option == 'SMOTE':
         X_samp, Y_samp = SMOTE(random_state=4).fit_sample(X_imb, Y_imb)
     elif sampling_option == 'SMOTEENN':
         X_samp, Y_samp = SMOTEENN(random_state=0).fit_sample(X_imb, Y_imb)
     elif sampling_option == 'SMOTETomek':
         X_samp, Y_samp = SMOTETomek(random_state=4).fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'RANDOM':
+        X_samp, Y_samp = RandomOverSampler(random_state=0).fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'BolderlineSMOTE':
+        X_samp, Y_samp = BorderlineSMOTE().fit_sample(X_imb, Y_imb)
     elif sampling_option == 'None':
         X_samp, Y_samp = X_imb, Y_imb
     else:

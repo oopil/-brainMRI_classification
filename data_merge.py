@@ -133,7 +133,7 @@ class MRI_chosun_data():
         for i in range(1,len(self.data_excel)):
 
             # print(label_info)
-            if (i-1)%3 == option_index:
+            if (i-1)%3 == option_index: # if choose only one row : P V T
                 line = self.data_excel[i][8:]
                 label_info = self.data_excel[i][4:7]
                 new_line = line
@@ -142,7 +142,7 @@ class MRI_chosun_data():
                 # print(len(self.data_excel[i]), len(line))
                 # print(new_line)
 
-            if option_index == 3 and i%3 == 1:
+            if option_index == 3 and i%3 == 1: # if use all three rows : merge
                 line = [self.data_excel[i+k][8:] for k in range(3)]
                 label_info = self.data_excel[i][4:7]
                 new_line = line[0] + line[1] + line[2]
@@ -439,7 +439,7 @@ def test_something_2():
 def normalize(X_):
     return (X_-X_.min(0))/X_.max(axis=0)
 
-def NN_dataloader(diag_type, class_option, base_folder_path, \
+def NN_dataloader(diag_type, class_option, \
                   excel_path, excel_option, test_num, fold_num, is_split_by_num):
     '''
     1. read excel data (O)

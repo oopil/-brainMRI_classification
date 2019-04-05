@@ -74,7 +74,7 @@ def main():
     sampling_option_str = 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'# ADASYN
     sampling_option_split = sampling_option_str.split(' ')
 
-    whole_set = NN_dataloader(diag_type, class_option, base_folder_path, \
+    whole_set = NN_dataloader(diag_type, class_option, \
                               excel_path, excel_option, test_num, fold_num, is_split_by_num)
     whole_set = np.array(whole_set)
 

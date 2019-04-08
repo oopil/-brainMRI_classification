@@ -81,7 +81,6 @@ def fully_connected_layer(inputs, input_shape, output_shape, keep_prob, activati
 
     return layer
 
-
 import tensorflow as tf
 import tensorflow.contrib as tf_contrib
 def onehot(x, depth):
@@ -92,7 +91,7 @@ def onehot(x, depth):
 # Normal : tf.random_normal_initializer(mean=0.0, stddev=0.02)
 # l2_decay : tf_contrib.layers.l2_regularizer(0.0001)
 
-weight_init = tf.random_normal_initializer(mean=0.0, stddev=0.02)
+weight_init = tf.random_normal_initializer(mean=0.0, stddev=0.05)
 # weight_init = tf.random_normal_initializer(mean=0.0, stddev=0.05)
 weight_regularizer = None
 # weight_init = tf_contrib.layers.variance_scaling_initializer()
@@ -268,3 +267,11 @@ def classifier_loss(loss_func, predictions, targets):
     fake_loss = 0
     loss = tf.reduce_mean(tf.squared_difference(targets, predictions))
     return loss
+
+def accuracy(predictions, labels):
+    correct_pred = tf.equal(tf.argmax(predictions, 1),tf.argmax(labels, 1))
+    return tf.reduce_mean(tf.cast(correct_pred, "float"))
+'''
+def accuracy(predictions, labels):
+    return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])
+'''

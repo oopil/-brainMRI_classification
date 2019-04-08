@@ -1,11 +1,7 @@
-import sys
-import tensorflow as tf
-import numpy as np
-import pandas as pd
 import argparse
-import subprocess
-from neuralnet_model import NeuralNet
-from neuralnet_utils import *
+from bayes_opt import BayesianOptimization
+from NeuralNet.neuralnet_model import NeuralNet
+from NeuralNet.neuralnet_utils import *
 '''
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append is needed only when using jupyter notebook
@@ -33,6 +29,8 @@ def parse_args() -> argparse:
     parser.add_argument('--excel_path', default='/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx', type=str)
     parser.add_argument('--base_folder_path', default='/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0', type=str)
     parser.add_argument('--diag_type', default='clinic', type=str)
+    # simple basic
+    parser.add_argument('--neural_net', default='simple', type=str)
     # diag_type = "PET"
     # diag_type = "new"
     # diag_type = "clinic"
@@ -47,10 +45,10 @@ def parse_args() -> argparse:
     parser.add_argument('--is_split_by_num', default=False, type=bool)
     parser.add_argument('--sampling_option', default='RANDOM', type=str)
     # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
-    parser.add_argument('--lr', default=0.05, type=float)
+    parser.add_argument('--lr', default=0.01, type=float)
     parser.add_argument('--epoch', default=2000, type=int)
-    parser.add_argument('--iter', default=100, type=int)
-    parser.add_argument('--print_freq', default=200, type=int)
+    parser.add_argument('--iter', default=1, type=int)
+    parser.add_argument('--print_freq', default=100, type=int)
     parser.add_argument('--save_freq', default=200, type=int)
     # parser.add_argument('--batch_size', default=200, type=int)
 
@@ -80,12 +78,41 @@ def main():
         show_all_variables()
         # launch the graph in a session
         NN.train()
-        assert False
+        # assert False
         # visualize learned generator
         # NN.visualize_results(args.epoch - 1)
         print(" [*] Training finished!")
-        NN.test()
+        best_score = NN.test()
         print(" [*] Test finished!")
+        return best_score
+
+def BayesianOptimization():
+    bayes_optimizer = BayesianOptimization(
+        f=main,
+        pbounds={
+            'init_learning_rate_log': (-5, -1),  # FIXME
+            'weight_decay_log': (-5, -1)  # FIXME
+        },
+        random_state=0,
+        verbose=2
+    )
+    # parse arguments
+    # open session
+    NN = NeuralNet(sess, args)
+    whole_set = NN.read_nn_data()
+    # assert False
+    # build graph
+    NN.build_model()
+    # show network architecture
+    show_all_variables()
+    # launch the graph in a session
+    NN.train()
+    # assert False
+    # visualize learned generator
+    # NN.visualize_results(args.epoch - 1)
+    print(" [*] Training finished!")
+    NN.test()
+    print(" [*] Test finished!")
 # In[40]:
 ''''''
 

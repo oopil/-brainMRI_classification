@@ -105,8 +105,7 @@ def main():
         for fold_index, one_fold_set in enumerate(whole_set):
             train_num, test_num = len(one_fold_set[0]), len(one_fold_set[2])
             contents = []
-            contents.append(
-                'fold : {}/{:<3},'.format(fold_index, fold_num))
+            contents.append('fold : {}/{:<3},'.format(fold_index, fold_num))
             line, test_accur = logistic_regression(one_fold_set, sampling_option, class_num)
             contents.append(line)
             test_accur_list.append(test_accur)

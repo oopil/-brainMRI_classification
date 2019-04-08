@@ -1,6 +1,7 @@
-import time
-from neuralnet_ops import *
-from neuralnet_utils import *
+import sys
+sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
+from NeuralNet.neuralnet_ops import *
+from NeuralNet.neuralnet_utils import *
 from data_merge import *
 
 class NeuralNet(object):
@@ -9,6 +10,13 @@ class NeuralNet(object):
         self.sess = sess
         self.excel_path = args.excel_path
         self.base_folder_path = args.base_folder_path
+
+        if args.neural_net == 'simple':
+            self.model_name = self.neural_net_simple
+        if args.neural_net == 'basic':
+            self.model_name = self.neural_net_basic
+        if args.neural_net == 'simple':
+            self.model_name = self.neural_net_simple
 
         self.diag_type = args.diag_type
         self.excel_option = args.excel_option
@@ -40,25 +48,12 @@ class NeuralNet(object):
         print("# epoch : ", self.epoch)
 
     ##################################################################################
-    # Discriminator
+    # Custom Operation
     ##################################################################################
-    def neural_net(self, x, is_training=True, reuse=False):
-        is_print = self.is_print
-        if is_print:
-            print('build neural network')
-            print(x.shape)
-        with tf.variable_scope("neuralnet", reuse=reuse):
-            # x = fully_connected(x, 512, use_bias=True, scope='fc1')
-            # x = lrelu(x, 0.1)
-            # x = fully_connected(x, self.class_num, use_bias=True, scope='fc2')
-            # x = lrelu(x, 0.1)
-            x = self.fc_layer(x, 512, 'fc1')
-            x = self.fc_layer(x, self.class_num, 'fc2')
-            return x
-
     def fc_layer(self, x, ch, scope):
         x = fully_connected(x, ch, use_bias=True, scope=scope)
-        x = lrelu(x, 0.1)
+        # x = lrelu(x, 0.1)
+        x = relu(x)
         return x
 
     def sample_save(self, x, is_training=True, reuse=False):
@@ -93,7 +88,7 @@ class NeuralNet(object):
             # assert False
             return x
 
-    def attention(self, x, ch, sn=False, scope='attention', reuse=False):
+    def attention_nn(self, x, ch, sn=False, scope='attention', reuse=False):
         with tf.variable_scope(scope, reuse=reuse):
             ch_ = ch // 8
             if ch_ == 0: ch_ = 1
@@ -112,8 +107,83 @@ class NeuralNet(object):
 
             o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
             x = gamma * o + x
-
         return x
+    #
+    # def attention(self, x, ch, sn=False, scope='attention', reuse=False):
+    #     with tf.variable_scope(scope, reuse=reuse):
+    #         ch_ = ch // 8
+    #         if ch_ == 0: ch_ = 1
+    #         f = conv(x, ch_, kernel=1, stride=1, sn=sn, scope='f_conv') # [bs, h, w, c']
+    #         g = conv(x, ch_, kernel=1, stride=1, sn=sn, scope='g_conv') # [bs, h, w, c']
+    #         h = conv(x, ch, kernel=1, stride=1, sn=sn, scope='h_conv') # [bs, h, w, c]
+    #
+    #         # N = h * w
+    #         s = tf.matmul(hw_flatten(g), hw_flatten(f), transpose_b=True) # # [bs, N, N]
+    #
+    #         beta = tf.nn.softmax(s, axis=-1)  # attention map
+    #
+    #         o = tf.matmul(beta, hw_flatten(h)) # [bs, N, C]
+    #         gamma = tf.get_variable("gamma", [1], initializer=tf.constant_initializer(0.0))
+    #         print(o.shape, s.shape, f.shape, g.shape, h.shape)
+    #
+    #         o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
+    #         x = gamma * o + x
+    #     return x
+
+    ##################################################################################
+    # Neural Network Model
+    ##################################################################################
+    def neural_net_simple(self, x, is_training=True, reuse=False):
+        layer_num = 5
+        is_print = self.is_print
+        if is_print:
+            print('build neural network')
+            print(x.shape)
+        with tf.variable_scope("neuralnet", reuse=reuse):
+            x = self.fc_layer(x, 512, 'fc_input_1')
+            x = self.fc_layer(x, 1024, 'fc_input_2')
+            for i in range(layer_num):
+                x = self.fc_layer(x, 1024, 'fc'+str(i))
+            x = self.fc_layer(x, 512, 'fc_1')
+            x = self.fc_layer(x, 256, 'fc_fin')
+            x = self.fc_layer(x, self.class_num, 'fc_last')
+            return x
+
+    def neural_net_basic(self, x, is_training=True, reuse=False):
+        is_print = self.is_print
+        if is_print:
+            print('build neural network')
+            print(x.shape)
+        with tf.variable_scope("neuralnet", reuse=reuse):
+            # x = fully_connected(x, 512, use_bias=True, scope='fc1')
+            # x = lrelu(x, 0.1)
+            # x = fully_connected(x, self.class_num, use_bias=True, scope='fc2')
+            # x = lrelu(x, 0.1)
+            x = self.fc_layer(x, 512, 'fc1')
+            x = self.fc_layer(x, self.class_num, 'fc2')
+            return x
+
+    ##################################################################################
+    # Dataset
+    ##################################################################################
+    def read_nn_data(self):
+        # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
+        sampling_option_str = 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'  # ADASYN
+        sampling_option_split = sampling_option_str.split(' ')
+        whole_set = NN_dataloader(self.diag_type, self.class_option,\
+                                  self.excel_path, self.excel_option, self.test_num, self.fold_num, self.is_split_by_num)
+        whole_set = np.array(whole_set)
+        self.train_data, self.train_label, self.test_data, self.test_label = whole_set[0]
+        self.train_data = np.array(self.train_data)
+        self.train_label = np.array(self.train_label)
+        self.test_data = np.array(self.test_data)
+        self.test_label = np.array(self.test_label)
+        self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
+        self.input_feature_num = len(self.train_data[0])
+        # print(onehot(self.train_label,self.class_num))
+        # print(type(self.train_label))
+        # print(type(np.array(self.train_label)))
+
     ##################################################################################
     # Model
     ##################################################################################
@@ -123,12 +193,15 @@ class NeuralNet(object):
         # self.label = tf.placeholder(tf.float32, [None, self.class_num], name='targets')
         self.label = tf.placeholder(tf.int32, [None], name='targets')
         self.label_onehot = onehot(self.label, self.class_num)
-        """ Loss Function """
         # output of D for real images
         print(self.input)
-        pred = self.neural_net(self.input)
+        self.logits = self.model_name(self.input, reuse=False)
+        self.pred = tf.argmax(self.logits,1)
+        self.accur = accuracy(self.logits, self.label_onehot)
         # get loss for discriminator
-        self.loss = classifier_loss('normal', predictions=pred, targets=self.label_onehot)
+        """ Loss Function """
+        with tf.name_scope('Loss'):
+            self.loss = classifier_loss('normal', predictions=self.logits, targets=self.label_onehot)
         """ Training """
         # divide trainable variables into a group for D and a group for G
         t_vars = tf.trainable_variables()
@@ -148,24 +221,6 @@ class NeuralNet(object):
         """ Summary """
         self.sum = tf.summary.scalar("loss", self.loss)
 
-    # def read_excel_data(self, base_folder_path, excel_path):
-    def read_nn_data(self):
-        # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
-        sampling_option_str = 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'  # ADASYN
-        sampling_option_split = sampling_option_str.split(' ')
-        whole_set = NN_dataloader(self.diag_type, self.class_option,\
-                                  self.excel_path, self.excel_option, self.test_num, self.fold_num, self.is_split_by_num)
-        whole_set = np.array(whole_set)
-        self.train_data, self.train_label, self.test_data, self.test_label = whole_set[0]
-        self.train_data = np.array(self.train_data)
-        self.train_label = np.array(self.train_label)
-        self.test_data = np.array(self.test_data)
-        self.test_label = np.array(self.test_label)
-        self.input_feature_num = len(self.train_data[0])
-        # print(onehot(self.train_label,self.class_num))
-        # print(type(self.train_label))
-        # print(type(np.array(self.train_label)))
-
     ##################################################################################
     # Train
     ##################################################################################
@@ -176,9 +231,12 @@ class NeuralNet(object):
         # graph inputs for visualize training results
         # saver to save model
         self.saver = tf.train.Saver()
-        # summary writer
-        self.writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir, self.sess.graph)
-
+        # summary train_writer
+        # summary train_writer
+        # self.train_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
+        self.train_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
+        self.test_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_test', self.sess.graph)
+        self.train_writer.add_graph(self.sess.graph)
         # restore check-point if it exits
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
         if could_load:
@@ -195,6 +253,8 @@ class NeuralNet(object):
         start_time = time.time()
         past_loss = -1.
 
+        self.valid_accur = []
+        self.train_accur = []
         for epoch in range(start_epoch, self.epoch):
             # get batch data
             for idx in range(start_batch_id, self.iteration):
@@ -203,12 +263,22 @@ class NeuralNet(object):
                     self.input : self.train_data,
                     self.label : self.train_label
                 }
-                _, summary_str, loss = self.sess.run([self.optim, self.sum, self.loss], feed_dict=train_feed_dict)
-                self.writer.add_summary(summary_str, counter)
+                _, summary_str, loss, pred, accur = self.sess.run(\
+                    [self.optim, self.sum, self.loss, self.pred, self.accur], \
+                    feed_dict=train_feed_dict)
+                self.train_writer.add_summary(summary_str, counter)
+                if epoch % self.print_freq == 0:
+                    print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}"\
+                          .format(epoch, self.epoch, idx, self.iteration,loss, accur))
+                    # print("Epoch: [%2d/%2d] [%5d/%5d] time: %4.4f, loss: %.8f" \
+                    #       % (epoch, self.epoch, idx, self.iteration, time.time() - start_time, loss))
+                    # print("pred : {}".format(self.train_label))
+                    # print("pred : {}".format(pred))
+                    self.valid_accur.append(self.test())
+                    print('=' * 100)
 
-                print("Epoch: [%2d/%2d] [%5d/%5d] time: %4.4f, loss: %.8f, loss: %.8f" \
-                      % (epoch, self.epoch, idx, self.iteration, time.time() - start_time, loss, loss))
-
+        print(self.valid_accur)
+        return np.max(self.valid_accur)
             #     # save training results for every 300 steps
             #     if np.mod(idx+1, self.print_freq) == 0:
             #         samples = self.sess.run(self.fake_images, feed_dict={self.inputs_sketch: self.sample_sketch})
@@ -236,12 +306,26 @@ class NeuralNet(object):
             # self.visualize_results(epoch)
 
         # save model for final step
-        self.save(self.checkpoint_dir, counter)
+        # self.save(self.checkpoint_dir, counter)
+
+    def test(self):
+
+        test_feed_dict = {
+            self.input: self.test_data,
+            self.label: self.test_label
+        }
+        tf.global_variables_initializer().run()
+        loss, accur, pred = self.sess.run([self.loss, self.accur, self.pred], feed_dict=test_feed_dict)
+        # self.test_writer.add_summary(summary_str, counter)
+
+        print("Test result => accur : {}, loss : {}".format(accur, loss))
+        print("pred : {}".format(self.test_label))
+        print("pred : {}".format(pred))
+        return accur
 
     @property
     def model_dir(self):
-        return "{}".format(
-            self.model_name)
+        return "{}".format(self.model_name)
 
     def save(self, checkpoint_dir, step):
         checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
@@ -249,7 +333,7 @@ class NeuralNet(object):
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
 
-        self.saver.save(self.sess, os.path.join(checkpoint_dir, self.model_name+'.model'), global_step=step)
+        self.saver.save(self.sess, os.path.join(checkpoint_dir, str(self.model_name)+'.model'), global_step=step)
 
     def load(self, checkpoint_dir):
         import re
@@ -280,33 +364,46 @@ class NeuralNet(object):
         save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                     self.sample_dir + '/' + self.model_name + '_epoch%02d' % epoch + '_visualize.png')
 
-    def test(self):
-        tf.global_variables_initializer().run()
 
-        self.saver = tf.train.Saver()
-        could_load, checkpoint_counter = self.load(self.checkpoint_dir)
-        result_dir = os.path.join(self.result_dir, self.model_dir)
-        check_folder(result_dir)
 
-        if could_load:
-            print(" [*] Load SUCCESS")
-        else:
-            print(" [!] Load failed...")
 
-        tot_num_samples = min(self.sample_num, self.batch_size)
-        image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
+        # self.saver = tf.train.Saver()
+        # could_load, checkpoint_counter = self.load(self.checkpoint_dir)
+        # result_dir = os.path.join(self.result_dir, self.model_dir)
+        # check_folder(result_dir)
+        #
+        # if could_load:
+        #     print(" [*] Load SUCCESS")
+        # else:
+        #     print(" [!] Load failed...")
+        #
+        # tot_num_samples = min(self.sample_num, self.batch_size)
+        # image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
+        #
+        # """ random condition, random noise """
+        #
+        # for i in range(self.test_num) :
+        #     z_sample = np.random.uniform(-1, 1, size=(self.batch_size, 1, 1, self.z_dim))
+        #
+        #     samples = self.sess.run(self.fake_images, feed_dict={self.z: z_sample})
+        #
+        #     save_images(samples[:image_frame_dim * image_frame_dim, :, :, :],
+        #                 [image_frame_dim, image_frame_dim],
+        #                 result_dir + '/' + self.model_name + '_test_{}.png'.format(i))
 
-        """ random condition, random noise """
-
-        for i in range(self.test_num) :
-            z_sample = np.random.uniform(-1, 1, size=(self.batch_size, 1, 1, self.z_dim))
-
-            samples = self.sess.run(self.fake_images, feed_dict={self.z: z_sample})
-
-            save_images(samples[:image_frame_dim * image_frame_dim, :, :, :],
-                        [image_frame_dim, image_frame_dim],
-                        result_dir + '/' + self.model_name + '_test_{}.png'.format(i))
-
+    def save_result(self, contents):
+        result_file_name = \
+            '/home/sp/PycharmProjects/brainMRI_classification/regression_result/chosun_MRI_excel_logistic_regression_result_' \
+            + diag_type + '_' + class_option
+        is_remove_result_file = True
+        if is_remove_result_file:
+            # command = 'rm {}'.format(result_file_name)
+            # print(command)
+            subprocess.call(['rm', result_file_name])
+            # os.system(command)
+        # assert False
+        line_length = 100
+        pass
 
 
 '''

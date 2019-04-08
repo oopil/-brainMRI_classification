@@ -192,22 +192,43 @@ class NeuralNet(object):
                                   self.is_split_by_num)
         whole_set = np.array(whole_set)
         result_list = []
+        top_train_accur_list = []
+        top_valid_accur_list = []
+        result_list.append('\n\t\t<<< class option : {} / oversample : {} >>>\n'\
+                           .format(self.class_option, self.sampling_option))
+        result_list.append('lr : {}, epoch : {}, \n'\
+                           .format(self.learning_rate, self.epoch))
         for i, fold in enumerate(whole_set):
             self.train_data, self.train_label, self.test_data, self.test_label = fold
             valid_result, train_result = self.simple_train()
-            result_list.append('\n\t\t<<< class option : {} / oversample : {} >>>\n'.format(self.class_option, self.sampling_option))
-            result_list.append('fold : {}/{:<3}, avg train : {}, avg test : {}'\
-                               .format(i, self.fold_num, np.mean(train_result), np.mean(valid_result)))
-            result_list.append([train_result, valid_result])
+            top_valid_accur = np.max(valid_result, 0)
+            top_train_accur = np.max(train_result, 0)
+            result_list.append('[ fold : {}/{:<3} ]\ntop train : {}\ntop test : {}' \
+                               .format(i, self.fold_num,top_train_accur, top_valid_accur))
+            result_list.append('train {}'.format([train_result]))
+            result_list.append('test  {}'.format([valid_result]))
+            top_train_accur_list.append(top_train_accur)
+            top_valid_accur_list.append(top_valid_accur)
 
+        print(top_valid_accur_list)
+        print(top_train_accur_list)
+        print(np.mean(top_train_accur_list))
+        print(np.mean(top_valid_accur_list))
+        # assert False
+        result_list.append('[[ avg top train : {}, avg top test : {} ]]\n{}\n{}\n' \
+                           .format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list), top_train_accur_list, top_valid_accur_list))
+        # for result in re??sult_list:
+        #     print(result)
+        # assert False
+        self.save_results(result_list)
+        return result_list
+
+    def save_results(self, result_list):
         file = open(self.result_file_name, 'a+t')
         # print('<< results >>')
         for result in result_list:
             file.writelines(result)
-        # for result in result_list:
-        #     print(result)
-        return result_list
-
+        pass
 
     ##################################################################################
     # Model

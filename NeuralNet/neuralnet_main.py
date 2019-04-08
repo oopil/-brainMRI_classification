@@ -47,8 +47,8 @@ def parse_args() -> argparse:
     parser.add_argument('--is_split_by_num', default=False, type=bool)
     parser.add_argument('--sampling_option', default='RANDOM', type=str)
     # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
-    parser.add_argument('--lr', default=0.005, type=float) #0.01
-    parser.add_argument('--epoch', default=2000, type=int)
+    parser.add_argument('--lr', default=0.01, type=float) #0.01
+    parser.add_argument('--epoch', default=3000, type=int)
     parser.add_argument('--iter', default=1, type=int)
     parser.add_argument('--print_freq', default=100, type=int)
     parser.add_argument('--save_freq', default=200, type=int)

@@ -92,7 +92,6 @@ def main():
         # os.system(command)
     # assert False
     line_length = 100
-
     total_test_accur = []
     for sampling_option in sampling_option_split:
         results = []

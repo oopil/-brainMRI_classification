@@ -109,7 +109,6 @@ def conv(x, channels, kernel=4, stride=2, pad=0, pad_type='zero', use_bias=True,
             # x = tf.pad(x, [[0, 0], [pad, pad,], [pad, pad], [0, 0]])
         if pad_type == 'reflect' :
             x = tf.pad(x, [[0, 0], [pad, pad], [pad, pad], [0, 0]], mode='REFLECT')
-
         if sn :
             w = tf.get_variable("kernel", shape=[kernel, kernel, x.get_shape()[-1], channels], initializer=weight_init,
                                 regularizer=weight_regularizer)
@@ -118,16 +117,12 @@ def conv(x, channels, kernel=4, stride=2, pad=0, pad_type='zero', use_bias=True,
             if use_bias :
                 bias = tf.get_variable("bias", [channels], initializer=tf.constant_initializer(0.0))
                 x = tf.nn.bias_add(x, bias)
-
         else :
             x = tf.layers.conv2d(inputs=x, filters=channels,
                                  kernel_size=kernel, kernel_initializer=weight_init,
                                  kernel_regularizer=weight_regularizer,
                                  strides=stride, use_bias=use_bias)
-
-
         return x
-
 
 def deconv(x, channels, kernel=4, stride=2, padding='SAME', use_bias=True, sn=False, scope='deconv_0'):
     with tf.variable_scope(scope):
@@ -270,7 +265,7 @@ def classifier_loss(loss_func, predictions, targets):
 
 def accuracy(predictions, labels):
     correct_pred = tf.equal(tf.argmax(predictions, 1),tf.argmax(labels, 1))
-    return tf.reduce_mean(tf.cast(correct_pred, "float"))
+    return tf.reduce_mean(tf.cast(correct_pred, "float")) * 100
 '''
 def accuracy(predictions, labels):
     return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])

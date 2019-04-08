@@ -28,16 +28,18 @@ def parse_args() -> argparse:
     parser.add_argument('--gpu', default=0, type=int)
     parser.add_argument('--excel_path', default='/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx', type=str)
     parser.add_argument('--base_folder_path', default='/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0', type=str)
-    parser.add_argument('--diag_type', default='clinic', type=str)
-    # simple basic
+    parser.add_argument('--result_file_name', default='/home/sp/PycharmProjects/brainMRI_classification/chosun_MRI_excel_AD_nn_result', type=str)
+
     parser.add_argument('--neural_net', default='simple', type=str)
+    # simple basic
+    parser.add_argument('--diag_type', default='clinic', type=str)
     # diag_type = "PET"
     # diag_type = "new"
     # diag_type = "clinic"
     parser.add_argument('--class_option', default='CN vs AD', type=str)
-    # class_option = 'PET pos vs neg'
-    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
-    # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
+    #PET    # class_option = 'PET pos vs neg'
+    #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
+    #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
     parser.add_argument('--class_option_index', default=0, type=int)
     parser.add_argument('--excel_option', default='merge', type=str)
     parser.add_argument('--test_num', default=20, type=int)
@@ -45,7 +47,7 @@ def parse_args() -> argparse:
     parser.add_argument('--is_split_by_num', default=False, type=bool)
     parser.add_argument('--sampling_option', default='RANDOM', type=str)
     # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
-    parser.add_argument('--lr', default=0.01, type=float)
+    parser.add_argument('--lr', default=0.005, type=float) #0.01
     parser.add_argument('--epoch', default=2000, type=int)
     parser.add_argument('--iter', default=1, type=int)
     parser.add_argument('--print_freq', default=100, type=int)
@@ -58,7 +60,7 @@ def parse_args() -> argparse:
 
     return parser.parse_args()
 
-def main():
+def run():
     # parse arguments
     args = parse_args()
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
@@ -77,18 +79,20 @@ def main():
         # show network architecture
         show_all_variables()
         # launch the graph in a session
-        NN.train()
+        NN.try_all_fold()
+        # NN.train()
+
         # assert False
         # visualize learned generator
         # NN.visualize_results(args.epoch - 1)
         print(" [*] Training finished!")
-        best_score = NN.test()
-        print(" [*] Test finished!")
-        return best_score
+        # best_score = NN.test()
+        # print(" [*] Test finished!")
+        # return best_score
 
 def BayesianOptimization():
     bayes_optimizer = BayesianOptimization(
-        f=main,
+        f=run,
         pbounds={
             'init_learning_rate_log': (-5, -1),  # FIXME
             'weight_decay_log': (-5, -1)  # FIXME
@@ -125,5 +129,5 @@ def print_result_file(result_file_name):
     file.close()
 
 if __name__ == '__main__':
-    main()
+    run()
 

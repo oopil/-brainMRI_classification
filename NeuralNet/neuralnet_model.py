@@ -10,6 +10,7 @@ class NeuralNet(object):
         self.sess = sess
         self.excel_path = args.excel_path
         self.base_folder_path = args.base_folder_path
+        self.result_file_name = args.result_file_name
 
         if args.neural_net == 'simple':
             self.model_name = self.neural_net_simple
@@ -39,6 +40,7 @@ class NeuralNet(object):
         self.print_freq = args.print_freq
         self.save_freq = args.save_freq
 
+        self.result_file_name = self.result_file_name + self.diag_type +'_' +self.class_option
         # self.iteration = args.iteration
         # self.batch_size = args.batch_size
         self.is_print = True
@@ -50,12 +52,6 @@ class NeuralNet(object):
     ##################################################################################
     # Custom Operation
     ##################################################################################
-    def fc_layer(self, x, ch, scope):
-        x = fully_connected(x, ch, use_bias=True, scope=scope)
-        # x = lrelu(x, 0.1)
-        x = relu(x)
-        return x
-
     def sample_save(self, x, is_training=True, reuse=False):
         is_print = self.is_print
         if is_print:
@@ -108,7 +104,13 @@ class NeuralNet(object):
             o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
             x = gamma * o + x
         return x
-    #
+
+    def fc_layer(self, x, ch, scope):
+        with tf.name_scope(scope):
+            x = fully_connected(x, ch, use_bias=True, scope=scope)
+            # x = lrelu(x, 0.1)
+            x = relu(x)
+        return x
     # def attention(self, x, ch, sn=False, scope='attention', reuse=False):
     #     with tf.variable_scope(scope, reuse=reuse):
     #         ch_ = ch // 8
@@ -134,7 +136,7 @@ class NeuralNet(object):
     # Neural Network Model
     ##################################################################################
     def neural_net_simple(self, x, is_training=True, reuse=False):
-        layer_num = 5
+        layer_num = 3
         is_print = self.is_print
         if is_print:
             print('build neural network')
@@ -184,6 +186,29 @@ class NeuralNet(object):
         # print(type(self.train_label))
         # print(type(np.array(self.train_label)))
 
+    def try_all_fold(self):
+        whole_set = NN_dataloader(self.diag_type, self.class_option, \
+                                  self.excel_path, self.excel_option, self.test_num, self.fold_num,
+                                  self.is_split_by_num)
+        whole_set = np.array(whole_set)
+        result_list = []
+        for i, fold in enumerate(whole_set):
+            self.train_data, self.train_label, self.test_data, self.test_label = fold
+            valid_result, train_result = self.simple_train()
+            result_list.append('\n\t\t<<< class option : {} / oversample : {} >>>\n'.format(self.class_option, self.sampling_option))
+            result_list.append('fold : {}/{:<3}, avg train : {}, avg test : {}'\
+                               .format(i, self.fold_num, np.mean(train_result), np.mean(valid_result)))
+            result_list.append([train_result, valid_result])
+
+        file = open(self.result_file_name, 'a+t')
+        # print('<< results >>')
+        for result in result_list:
+            file.writelines(result)
+        # for result in result_list:
+        #     print(result)
+        return result_list
+
+
     ##################################################################################
     # Model
     ##################################################################################
@@ -197,7 +222,8 @@ class NeuralNet(object):
         print(self.input)
         self.logits = self.model_name(self.input, reuse=False)
         self.pred = tf.argmax(self.logits,1)
-        self.accur = accuracy(self.logits, self.label_onehot)
+        self.accur = accuracy(self.logits, self.label_onehot) //1
+
         # get loss for discriminator
         """ Loss Function """
         with tf.name_scope('Loss'):
@@ -219,11 +245,14 @@ class NeuralNet(object):
         #self.d_optim = tf.train.AdagradOptimizer(d_lr).minimize(self.loss, var_list=d_vars)
 
         """ Summary """
-        self.sum = tf.summary.scalar("loss", self.loss)
+        tf.summary.scalar("loss", self.loss)
+        tf.summary.scalar('accuracy', self.accur)
+        self.merged_summary = tf.summary.merge_all()
 
     ##################################################################################
     # Train
     ##################################################################################
+
     def train(self):
         #--------------------------------------------------------------------------------------------------
         # initialize all variables
@@ -235,7 +264,7 @@ class NeuralNet(object):
         # summary train_writer
         # self.train_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
         self.train_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
-        self.test_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_test', self.sess.graph)
+        # self.test_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_test', self.sess.graph)
         self.train_writer.add_graph(self.sess.graph)
         # restore check-point if it exits
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
@@ -263,10 +292,10 @@ class NeuralNet(object):
                     self.input : self.train_data,
                     self.label : self.train_label
                 }
-                _, summary_str, loss, pred, accur = self.sess.run(\
-                    [self.optim, self.sum, self.loss, self.pred, self.accur], \
+                _, merged_summary_str, loss, pred, accur = self.sess.run(\
+                    [self.optim, self.merged_summary, self.loss, self.pred, self.accur], \
                     feed_dict=train_feed_dict)
-                self.train_writer.add_summary(summary_str, counter)
+                self.train_writer.add_summary(merged_summary_str, global_step=counter)
                 if epoch % self.print_freq == 0:
                     print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}"\
                           .format(epoch, self.epoch, idx, self.iteration,loss, accur))
@@ -275,8 +304,13 @@ class NeuralNet(object):
                     # print("pred : {}".format(self.train_label))
                     # print("pred : {}".format(pred))
                     self.valid_accur.append(self.test())
+                    self.train_accur.append(accur)
                     print('=' * 100)
+            counter+=1
 
+
+
+        print(self.train_accur)
         print(self.valid_accur)
         return np.max(self.valid_accur)
             #     # save training results for every 300 steps
@@ -314,14 +348,43 @@ class NeuralNet(object):
             self.input: self.test_data,
             self.label: self.test_label
         }
-        tf.global_variables_initializer().run()
+        # tf.global_variables_initializer().run()
         loss, accur, pred = self.sess.run([self.loss, self.accur, self.pred], feed_dict=test_feed_dict)
-        # self.test_writer.add_summary(summary_str, counter)
+        # self.test_writer.add_summary(merged_summary_str, counter)
 
         print("Test result => accur : {}, loss : {}".format(accur, loss))
         print("pred : {}".format(self.test_label))
         print("pred : {}".format(pred))
         return accur
+
+    def simple_test(self):
+        test_feed_dict = {
+            self.input: self.test_data,
+            self.label: self.test_label
+        }
+        loss, accur, pred = self.sess.run([self.loss, self.accur, self.pred], feed_dict=test_feed_dict)
+        return accur
+
+    def simple_train(self):
+        tf.global_variables_initializer().run()
+        start_epoch = 0
+        start_batch_id = 0
+        self.valid_accur = []
+        self.train_accur = []
+        for epoch in range(start_epoch, self.epoch):
+            for idx in range(start_batch_id, self.iteration):
+                # ---------------------------------------------------
+                train_feed_dict = {
+                    self.input: self.train_data,
+                    self.label: self.train_label
+                }
+                _, merged_summary_str, loss, pred, accur = self.sess.run( \
+                    [self.optim, self.merged_summary, self.loss, self.pred, self.accur], \
+                    feed_dict=train_feed_dict)
+                if epoch % self.print_freq == 0:
+                    self.valid_accur.append(self.simple_test())
+                    self.train_accur.append(accur)
+        return self.valid_accur, self.train_accur
 
     @property
     def model_dir(self):
@@ -363,9 +426,6 @@ class NeuralNet(object):
 
         save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
                     self.sample_dir + '/' + self.model_name + '_epoch%02d' % epoch + '_visualize.png')
-
-
-
 
         # self.saver = tf.train.Saver()
         # could_load, checkpoint_counter = self.load(self.checkpoint_dir)

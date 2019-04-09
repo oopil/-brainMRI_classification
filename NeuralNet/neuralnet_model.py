@@ -1,7 +1,9 @@
 import sys
+import tensorflow as tf
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
-from NeuralNet.neuralnet_ops import *
-from NeuralNet.neuralnet_utils import *
+sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')
+from neuralnet_ops import *
+from neuralnet_utils import *
 from data_merge import *
 
 class NeuralNet(object):
@@ -26,6 +28,7 @@ class NeuralNet(object):
         self.is_split_by_num = args.is_split_by_num
         self.sampling_option = args.sampling_option
         self.learning_rate = args.lr
+        self.loss_function = args.loss_function
 
         self.class_option = args.class_option
         self.class_option_index = args.class_option_index
@@ -156,6 +159,7 @@ class NeuralNet(object):
         if is_print:
             print('build neural network')
             print(x.shape)
+
         with tf.variable_scope("neuralnet", reuse=reuse):
             # x = fully_connected(x, 512, use_bias=True, scope='fc1')
             # x = lrelu(x, 0.1)
@@ -181,6 +185,7 @@ class NeuralNet(object):
         self.test_data = np.array(self.test_data)
         self.test_label = np.array(self.test_label)
         self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
+        self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
         self.input_feature_num = len(self.train_data[0])
         # print(onehot(self.train_label,self.class_num))
         # print(type(self.train_label))
@@ -196,34 +201,63 @@ class NeuralNet(object):
         top_valid_accur_list = []
         result_list.append('\n\t\t<<< class option : {} / oversample : {} >>>\n'\
                            .format(self.class_option, self.sampling_option))
-        result_list.append('lr : {}, epoch : {}, \n'\
-                           .format(self.learning_rate, self.epoch))
+        result_list.append('lr : {}, epoch : {},  {} \n'\
+                           .format(self.learning_rate, self.epoch, str(time.time())))
         for i, fold in enumerate(whole_set):
+            self.sampling_option = 'None'
             self.train_data, self.train_label, self.test_data, self.test_label = fold
+            self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
+            self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
             valid_result, train_result = self.simple_train()
             top_valid_accur = np.max(valid_result, 0)
             top_train_accur = np.max(train_result, 0)
-            result_list.append('[ fold : {}/{:<3} ]\ntop train : {}\ntop test : {}' \
+            result_list.append('\n[ fold : {}/{:<3} ] train/test : {}/{} \ntop train : {}\ntop test : {}\n' \
+                               .format(i, self.fold_num, len(self.train_label), len(self.test_label), top_train_accur, top_valid_accur))
+            result_list.append('train {}\n'.format([train_result]))
+            result_list.append('test  {}\n'.format([valid_result]))
+            top_train_accur_list.append(top_train_accur)
+            top_valid_accur_list.append(top_valid_accur)
+        result_list.append('[[ avg top train : {}, avg top test : {} ]]\n{}\n{}' \
+                           .format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list), top_train_accur_list,
+                                   top_valid_accur_list))
+        top_train_accur_list = []
+        top_valid_accur_list = []
+        result_list.append('=' * 100)
+            # break
+        for i, fold in enumerate(whole_set):
+            self.sampling_option = 'RANDOM'
+            self.train_data, self.train_label, self.test_data, self.test_label = fold
+            self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
+            self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
+            valid_result, train_result = self.simple_train()
+            top_valid_accur = np.max(valid_result, 0)
+            top_train_accur = np.max(train_result, 0)
+            result_list.append('\n[ fold : {}/{:<3} ]\ntop train : {}\ntop test : {}\n' \
                                .format(i, self.fold_num,top_train_accur, top_valid_accur))
-            result_list.append('train {}'.format([train_result]))
-            result_list.append('test  {}'.format([valid_result]))
+            result_list.append('train {}\n'.format([train_result]))
+            result_list.append('test  {}\n'.format([valid_result]))
             top_train_accur_list.append(top_train_accur)
             top_valid_accur_list.append(top_valid_accur)
 
-        print(top_valid_accur_list)
-        print(top_train_accur_list)
-        print(np.mean(top_train_accur_list))
-        print(np.mean(top_valid_accur_list))
+        print(top_train_accur_list,np.mean(top_train_accur_list))
+        print(top_valid_accur_list,np.mean(top_valid_accur_list))
         # assert False
         result_list.append('[[ avg top train : {}, avg top test : {} ]]\n{}\n{}\n' \
                            .format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list), top_train_accur_list, top_valid_accur_list))
-        # for result in re??sult_list:
-        #     print(result)
+        result_list.append('=' * 100)
+
+        for result in result_list:
+            print(result)
         # assert False
         self.save_results(result_list)
         return result_list
 
     def save_results(self, result_list):
+        is_remove_result_file = False
+        # is_remove_result_file = True
+        if is_remove_result_file:
+            subprocess.call(['rm', self.result_file_name])
+            # os.system(command)
         file = open(self.result_file_name, 'a+t')
         # print('<< results >>')
         for result in result_list:
@@ -248,7 +282,8 @@ class NeuralNet(object):
         # get loss for discriminator
         """ Loss Function """
         with tf.name_scope('Loss'):
-            self.loss = classifier_loss('normal', predictions=self.logits, targets=self.label_onehot)
+            # self.loss = classifier_loss('normal', predictions=self.logits, targets=self.label_onehot)
+            self.loss = classifier_loss(self.loss_function, predictions=self.logits, targets=self.label_onehot)
         """ Training """
         # divide trainable variables into a group for D and a group for G
         t_vars = tf.trainable_variables()
@@ -273,7 +308,6 @@ class NeuralNet(object):
     ##################################################################################
     # Train
     ##################################################################################
-
     def train(self):
         #--------------------------------------------------------------------------------------------------
         # initialize all variables
@@ -328,8 +362,6 @@ class NeuralNet(object):
                     self.train_accur.append(accur)
                     print('=' * 100)
             counter+=1
-
-
 
         print(self.train_accur)
         print(self.valid_accur)
@@ -399,8 +431,8 @@ class NeuralNet(object):
                     self.input: self.train_data,
                     self.label: self.train_label
                 }
-                _, merged_summary_str, loss, pred, accur = self.sess.run( \
-                    [self.optim, self.merged_summary, self.loss, self.pred, self.accur], \
+                _, loss, pred, accur = self.sess.run( \
+                    [self.optim, self.loss, self.pred, self.accur], \
                     feed_dict=train_feed_dict)
                 if epoch % self.print_freq == 0:
                     self.valid_accur.append(self.simple_test())

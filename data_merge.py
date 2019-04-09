@@ -411,7 +411,7 @@ def valence_class(data, label, class_num):
 
     # print('label count : ', label_count)
     min_count = min(label_count)
-    print(min_count)
+    print('minimun count : ',min_count)
     new_data = []
     new_label = []
     for i, k in enumerate(label):
@@ -423,7 +423,7 @@ def valence_class(data, label, class_num):
     print('down sampling : {} -> {}.'.format(label_count, label_count_new))
     return np.array(new_data), np.array(new_label)
 
-@datetime_decorator
+# @datetime_decorator
 def test_something_2():
     loader = MRI_chosun_data()
     loader.set_diagnosis_type('new')

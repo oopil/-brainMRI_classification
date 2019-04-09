@@ -91,7 +91,7 @@ def onehot(x, depth):
 # Normal : tf.random_normal_initializer(mean=0.0, stddev=0.02)
 # l2_decay : tf_contrib.layers.l2_regularizer(0.0001)
 
-weight_init = tf.random_normal_initializer(mean=0.0, stddev=0.05)
+weight_init = tf.random_normal_initializer(mean=0., stddev=0.05)
 # weight_init = tf.random_normal_initializer(mean=0.0, stddev=0.05)
 weight_regularizer = None
 # weight_init = tf_contrib.layers.variance_scaling_initializer()
@@ -260,7 +260,11 @@ def l2_norm(v, eps=1e-12):
 def classifier_loss(loss_func, predictions, targets):
     real_loss = 0
     fake_loss = 0
-    loss = tf.reduce_mean(tf.squared_difference(targets, predictions))
+    if loss_func =='normal':
+        loss = tf.reduce_mean(tf.squared_difference(targets, predictions))
+    elif loss_func == 'cross_entropy':
+        loss = tf.nn.softmax_cross_entropy_with_logits(labels=targets, logits=predictions)
+
     return loss
 
 def accuracy(predictions, labels):

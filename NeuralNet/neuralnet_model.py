@@ -31,6 +31,7 @@ class NeuralNet(object):
         self.sampling_option = args.sampling_option
         self.learning_rate = args.lr
         self.loss_function = args.loss_function
+        self.investigate_validation = args.investigate_validation
 
         self.class_option = args.class_option
         self.class_option_index = args.class_option_index
@@ -44,6 +45,7 @@ class NeuralNet(object):
         self.iteration = args.iter
         self.print_freq = args.print_freq
         self.save_freq = args.save_freq
+        self.summary_freq = args.summary_freq
 
         self.result_file_name = self.result_file_name + self.diag_type +'_' +self.class_option
         # self.iteration = args.iteration
@@ -113,6 +115,7 @@ class NeuralNet(object):
     def fc_layer(self, x, ch, scope):
         with tf.name_scope(scope):
             x = fully_connected(x, ch, use_bias=True, scope=scope)
+            tf.summary.histogram('active', x)
             # x = lrelu(x, 0.1)
             x = relu(x)
         return x
@@ -153,7 +156,8 @@ class NeuralNet(object):
                 x = self.fc_layer(x, 1024, 'fc'+str(i))
             x = self.fc_layer(x, 512, 'fc_1')
             x = self.fc_layer(x, 256, 'fc_fin')
-            x = self.fc_layer(x, self.class_num, 'fc_last')
+            # x = self.fc_layer(x, self.class_num, 'fc_last')
+            x = fully_connected(x, self.class_num, use_bias=True, scope='fc_last')
             return x
 
     def neural_net_basic(self, x, is_training=True, reuse=False):
@@ -163,8 +167,6 @@ class NeuralNet(object):
             print(x.shape)
 
         with tf.variable_scope("neuralnet", reuse=reuse):
-            # x = fully_connected(x, 512, use_bias=True, scope='fc1')
-            # x = lrelu(x, 0.1)
             # x = fully_connected(x, self.class_num, use_bias=True, scope='fc2')
             # x = lrelu(x, 0.1)
             x = self.fc_layer(x, 512, 'fc1')
@@ -189,15 +191,11 @@ class NeuralNet(object):
         self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
         self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
         self.input_feature_num = len(self.train_data[0])
-        # print(onehot(self.train_label,self.class_num))
-        # print(type(self.train_label))
-        # print(type(np.array(self.train_label)))
-
     ##################################################################################
     # validation
     ##################################################################################
     def try_all_fold(self):
-        results_list = _validation.try_all_fold(self)
+        _validation.try_all_fold(self)
     ##################################################################################
     # Model
     ##################################################################################
@@ -238,7 +236,6 @@ class NeuralNet(object):
         tf.summary.scalar("loss", self.loss)
         tf.summary.scalar('accuracy', self.accur)
         self.merged_summary = tf.summary.merge_all()
-
     ##################################################################################
     # Train
     ##################################################################################
@@ -253,8 +250,11 @@ class NeuralNet(object):
         # summary train_writer
         # self.train_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
         self.train_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
-        # self.test_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_test', self.sess.graph)
         self.train_writer.add_graph(self.sess.graph)
+
+        if self.investigate_validation:
+            self.test_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_test', self.sess.graph)
+            self.test_writer.add_graph(self.sess.graph)
         # restore check-point if it exits
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
         if could_load:
@@ -284,65 +284,45 @@ class NeuralNet(object):
                 _, merged_summary_str, loss, pred, accur = self.sess.run(\
                     [self.optim, self.merged_summary, self.loss, self.pred, self.accur], \
                     feed_dict=train_feed_dict)
-                self.train_writer.add_summary(merged_summary_str, global_step=counter)
+                # self.train_writer.add_summary(merged_summary_str, global_step=counter)
                 if epoch % self.print_freq == 0:
-                    print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}"\
-                          .format(epoch, self.epoch, idx, self.iteration,loss, accur))
-                    # print("Epoch: [%2d/%2d] [%5d/%5d] time: %4.4f, loss: %.8f" \
-                    #       % (epoch, self.epoch, idx, self.iteration, time.time() - start_time, loss))
-                    # print("pred : {}".format(self.train_label))
-                    # print("pred : {}".format(pred))
-                    self.valid_accur.append(self.test())
-                    self.train_accur.append(accur)
-                    print('=' * 100)
+                        print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}"\
+                              .format(epoch, self.epoch, idx, self.iteration,loss, accur))
+                        # print("Epoch: [%2d/%2d] [%5d/%5d] time: %4.4f, loss: %.8f" \
+                        #       % (epoch, self.epoch, idx, self.iteration, time.time() - start_time, loss))
+                        # print("pred : {}".format(self.train_label))
+                        # print("pred : {}".format(pred))
+                        test_accur, test_summary = self.test(counter)
+                        self.valid_accur.append(test_accur)
+                        self.train_accur.append(accur)
+                        print('=' * 100)
+
+                if epoch % self.summary_freq == 0:
+                    self.train_writer.add_summary(merged_summary_str, global_step=counter)
+                    if self.investigate_validation:
+                        self.test(counter)
             counter+=1
 
         print(self.train_accur)
         print(self.valid_accur)
         return np.max(self.valid_accur)
-            #     # save training results for every 300 steps
-            #     if np.mod(idx+1, self.print_freq) == 0:
-            #         samples = self.sess.run(self.fake_images, feed_dict={self.inputs_sketch: self.sample_sketch})
-            #         tot_num_samples = min(self.sample_num, self.batch_size)
-            #         manifold_h = int(np.floor(np.sqrt(tot_num_samples)))
-            #         manifold_w = int(np.floor(np.sqrt(tot_num_samples)))
-            #         # save_images(inputs_sketches[:manifold_h * manifold_w, :, :, :],
-            #         #             [manifold_h, manifold_w],
-            #         #             './' + self.sample_dir + '/' + self.model_name + '_sketch_{:02d}_{:05d}.png'.format(epoch, idx+1))
-            #         save_images(samples[:manifold_h * manifold_w, :, :, :],
-            #                     [manifold_h, manifold_w],
-            #                     './' + self.sample_dir + '/' + self.model_name + '_train_{:02d}_{:05d}.png'.format(epoch, idx+1))
-            #
-            #     if np.mod(idx+1, self.save_freq) == 0:
-            #         self.save(self.checkpoint_dir, counter)
-            #
-            # # After an epoch, start_batch_id is set to zero
-            # # non-zero value is only for the first epoch after loading pre-trained model
-            # start_batch_id = 0
-            #
-            # # save model
-            # self.save(self.checkpoint_dir, counter)
 
-            # show temporal results
-            # self.visualize_results(epoch)
-
-        # save model for final step
-        # self.save(self.checkpoint_dir, counter)
-
-    def test(self):
-
+    def test(self, counter):
         test_feed_dict = {
             self.input: self.test_data,
             self.label: self.test_label
         }
         # tf.global_variables_initializer().run()
-        loss, accur, pred = self.sess.run([self.loss, self.accur, self.pred], feed_dict=test_feed_dict)
-        # self.test_writer.add_summary(merged_summary_str, counter)
+        loss, accur, pred, merged_summary_str = self.sess.run([self.loss, self.accur, self.pred, self.merged_summary], feed_dict=test_feed_dict)
 
-        print("Test result => accur : {}, loss : {}".format(accur, loss))
-        print("pred : {}".format(self.test_label))
-        print("pred : {}".format(pred))
-        return accur
+        # self.test_writer.add_summary(merged_summary_str, counter)
+        if self.investigate_validation:
+            pass
+        else:
+            print("Test result => accur : {}, loss : {}".format(accur, loss))
+            print("pred : {}".format(self.test_label))
+            print("pred : {}".format(pred))
+        return accur, merged_summary_str
 
     def simple_test(self):
         test_feed_dict = {
@@ -400,43 +380,6 @@ class NeuralNet(object):
         else:
             print(" [*] Failed to find a checkpoint")
             return False, 0
-
-    def visualize_results(self, epoch):
-        tot_num_samples = min(self.sample_num, self.batch_size)
-        image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
-
-        """ random condition, random noise """
-
-        z_sample = np.random.uniform(-1, 1, size=(self.batch_size, 1, 1, self.z_dim))
-
-        samples = self.sess.run(self.fake_images, feed_dict={self.z: z_sample})
-
-        save_images(samples[:image_frame_dim * image_frame_dim, :, :, :], [image_frame_dim, image_frame_dim],
-                    self.sample_dir + '/' + self.model_name + '_epoch%02d' % epoch + '_visualize.png')
-
-        # self.saver = tf.train.Saver()
-        # could_load, checkpoint_counter = self.load(self.checkpoint_dir)
-        # result_dir = os.path.join(self.result_dir, self.model_dir)
-        # check_folder(result_dir)
-        #
-        # if could_load:
-        #     print(" [*] Load SUCCESS")
-        # else:
-        #     print(" [!] Load failed...")
-        #
-        # tot_num_samples = min(self.sample_num, self.batch_size)
-        # image_frame_dim = int(np.floor(np.sqrt(tot_num_samples)))
-        #
-        # """ random condition, random noise """
-        #
-        # for i in range(self.test_num) :
-        #     z_sample = np.random.uniform(-1, 1, size=(self.batch_size, 1, 1, self.z_dim))
-        #
-        #     samples = self.sess.run(self.fake_images, feed_dict={self.z: z_sample})
-        #
-        #     save_images(samples[:image_frame_dim * image_frame_dim, :, :, :],
-        #                 [image_frame_dim, image_frame_dim],
-        #                 result_dir + '/' + self.model_name + '_test_{}.png'.format(i))
 
     def save_result(self, contents):
         result_file_name = \

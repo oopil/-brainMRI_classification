@@ -166,24 +166,6 @@ def flatten(x) :
 
 def hw_flatten(x) :
     return tf.reshape(x, shape=[x.shape[0], -1, x.shape[-1]])
-
-##################################################################################
-# Residual-block
-##################################################################################
-
-def resblock(x_init, channels, use_bias=True, is_training=True, sn=False, scope='resblock'):
-    with tf.variable_scope(scope):
-        with tf.variable_scope('res1'):
-            x = conv(x_init, channels, kernel=3, stride=1, pad=1, pad_type='reflect', use_bias=use_bias, sn=sn)
-            x = batch_norm(x, is_training)
-            x = relu(x)
-
-        with tf.variable_scope('res2'):
-            x = conv(x, channels, kernel=3, stride=1, pad=1, pad_type='reflect', use_bias=use_bias, sn=sn)
-            x = batch_norm(x, is_training)
-
-        return x + x_init
-
 ##################################################################################
 # Sampling
 ##################################################################################
@@ -274,3 +256,20 @@ def accuracy(predictions, labels):
 def accuracy(predictions, labels):
     return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])
 '''
+
+##################################################################################
+# Residual-block
+##################################################################################
+
+def resblock(x_init, channels, use_bias=True, is_training=True, sn=False, scope='resblock'):
+    with tf.variable_scope(scope):
+        with tf.variable_scope('res1'):
+            x = conv(x_init, channels, kernel=3, stride=1, pad=1, pad_type='reflect', use_bias=use_bias, sn=sn)
+            x = batch_norm(x, is_training)
+            x = relu(x)
+
+        with tf.variable_scope('res2'):
+            x = conv(x, channels, kernel=3, stride=1, pad=1, pad_type='reflect', use_bias=use_bias, sn=sn)
+            x = batch_norm(x, is_training)
+
+        return x + x_init

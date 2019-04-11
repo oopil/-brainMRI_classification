@@ -22,23 +22,27 @@ def parse_args() -> argparse:
     # diag_type = "PET"
     # diag_type = "new"
     # diag_type = "clinic"
-    parser.add_argument('--class_option', default='NC vs aAD', type=str)
+    parser.add_argument('--class_option', default='NC vs ADD', type=str)
     #PET    # class_option = 'PET pos vs neg'
     #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
     parser.add_argument('--class_option_index', default=0, type=int)
-    parser.add_argument('--excel_option', default='merge', type=str)
-    parser.add_argument('--loss_function', default='normal', type=str) # normal / cross_entropy
     parser.add_argument('--test_num', default=20, type=int)
     parser.add_argument('--fold_num', default=5, type=int)
-    parser.add_argument('--is_split_by_num', default=False, type=bool)
+    parser.add_argument('--excel_option', default='merge', type=str)
+    parser.add_argument('--loss_function', default='normal', type=str) # normal / cross_entropy
     parser.add_argument('--sampling_option', default='RANDOM', type=str)
+
+    parser.add_argument('--is_split_by_num', default=False, type=bool)
+    parser.add_argument('--investigate_validation', default=False, type=bool)
+
     # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
     parser.add_argument('--lr', default=0.01, type=float) #0.01
-    parser.add_argument('--epoch', default=4000, type=int)
+    parser.add_argument('--epoch', default=1000, type=int)
     parser.add_argument('--iter', default=1, type=int)
     parser.add_argument('--print_freq', default=100, type=int)
     parser.add_argument('--save_freq', default=200, type=int)
+    parser.add_argument('--summary_freq', default=300, type=int)
     # parser.add_argument('--batch_size', default=200, type=int)
 
     parser.add_argument('--result_dir', default='nn_result', type=str)

@@ -188,8 +188,9 @@ def lrelu(x, alpha=0.2):
     return tf.nn.leaky_relu(x, alpha)
 
 
-def relu(x):
-    return tf.nn.relu(x)
+def relu(x, scope):
+    with tf.name_scope("relu"):
+        return tf.nn.relu(x)
 
 
 def tanh(x):

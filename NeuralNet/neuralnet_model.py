@@ -117,7 +117,7 @@ class NeuralNet(object):
             x = fully_connected(x, ch, use_bias=True, scope=scope)
             tf.summary.histogram('active', x)
             # x = lrelu(x, 0.1)
-            x = relu(x)
+            x = relu(x, scope=scope)
         return x
     # def attention(self, x, ch, sn=False, scope='attention', reuse=False):
     #     with tf.variable_scope(scope, reuse=reuse):

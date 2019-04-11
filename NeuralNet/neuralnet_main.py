@@ -1,7 +1,6 @@
 import argparse
-from bayes_opt import BayesianOptimization
-from neuralnet_model import NeuralNet
-from neuralnet_utils import *
+from NeuralNet.neuralnet_model import NeuralNet
+from NeuralNet.neuralnet_utils import *
 '''
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append is needed only when using jupyter notebook
@@ -9,19 +8,6 @@ sys.path.append is needed only when using jupyter notebook
 '''
 when using the all 3 options to the features, 
 I could observe high training speed and high testing accuracy.
-'''
-'''
-base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
-# base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
-excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
-# "clinic" or "new" or "PET"
-# 'PET pos vs neg', 'NC vs MCI vs AD' 'NC vs mAD vs aAD vs ADD'
-# diag_type = "PET"
-# class_option = 'PET pos vs neg'
-diag_type = "new"
-class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
-# diag_type = "clinic"
-# class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
 '''
 def parse_args() -> argparse:
     parser = argparse.ArgumentParser()
@@ -80,8 +66,8 @@ def run():
         # show network architecture
         show_all_variables()
         # launch the graph in a session
-        NN.try_all_fold()
-        # NN.train()
+        # NN.try_all_fold()
+        NN.train()
 
         # assert False
         # visualize learned generator
@@ -91,33 +77,6 @@ def run():
         # print(" [*] Test finished!")
         # return best_score
 
-def BayesianOptimization():
-    bayes_optimizer = BayesianOptimization(
-        f=run,
-        pbounds={
-            'init_learning_rate_log': (-5, -1),  # FIXME
-            'weight_decay_log': (-5, -1)  # FIXME
-        },
-        random_state=0,
-        verbose=2
-    )
-    # parse arguments
-    # open session
-    NN = NeuralNet(sess, args)
-    whole_set = NN.read_nn_data()
-    # assert False
-    # build graph
-    NN.build_model()
-    # show network architecture
-    show_all_variables()
-    # launch the graph in a session
-    NN.train()
-    # assert False
-    # visualize learned generator
-    # NN.visualize_results(args.epoch - 1)
-    print(" [*] Training finished!")
-    NN.test()
-    print(" [*] Test finished!")
 # In[40]:
 ''''''
 

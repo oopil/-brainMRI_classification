@@ -4,7 +4,6 @@ sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')
 # from NeuralNet.neuralnet_ops import *
 import NeuralNet.neuralnet_validation as _validation
-import NeuralNet.BayesOptimize as _BO
 from NeuralNet.neuralnet_ops import *
 from data_merge import *
 from bayes_opt import BayesianOptimization
@@ -220,13 +219,18 @@ class NeuralNet(object):
         bayes_optimizer = BayesianOptimization(
             f=self.BO_train_and_validate,
             pbounds={
-                'init_learning_rate_log': (-5, -1),
-                'weight_stddev_log': (-5, -1)
+                'init_learning_rate_log': (-3, -1),
+                'weight_stddev_log': (-3, -1)
             },
             random_state=0,
             verbose=2
         )
-        bayes_optimizer.maximize(init_points=3, n_iter=27, acq='ei', xi=0.01)
+        bayes_optimizer.maximize(
+            init_points=5,
+            n_iter=30,
+            acq='ei',
+            xi=0.01
+        )
         for i, res in enumerate(bayes_optimizer.res):
             print('Iteration {}: \n\t{}'.format(i, res))
         print('Final result: ', bayes_optimizer.max)

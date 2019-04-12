@@ -22,7 +22,7 @@ def parse_args() -> argparse:
     # diag_type = "PET"
     # diag_type = "new"
     # diag_type = "clinic"
-    parser.add_argument('--class_option', default='NC vs ADD', type=str)
+    parser.add_argument('--class_option', default='NC vs aAD', type=str)
     #PET    # class_option = 'PET pos vs neg'
     #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
@@ -38,6 +38,7 @@ def parse_args() -> argparse:
 
     # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
     parser.add_argument('--lr', default=0.01, type=float) #0.01
+    parser.add_argument('--weight_stddev', default=0.01, type=float) #0.01
     parser.add_argument('--epoch', default=1000, type=int)
     parser.add_argument('--iter', default=1, type=int)
     parser.add_argument('--print_freq', default=100, type=int)
@@ -63,7 +64,7 @@ def run():
         # graph = tf.Graph()
         # with graph.as_default(): # ?????
         NN = NeuralNet(sess, args)
-        whole_set = NN.read_nn_data()
+        NN.read_nn_data()
         # assert False
         # build graph
         NN.build_model()
@@ -71,9 +72,10 @@ def run():
         show_all_variables()
         # launch the graph in a session
         # NN.train()
-        #
+
         NN.try_all_fold()
 
+        NN.BayesOptimize()
         # assert False
         # visualize learned generator
         # NN.visualize_results(args.epoch - 1)
@@ -82,9 +84,18 @@ def run():
         # print(" [*] Test finished!")
         # return best_score
 
-# In[40]:
-''''''
-
+def BayesOptimize():
+    args = parse_args()
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    if args is None:
+        exit()
+    # open session
+    with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+        NN = NeuralNet(sess, args)
+        NN.read_nn_data()
+        NN.build_model()
+        NN.BayesOptimize()
 
 def print_result_file(result_file_name):
     file = open(result_file_name, 'rt')
@@ -94,5 +105,6 @@ def print_result_file(result_file_name):
     file.close()
 
 if __name__ == '__main__':
-    run()
+    BayesOptimize()
+    # run()
 

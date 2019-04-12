@@ -4,6 +4,7 @@ sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')
 # from NeuralNet.neuralnet_ops import *
 import NeuralNet.neuralnet_validation as _validation
+import NeuralNet.BayesOptimize as _BO
 from NeuralNet.neuralnet_ops import *
 from data_merge import *
 from bayes_opt import BayesianOptimization
@@ -32,6 +33,8 @@ class NeuralNet(object):
         self.learning_rate = args.lr
         self.loss_function = args.loss_function
         self.investigate_validation = args.investigate_validation
+        self.weight_stddev = args.weight_stddev
+        self.weight_initializer = tf.random_normal_initializer(mean=0., stddev=self.weight_stddev)
 
         self.class_option = args.class_option
         self.class_option_index = args.class_option_index
@@ -56,6 +59,13 @@ class NeuralNet(object):
         print("##### Information #####")
         print("# epoch : ", self.epoch)
 
+
+    ##################################################################################
+    # Set private variable
+    ##################################################################################
+    def set_weight_stddev(self, stddev):
+        self.weight_stddev = stddev
+        self.weight_initializer = tf.random_normal_initializer(mean=0., stddev=self.weight_stddev)
     ##################################################################################
     # Custom Operation
     ##################################################################################
@@ -114,7 +124,8 @@ class NeuralNet(object):
 
     def fc_layer(self, x, ch, scope):
         with tf.name_scope(scope):
-            x = fully_connected(x, ch, use_bias=True, scope=scope)
+            x = fully_connected(x, ch, weight_initializer=self.weight_initializer, \
+                                use_bias=True, scope=scope)
             tf.summary.histogram('active', x)
             # x = lrelu(x, 0.1)
             x = relu(x, scope=scope)
@@ -157,7 +168,8 @@ class NeuralNet(object):
             x = self.fc_layer(x, 512, 'fc_1')
             x = self.fc_layer(x, 256, 'fc_fin')
             # x = self.fc_layer(x, self.class_num, 'fc_last')
-            x = fully_connected(x, self.class_num, use_bias=True, scope='fc_last')
+            x = fully_connected(x, self.class_num,\
+                                weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
             tf.summary.histogram('last_active', x)
             return x
 
@@ -197,7 +209,27 @@ class NeuralNet(object):
     ##################################################################################
     def try_all_fold(self):
         result_list = _validation.try_all_fold(self)
-        _validation.save_results(result_list)
+        _validation.save_results(self, result_list)
+
+    def BO_train_and_validate(self, init_learning_rate_log, weight_stddev_log):
+        self.learning_rate = 10**init_learning_rate_log
+        self.set_weight_stddev(10**weight_stddev_log)
+        return self.train()
+
+    def BayesOptimize(self):
+        bayes_optimizer = BayesianOptimization(
+            f=self.BO_train_and_validate,
+            pbounds={
+                'init_learning_rate_log': (-5, -1),
+                'weight_stddev_log': (-5, -1)
+            },
+            random_state=0,
+            verbose=2
+        )
+        bayes_optimizer.maximize(init_points=3, n_iter=27, acq='ei', xi=0.01)
+        for i, res in enumerate(bayes_optimizer.res):
+            print('Iteration {}: \n\t{}'.format(i, res))
+        print('Final result: ', bayes_optimizer.max)
     ##################################################################################
     # Model
     ##################################################################################
@@ -238,6 +270,7 @@ class NeuralNet(object):
         tf.summary.scalar("loss", self.loss)
         tf.summary.scalar('accuracy', self.accur)
         self.merged_summary = tf.summary.merge_all()
+
     ##################################################################################
     # Train
     ##################################################################################
@@ -248,9 +281,6 @@ class NeuralNet(object):
         # graph inputs for visualize training results
         # saver to save model
         self.saver = tf.train.Saver()
-        # summary train_writer
-        # summary train_writer
-        # self.train_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
         self.train_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
         self.train_writer.add_graph(self.sess.graph)
 

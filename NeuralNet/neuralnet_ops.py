@@ -99,7 +99,6 @@ weight_regularizer = None
 ##################################################################################
 # Layer
 ##################################################################################
-
 def conv(x, channels, kernel=4, stride=2, pad=0, pad_type='zero', use_bias=True, sn=False, scope='conv_0'):
     # print([pad,pad])
     # print(x.shape)
@@ -143,10 +142,10 @@ def deconv(x, channels, kernel=4, stride=2, padding='SAME', use_bias=True, sn=Fa
                                            strides=stride, padding=padding, use_bias=use_bias)
         return x
 
-def fully_connected(x, units, use_bias=True, sn=False, scope='fully_0'):
+def fully_connected(x, units, weight_initializer, use_bias=True, sn=False, scope='fully_0'):
     with tf.variable_scope(scope):
         x = flatten(x)
-        x = tf.layers.dense(x, units=units, kernel_initializer=weight_init, kernel_regularizer=weight_regularizer, use_bias=use_bias)
+        x = tf.layers.dense(x, units=units, kernel_initializer=weight_initializer, kernel_regularizer=weight_regularizer, use_bias=use_bias)
         return x
 
 def flatten(x) :
@@ -169,15 +168,12 @@ def up_sample(x, scale_factor=2):
 ##################################################################################
 # Activation function
 ##################################################################################
-
 def lrelu(x, alpha=0.2):
     return tf.nn.leaky_relu(x, alpha)
-
 
 def relu(x, scope):
     with tf.name_scope("relu"):
         return tf.nn.relu(x)
-
 
 def tanh(x):
     return tf.tanh(x)

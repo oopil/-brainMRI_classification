@@ -142,8 +142,8 @@ class MRI_chosun_data():
             '''
             # print(label_info)
             gender = [self.convert_gender_to_int(self.data_excel[i][1])]
-            # demo_score = gender + self.data_excel[i][2:4]
-            # demo_score = self.data_excel[i][2:4]
+            # demo_score = gender + self.data_excel[i][2:4] # all factors
+            # demo_score = self.data_excel[i][2:4] # age + edu
             demo_score = self.data_excel[i][2:3] # only age
             # demo_score = self.data_excel[i][3:4] # only education
 
@@ -164,7 +164,6 @@ class MRI_chosun_data():
                 self.nn_label.append(label_info)
                 # print(len(self.data_excel[i][:10]), len(line[0]), len(line[1]), len(line[2]))
                 # print(new_line)
-
         return self.nn_data, self.nn_label
 
     def remove_zero_column(self):

@@ -129,13 +129,19 @@ class MRI_chosun_data():
 
         option_index = self.excel_option.index(excel_option)
         print('excel option : ',excel_option, option_index)
+        '''
+        ['MRI_id', 'gender', 'age', 'education', 'amyloid PET result', 
+        'Clinic Diagnosis', 'New Diag', 'mtype', 'c4', ...]
+        '''
         for i in range(1,len(self.data_excel)):
 
             # print(label_info)
+            gender = [self.convert_gender_to_int(self.data_excel[i][1])]
+            demo_score = gender + self.data_excel[i][2:4]
             if (i-1)%3 == option_index: # if choose only one row : P V T
                 line = self.data_excel[i][8:]
                 label_info = self.data_excel[i][4:7]
-                new_line = line
+                new_line = demo_score + line
                 self.nn_data.append(new_line)
                 self.nn_label.append(label_info)
                 # print(len(self.data_excel[i]), len(line))
@@ -144,11 +150,12 @@ class MRI_chosun_data():
             if option_index == 3 and i%3 == 1: # if use all three rows : merge
                 line = [self.data_excel[i+k][8:] for k in range(3)]
                 label_info = self.data_excel[i][4:7]
-                new_line = line[0] + line[1] + line[2]
+                new_line = demo_score + line[0] + line[1] + line[2]
                 self.nn_data.append(new_line)
                 self.nn_label.append(label_info)
                 # print(len(self.data_excel[i][:10]), len(line[0]), len(line[1]), len(line[2]))
                 # print(new_line)
+
         return self.nn_data, self.nn_label
 
     def remove_zero_column(self):
@@ -156,7 +163,7 @@ class MRI_chosun_data():
         l1, l2 = len(self.nn_data), len(self.nn_data[0])
         delete_col_count = 0
         print('remove zero value only columns.')
-        print('matrix size',l1, 'X', l2)
+        print('matrix size : ',l1, 'X', l2)
         for col in range(l2):
             is_zero_col = True
             col_index = l2 - col - 1
@@ -173,11 +180,18 @@ class MRI_chosun_data():
                 delete_col_count += 1
                 self.nn_data = np.delete(self.nn_data, col_index, 1)
             # assert False
-        print('removed {} columns.'.format(delete_col_count))
-        print('{:<5}=>{:<5}' .format(l2, len(self.nn_data[0])) )
+        print('removed {} columns.\t{}=>{}'.format(delete_col_count, l2, len(self.nn_data[0])))
+        print('' .format() )
         return self.nn_data, self.nn_label
 
 #%%
+    def convert_gender_to_int(self, gender:str)->int:
+        if gender == 'M':   return 0
+        elif gender == 'F': return 1
+        else:
+            print('inappropriate gender is entered : ', gender)
+            assert False
+
     def label_pet(self, label, class_array):
         for i, c in enumerate(self.class_array):
             if c in label:
@@ -499,20 +513,20 @@ def NN_dataloader(diag_type, class_option, \
     # class_option = 'NC vs mAD vs aAD vs ADD'
     # diag_type = "clinic"
     # class_option = 'NC vs AD' #'NC vs MCI vs AD'
-
-    loader = MRI_chosun_data()
-    loader.set_diagnosis_type(diag_type)
     # base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
     # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
     # excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
 
     # excel_option = 'merge' # P V T merge
+
+    loader = MRI_chosun_data()
+    loader.set_diagnosis_type(diag_type)
     loader.read_excel_data(excel_path)
     loader.squeeze_excel(excel_option=excel_option)
     data, label_info = loader.remove_zero_column()
 
-    # normalize each column separately.
     data, label = loader.define_label(label_info, class_option)
+    # normalize each column separately.
     data = normalize_col(data)
     # data = normalize_separate_col(data)
     # print(data.shape)
@@ -572,48 +586,11 @@ if __name__ == '__main__':
     class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     # diag_type = "clinic"
     # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
-
     excel_option = 'merge'
     test_num = 10
     fold_num = 5
     is_split_by_num = False
     NN_dataloader(diag_type, class_option, excel_path, excel_option, test_num, fold_num, is_split_by_num)
-    # test_something_2()
-    assert False
-
-#
-# def test_something():
-#     is_merge = True  # True
-#     option_num = 0  # P V T options
-#     '''
-#     I should set the class options like
-#     NC vs AD
-#     NC vs MCI
-#     MCI vs AD
-#
-#     NC vs MCI vs AD
-#     '''
-#     class_option = ['NC vs AD', 'NC vs MCI', 'MCI vs AD', 'NC vs MCI vs AD']
-#     class_option_index = 3
-#     class_num = class_option_index // 3 + 2
-#     sampling_option = 'ADASYN'
-#     fold_num = 3
-#     fold_index = 0
-#     data, label = dataloader(class_option[class_option_index], option_num, is_merge=is_merge)
-#     # assert False
-#     data, label = shuffle_two_arrays(data, label)
-#     train_data, train_label, test_data, test_label = split_train_test(data, label, fold_num, fold_index)
-#     # print(len(data[0]), len(train_data[0]))
-#     # train_data, train_label = valence_class(train_data, train_label, class_num)
-#     # test_data, test_label = valence_class(test_data, test_label, class_num)
-#     print(len(train_label))
-#     train_data, train_label = over_sampling(train_data, train_label, sampling_option)
-#     print(len(train_label))
-#
-#     train_num = len(train_label)
-#     test_num = len(test_label)
-#     feature_num = len(train_data[0])
-#     print(train_data.shape, test_data.shape)
 
 '''
 <<numpy array column api>> 

@@ -70,9 +70,9 @@ def run():
         # show network architecture
         show_all_variables()
         # launch the graph in a session
-        NN.train()
-
-        # NN.try_all_fold()
+        # NN.train()
+        #
+        NN.try_all_fold()
 
         # assert False
         # visualize learned generator

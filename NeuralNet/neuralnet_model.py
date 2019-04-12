@@ -196,7 +196,8 @@ class NeuralNet(object):
     # validation
     ##################################################################################
     def try_all_fold(self):
-        _validation.try_all_fold(self)
+        result_list = _validation.try_all_fold(self)
+        _validation.save_results(result_list)
     ##################################################################################
     # Model
     ##################################################################################

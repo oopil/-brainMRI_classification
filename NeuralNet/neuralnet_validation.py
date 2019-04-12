@@ -65,8 +65,6 @@ def try_all_fold(self)->list:
 
     for result in result_list:
         print(result)
-    # assert False
-    self.save_results(result_list)
     return result_list
 
 def save_results(self, result_list)->None:

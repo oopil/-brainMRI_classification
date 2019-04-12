@@ -135,9 +135,18 @@ class MRI_chosun_data():
         '''
         for i in range(1,len(self.data_excel)):
 
+            '''
+            should test if or not demo score help the model classify correctly.
+            the age factor seems to provide useful information.
+            but not sure about gender and education
+            '''
             # print(label_info)
             gender = [self.convert_gender_to_int(self.data_excel[i][1])]
-            demo_score = gender + self.data_excel[i][2:4]
+            # demo_score = gender + self.data_excel[i][2:4]
+            # demo_score = self.data_excel[i][2:4]
+            demo_score = self.data_excel[i][2:3] # only age
+            # demo_score = self.data_excel[i][3:4] # only education
+
             if (i-1)%3 == option_index: # if choose only one row : P V T
                 line = self.data_excel[i][8:]
                 label_info = self.data_excel[i][4:7]

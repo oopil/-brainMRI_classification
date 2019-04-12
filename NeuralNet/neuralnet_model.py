@@ -158,6 +158,7 @@ class NeuralNet(object):
             x = self.fc_layer(x, 256, 'fc_fin')
             # x = self.fc_layer(x, self.class_num, 'fc_last')
             x = fully_connected(x, self.class_num, use_bias=True, scope='fc_last')
+            tf.summary.histogram('last_active', x)
             return x
 
     def neural_net_basic(self, x, is_training=True, reuse=False):

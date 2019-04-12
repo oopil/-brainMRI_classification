@@ -1,6 +1,5 @@
 from sklearn.utils import shuffle
 from class_metabot import *
-from decorator import *
 from random import shuffle
 import openpyxl
 import numpy as np
@@ -436,6 +435,33 @@ def test_something_2():
     loader.get_label_info_excel()
     loader.merge_info()
 
+def normalize_column_separate(data):
+    data = np.array(data)
+    normal_data = np.array([data[:,0]]).T
+    # normal_data = np.array([])
+    # print(normal_data)
+    # assert False
+    #
+    # split_data = np.split(data, indices_or_sections=1, axis=0)
+    # print(split_data)
+    # print(np.shape(split_data))
+    # print(np.shape(split_data[0]))
+    # assert False
+
+    print(data.shape, normal_data.shape)
+    print('column number : ',len(data[0]))
+    for col_index in range(1, len(data[0])):
+        column_orig = np.array([data[:,col_index]]).T
+        column = normalize(column_orig)
+        column = column
+        # print(column.shape)
+        # print(column_orig)
+        # print(column)
+        # normal_data = np.append(normal_data, column, axis=1)
+        normal_data = np.concatenate((normal_data, column),axis=1)
+    print(data.shape, '->', normal_data.shape)
+    return normal_data
+
 def normalize(X_):
     return (X_-X_.min(0))/X_.max(axis=0)
 
@@ -444,10 +470,11 @@ def NN_dataloader(diag_type, class_option, \
     '''
     1. read excel data (O)
     2. squeeze 3 lines into 1 lines according to the options P V T merge (O)
+    5. normalization -> should do this at first. separately according to the column.
+    no. we don't have to do this at first. because column is preserved.
     3. remove zero value only column (O)
     3. make label list (O)
     4. shuffle (O)
-    5. normalization
     6. split train and test dataset (O)
     :return: train and test data and lable
     '''
@@ -471,8 +498,11 @@ def NN_dataloader(diag_type, class_option, \
     loader.read_excel_data(excel_path)
     loader.squeeze_excel(excel_option=excel_option)
     data, label_info = loader.remove_zero_column()
+
+    # normalize each column separately.
     data, label = loader.define_label(label_info, class_option)
-    data = normalize(data)
+    data = normalize_column_separate(data)
+    # data = normalize(data)
     '''
     when split the data by fold number, should we split the data earlier than shuffle??
     '''
@@ -517,7 +547,23 @@ def CNN_dataloader():
     pass
 
 if __name__ == '__main__':
-    NN_dataloader()
+    base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
+    # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
+    excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
+    # "clinic" or "new" or "PET"
+    # 'PET pos vs neg', 'NC vs MCI vs AD' 'NC vs mAD vs aAD vs ADD'
+    # diag_type = "PET"
+    # class_option = 'PET pos vs neg'
+    diag_type = "new"
+    class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
+    # diag_type = "clinic"
+    # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
+
+    excel_option = 'merge'
+    test_num = 10
+    fold_num = 5
+    is_split_by_num = False
+    NN_dataloader(diag_type, class_option, excel_path, excel_option, test_num, fold_num, is_split_by_num)
     # test_something_2()
     assert False
 

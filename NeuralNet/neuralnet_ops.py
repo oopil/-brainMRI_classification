@@ -146,19 +146,7 @@ def deconv(x, channels, kernel=4, stride=2, padding='SAME', use_bias=True, sn=Fa
 def fully_connected(x, units, use_bias=True, sn=False, scope='fully_0'):
     with tf.variable_scope(scope):
         x = flatten(x)
-        shape = x.get_shape().as_list()
-        channels = shape[-1]
-        if sn :
-            w = tf.get_variable("kernel", [channels, units], tf.float32,
-                                     initializer=weight_init, regularizer=weight_regularizer)
-            if use_bias :
-                bias = tf.get_variable("bias", [units],
-                                       initializer=tf.constant_initializer(0.0))
-                x = tf.matmul(x, spectral_norm(w)) + bias
-            else :
-                x = tf.matmul(x, spectral_norm(w))
-        else :
-            x = tf.layers.dense(x, units=units, kernel_initializer=weight_init, kernel_regularizer=weight_regularizer, use_bias=use_bias)
+        x = tf.layers.dense(x, units=units, kernel_initializer=weight_init, kernel_regularizer=weight_regularizer, use_bias=use_bias)
         return x
 
 def flatten(x) :
@@ -172,14 +160,12 @@ def hw_flatten(x) :
 
 def global_avg_pooling(x):
     gap = tf.reduce_mean(x, axis=[1, 2])
-
     return gap
 
 def up_sample(x, scale_factor=2):
     _, h, w, _ = x.get_shape().as_list()
     new_size = [h * scale_factor, w * scale_factor]
     return tf.image.resize_nearest_neighbor(x, size=new_size)
-
 ##################################################################################
 # Activation function
 ##################################################################################

@@ -42,7 +42,7 @@ def parse_args() -> argparse:
     parser.add_argument('--iter', default=1, type=int)
     parser.add_argument('--print_freq', default=100, type=int)
     parser.add_argument('--save_freq', default=200, type=int)
-    parser.add_argument('--summary_freq', default=300, type=int)
+    parser.add_argument('--summary_freq', default=100, type=int)
     # parser.add_argument('--batch_size', default=200, type=int)
 
     parser.add_argument('--result_dir', default='nn_result', type=str)
@@ -70,8 +70,9 @@ def run():
         # show network architecture
         show_all_variables()
         # launch the graph in a session
-        # NN.try_all_fold()
         NN.train()
+
+        # NN.try_all_fold()
 
         # assert False
         # visualize learned generator

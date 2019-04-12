@@ -435,7 +435,7 @@ def test_something_2():
     loader.get_label_info_excel()
     loader.merge_info()
 
-def normalize_column_separate(data):
+def normalize_separate_col(data):
     data = np.array(data)
     normal_data = np.array([data[:,0]]).T
     # normal_data = np.array([])
@@ -452,7 +452,7 @@ def normalize_column_separate(data):
     print('column number : ',len(data[0]))
     for col_index in range(1, len(data[0])):
         column_orig = np.array([data[:,col_index]]).T
-        column = normalize(column_orig)
+        column = normalize(column_orig, axis=1)
         column = column
         # print(column.shape)
         # print(column_orig)
@@ -462,8 +462,20 @@ def normalize_column_separate(data):
     print(data.shape, '->', normal_data.shape)
     return normal_data
 
-def normalize(X_):
-    return (X_-X_.min(0))/X_.max(axis=0)
+def normalize(X_, axis):
+    if np.any(np.amax(X_) == 0):
+        print('failed to normalize. the max element is zero.')
+        print(np.amin(X_, axis=axis))
+        print(np.amax(X_, axis=axis))
+        # print(X_)
+        assert False
+    # return (X_-X_.min(axis=axis))/X_.amax(axis=axis)
+    return (X_-np.amin(X_,axis=axis)/np.amax(X_, axis=axis))
+
+def normalize_col(X_, axis=0):
+    assert len(np.amax(X_,axis=axis)) == len(X_[0])
+    assert np.all(np.amax(X_,axis=axis) != 0)
+    return (X_-np.amin(X_,axis=axis))/np.amax(X_, axis=axis)
 
 def NN_dataloader(diag_type, class_option, \
                   excel_path, excel_option, test_num, fold_num, is_split_by_num):
@@ -501,7 +513,9 @@ def NN_dataloader(diag_type, class_option, \
 
     # normalize each column separately.
     data, label = loader.define_label(label_info, class_option)
-    data = normalize_column_separate(data)
+    data = normalize_col(data)
+    # data = normalize_separate_col(data)
+    # print(data.shape)
     # data = normalize(data)
     '''
     when split the data by fold number, should we split the data earlier than shuffle??

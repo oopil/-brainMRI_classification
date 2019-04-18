@@ -47,6 +47,14 @@ def split_brain_mri():
         gap_array = np.subtract(lh_array,rh_array)
         gap_array = np.abs(gap_array)
 
+        over_cover = np.where(gap_array == lh_array)
+        gap_array[np.where(gap_array == lh_array)] = 0
+        gap_array[np.where(gap_array == rh_array)] = 0
+
+        # for i in over_cover:
+        #     gap_array[i] = 0
+
+        print(over_cover)
         gap_array = normalize_3D(gap_array, 256)
         print(gap_array.shape)
         # assert False
@@ -57,8 +65,10 @@ def split_brain_mri():
         lh_file.CopyInformation(itk_file)
         rh_file.CopyInformation(itk_file)
         gap_file.CopyInformation(itk_file)
-        sitk.WriteImage(lh_file, lh_file_path)
-        sitk.WriteImage(rh_file, rh_file_path)
+
+        # assert False
+        # sitk.WriteImage(lh_file, lh_file_path)
+        # sitk.WriteImage(rh_file, rh_file_path)
         sitk.WriteImage(gap_file, gap_file_path)
 
 def main():

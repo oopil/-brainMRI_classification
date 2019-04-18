@@ -457,47 +457,29 @@ def test_something_2():
     loader.get_label_info_excel()
     loader.merge_info()
 
-def normalize_separate_col(data):
-    data = np.array(data)
-    normal_data = np.array([data[:,0]]).T
-    # normal_data = np.array([])
-    # print(normal_data)
-    # assert False
-    #
-    # split_data = np.split(data, indices_or_sections=1, axis=0)
-    # print(split_data)
-    # print(np.shape(split_data))
-    # print(np.shape(split_data[0]))
-    # assert False
-
-    print(data.shape, normal_data.shape)
-    print('column number : ',len(data[0]))
-    for col_index in range(1, len(data[0])):
-        column_orig = np.array([data[:,col_index]]).T
-        column = normalize(column_orig, axis=1)
-        column = column
-        # print(column.shape)
-        # print(column_orig)
-        # print(column)
-        # normal_data = np.append(normal_data, column, axis=1)
-        normal_data = np.concatenate((normal_data, column),axis=1)
-    print(data.shape, '->', normal_data.shape)
-    return normal_data
-
-def normalize(X_, axis):
-    if np.any(np.amax(X_) == 0):
-        print('failed to normalize. the max element is zero.')
-        print(np.amin(X_, axis=axis))
-        print(np.amax(X_, axis=axis))
-        # print(X_)
-        assert False
-    # return (X_-X_.min(axis=axis))/X_.amax(axis=axis)
-    return (X_-np.amin(X_,axis=axis)/np.amax(X_, axis=axis))
-
 def normalize_col(X_, axis=0):
     assert len(np.amax(X_,axis=axis)) == len(X_[0])
     assert np.all(np.amax(X_,axis=axis) != 0)
     return (X_-np.amin(X_,axis=axis))/np.amax(X_, axis=axis)
+
+def augment_noise(data, label, times=1):
+    print('start data augmentation... add noise {} times'.format(times))
+    # print(data.shape)
+    data = np.array(data)
+    data_orig = np.copy(data)
+    data_shape, label_shape = data.shape, label.shape
+    mu, sigma = 0, 0.01
+    for i in range(times):
+        noise = np.random.normal(mu, sigma, data_shape)
+        data_noised = data_orig + noise
+        # print(noise.shape)
+        # print(noise)
+        data = np.concatenate((data, data_noised), axis=0)
+
+    label = np.tile(label, times+1)
+    print(data_shape , '=>', data.shape)
+    print(label_shape, '=>', label.shape)
+    return data, label
 
 def NN_dataloader(diag_type, class_option, \
                   excel_path, excel_option, test_num, fold_num, is_split_by_num):
@@ -510,6 +492,7 @@ def NN_dataloader(diag_type, class_option, \
     3. make label list (O)
     4. shuffle (O)
     6. split train and test dataset (O)
+    7. data augment - add noise
     :return: train and test data and lable
     '''
 
@@ -536,6 +519,7 @@ def NN_dataloader(diag_type, class_option, \
     data, label = loader.define_label(label_info, class_option)
     # normalize each column separately.
     data = normalize_col(data)
+    # augment_noise(data, label, 2)
     # data = normalize_separate_col(data)
     # print(data.shape)
     # data = normalize(data)

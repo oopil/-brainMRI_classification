@@ -39,6 +39,7 @@ class NeuralNet(object):
         self.class_option_index = args.class_option_index
         class_split = self.class_option.split('vs')
         self.class_num = len(class_split)
+        self.noise_augment = args.noise_augment
 
         self.result_dir = args.result_dir
         self.log_dir = args.log_dir
@@ -65,6 +66,11 @@ class NeuralNet(object):
     def set_weight_stddev(self, stddev):
         self.weight_stddev = stddev
         self.weight_initializer = tf.random_normal_initializer(mean=0., stddev=self.weight_stddev)
+        print('weight standard deviance is set to : {}' .format(self.weight_stddev))
+
+    def set_lr(self, lr):
+        self.learning_rate = lr
+        print('learning rate is set to : {}' .format(self.learning_rate))
     ##################################################################################
     # Custom Operation
     ##################################################################################
@@ -125,7 +131,7 @@ class NeuralNet(object):
         with tf.name_scope(scope):
             x = fully_connected(x, ch, weight_initializer=self.weight_initializer, \
                                 use_bias=True, scope=scope)
-            tf.summary.histogram('active', x)
+            # tf.summary.histogram('active', x)
             # x = lrelu(x, 0.1)
             x = relu(x, scope=scope)
         return x
@@ -169,7 +175,7 @@ class NeuralNet(object):
             # x = self.fc_layer(x, self.class_num, 'fc_last')
             x = fully_connected(x, self.class_num,\
                                 weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
-            tf.summary.histogram('last_active', x)
+            # tf.summary.histogram('last_active', x)
             return x
 
     def neural_net_basic(self, x, is_training=True, reuse=False):
@@ -203,6 +209,14 @@ class NeuralNet(object):
         self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
         self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
         self.input_feature_num = len(self.train_data[0])
+
+        if self.noise_augment:
+            self.augment_noise()
+
+    def augment_noise(self):
+        self.train_data, self.train_label = \
+            augment_noise(self.train_data, self.train_label, self.noise_augment)
+
     ##################################################################################
     # validation
     ##################################################################################
@@ -210,30 +224,48 @@ class NeuralNet(object):
         result_list = _validation.try_all_fold(self)
         _validation.save_results(self, result_list)
 
-    def BO_train_and_validate(self, init_learning_rate_log, weight_stddev_log):
-        self.learning_rate = 10**init_learning_rate_log
-        self.set_weight_stddev(10**weight_stddev_log)
+    # def BO_train_and_validate(self, init_lr_log, w_stddev_log):
+    def BO_train_and_validate(self, init_lr_log, w_stddev_log):
+        self.set_lr(10**init_lr_log)
+        self.set_weight_stddev(10**w_stddev_log)
+        print('-'*100)
+        # print('learning rate : {}\nstddev of weight : {}'.\
+        #       format(self.learning_rate, 10**w_stddev_log))
+        print('learning rate : {}\nstddev of weight : {}'.\
+              format(self.learning_rate, 10**w_stddev_log))
         return self.train()
 
     def BayesOptimize(self):
         bayes_optimizer = BayesianOptimization(
             f=self.BO_train_and_validate,
             pbounds={
-                'init_learning_rate_log': (-3, -1),
-                'weight_stddev_log': (-3, -1)
+                # 78 <= -1.2892029132535314,-1.2185073691640054
+                # 85 <= -1.2254855784556566, -1.142561108840614}}
+                'init_lr_log': (-2.0,-1.0),
+                'w_stddev_log': (-2.0,-1.0)
             },
             random_state=0,
-            verbose=2
+            # verbose=2
         )
         bayes_optimizer.maximize(
             init_points=5,
-            n_iter=30,
+            n_iter=40,
             acq='ei',
             xi=0.01
         )
-        for i, res in enumerate(bayes_optimizer.res):
-            print('Iteration {}: \n\t{}'.format(i, res))
-        print('Final result: ', bayes_optimizer.max)
+        BO_results = []
+        BO_results.append('\n\t\t<<< class option : {} >>>\n' .format(self.class_option))
+        BO_result_file_name = "BO_result/BayesOpt_results"\
+                              + str(time.time()) + '_' + self.class_option
+        fd = open(BO_result_file_name, 'a+t')
+        for i, ressult in enumerate(bayes_optimizer.res):
+            BO_results.append('Iteration {}:{}\n'.format(i, ressult))
+            print('Iteration {}: {}'.format(i, ressult))
+            fd.writelines('Iteration {}:{}\n'.format(i, ressult))
+        BO_results.append('Final result: {}\n'.format(bayes_optimizer.max))
+        fd.writelines('Final result: {}\n'.format(bayes_optimizer.max))
+        print('Final result: {}\n'.format(bayes_optimizer.max))
+        fd.close()
     ##################################################################################
     # Model
     ##################################################################################
@@ -430,100 +462,3 @@ class NeuralNet(object):
         # assert False
         line_length = 100
         pass
-
-
-'''
-keep_prob = 0.9 # 0.9
-learning_rate = 0.01
-epochs = 2000
-print_freq = 200
-save_freq = 200
-
-layer = [1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024]
-    layer_last = 256
-    with tf.name_scope("FCN"):
-        #defining the network
-        with tf.name_scope("layer1"):
-            l1 = fully_connected_layer(inputs, feature_num, layer[0], keep_prob)
-            l2 = fully_connected_layer(l1, layer[0], layer[1], keep_prob)
-            l3 = fully_connected_layer(l2, layer[1], layer[2], keep_prob) + l2
-
-        with tf.name_scope("layer2"):
-            l4 = fully_connected_layer(l3, layer[2], layer[3], keep_prob)
-            l5 = fully_connected_layer(l4, layer[3], layer[4], keep_prob)
-            l6 = fully_connected_layer(l5, layer[4], layer[5], keep_prob)
-            l7 = fully_connected_layer(l6, layer[5], layer[6], keep_prob)
-            l8 = fully_connected_layer(l7, layer[6], layer[7], keep_prob) + l4
-        with tf.name_scope("layer3"):
-            l9 = fully_connected_layer(l8, layer[2], layer[3], keep_prob)
-            l10 = fully_connected_layer(l9, layer[3], layer[4], keep_prob)
-            l11 = fully_connected_layer(l10, layer[4], layer[5], keep_prob)
-            l12 = fully_connected_layer(l11, layer[5], layer[6], keep_prob)
-            l13 = fully_connected_layer(l12, layer[6], layer[7], keep_prob) + l9
-        with tf.name_scope("layer4"):
-            l14 = fully_connected_layer(l13, layer[2], layer[3], keep_prob)
-            l15 = fully_connected_layer(l14, layer[3], layer[4], keep_prob)
-            l16 = fully_connected_layer(l15, layer[4], layer[5], keep_prob)
-            l17 = fully_connected_layer(l16, layer[5], layer[6], keep_prob)
-            l18 = fully_connected_layer(l17, layer[6], layer[7], keep_prob) + l14
-        with tf.name_scope("layer5"):
-            l19 = fully_connected_layer(l18, layer[2], layer[2], keep_prob)
-            l20 = fully_connected_layer(l19, layer[3], layer[3], keep_prob)
-            l21 = fully_connected_layer(l20, layer[4], layer[4], keep_prob)
-            l22 = fully_connected_layer(l21, layer[5], layer[5], keep_prob)
-            l23 = fully_connected_layer(l22, layer[6], layer[6], keep_prob) + l19
-            l24 = fully_connected_layer(l23, layer[6], layer_last, keep_prob)
-            l_fin = fully_connected_layer(l24, layer_last, class_num, activation=None, keep_prob=keep_prob)
-
-        #defining special parameter for our predictions - later used for testing
-        predictions = tf.nn.sigmoid(l_fin)
-
-'''
-'''
-keep_prob = 0.9 # 0.9
-
-learning_rate = 0.01
-epochs = 2000
-print_freq = 200
-save_freq = 200
-
-    layer = [512, 1024, 2048, 1024]
-    layer_last = 256
-    with tf.name_scope("FCN"):
-        #defining the network
-        with tf.name_scope("layer1"):
-            l1 = fully_connected_layer(inputs, feature_num, layer[0], keep_prob)
-            l2 = fully_connected_layer(l1, layer[0], layer[0], keep_prob)# + l1
-            l3 = fully_connected_layer(l2, layer[0], layer[0], keep_prob) + l2
-
-        with tf.name_scope("layer2"):
-            l4 = fully_connected_layer(l3, layer[0], layer[0], keep_prob)# + l3
-            l5 = fully_connected_layer(l4, layer[0], layer[0], keep_prob)# + l4# + l3
-            l6 = fully_connected_layer(l5, layer[0], layer[0], keep_prob)# + l5# + l4 + l3
-            l7 = fully_connected_layer(l6, layer[0], layer[0], keep_prob)# + l6# + l5 + l4 + l3
-            l8 = fully_connected_layer(l7, layer[0], layer[0], keep_prob) + l5# + l7# + l6 + l5 + l4 + l3
-        with tf.name_scope("layer3"):
-            l9 = fully_connected_layer(l8, layer[0], layer[1], keep_prob)# + l8
-            l10 = fully_connected_layer(l9, layer[1], layer[1], keep_prob)# + l9# + l8
-            l11 = fully_connected_layer(l10, layer[1], layer[1], keep_prob)# + l10# + l9 + l8
-            l12 = fully_connected_layer(l11, layer[1], layer[1], keep_prob)# + l11# + l10 + l9 + l8
-            l13 = fully_connected_layer(l12, layer[1], layer[1], keep_prob) + l10# + l12# + l11 + l10 + l9 + l8
-        with tf.name_scope("layer4"):
-            l14 = fully_connected_layer(l13, layer[1], layer[2], keep_prob)# + l13
-            l15 = fully_connected_layer(l14, layer[2], layer[2], keep_prob)# + l14# + l13
-            l16 = fully_connected_layer(l15, layer[2], layer[2], keep_prob)# + l15# +l14 + l13
-            l17 = fully_connected_layer(l16, layer[2], layer[2], keep_prob)# + l16# + l15 + l14 + l13
-            l18 = fully_connected_layer(l17, layer[2], layer[2], keep_prob) + l15# + l17# + l16 + l15 + l14 + l13
-        with tf.name_scope("layer5"):
-            l19 = fully_connected_layer(l18, layer[2], layer[3], keep_prob)# + l18
-            l20 = fully_connected_layer(l19, layer[3], layer[3], keep_prob)# + l19# + l18
-            l21 = fully_connected_layer(l20, layer[3], layer[3], keep_prob)# + l20# + l19 + l18
-            l22 = fully_connected_layer(l21, layer[3], layer[3], keep_prob)# + l21# + l20 + l19 + l18
-            l23 = fully_connected_layer(l22, layer[3], layer[3], keep_prob) + l20# + l22# + l21 + l20 + l19 + l18
-            l24 = fully_connected_layer(l23, layer[3], layer_last, keep_prob)# + l23
-            l_fin = fully_connected_layer(l24, layer_last, class_num, activation=None, keep_prob=keep_prob)
-
-        #defining special parameter for our predictions - later used for testing
-        predictions = tf.nn.sigmoid(l_fin)
-
-'''

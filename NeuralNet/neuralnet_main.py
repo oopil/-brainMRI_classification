@@ -18,14 +18,15 @@ def parse_args() -> argparse:
 
     parser.add_argument('--neural_net', default='simple', type=str)
     # simple basic
-    parser.add_argument('--diag_type', default='new', type=str)
+    parser.add_argument('--diag_type', default='clinic', type=str)
     # diag_type = "PET"
     # diag_type = "new"
     # diag_type = "clinic"
-    parser.add_argument('--class_option', default='NC vs aAD', type=str)
+    parser.add_argument('--class_option', default='CN vs MCI vs AD', type=str)
     #PET    # class_option = 'PET pos vs neg'
     #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
+    parser.add_argument('--noise_augment', default=1, type=int)
     parser.add_argument('--class_option_index', default=0, type=int)
     parser.add_argument('--test_num', default=20, type=int)
     parser.add_argument('--fold_num', default=5, type=int)
@@ -37,9 +38,10 @@ def parse_args() -> argparse:
     parser.add_argument('--investigate_validation', default=False, type=bool)
 
     # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
-    parser.add_argument('--lr', default=0.01, type=float) #0.01
-    parser.add_argument('--weight_stddev', default=0.01, type=float) #0.01
-    parser.add_argument('--epoch', default=1000, type=int)
+    # BO result -1.2254855784556566, -1.142561108840614
+    parser.add_argument('--lr', default=0.01, type=float) #0.01 #0.0602
+    parser.add_argument('--weight_stddev', default=0.05, type=float) #0.05 #0.0721
+    parser.add_argument('--epoch', default=1500, type=int)
     parser.add_argument('--iter', default=1, type=int)
     parser.add_argument('--print_freq', default=100, type=int)
     parser.add_argument('--save_freq', default=200, type=int)
@@ -61,41 +63,54 @@ def run():
         exit()
     # open session
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
-        # graph = tf.Graph()
-        # with graph.as_default(): # ?????
-        NN = NeuralNet(sess, args)
-        NN.read_nn_data()
-        # assert False
-        # build graph
-        NN.build_model()
-        # show network architecture
-        show_all_variables()
-        # launch the graph in a session
-        # NN.train()
+        simple_train(sess, args)
+        # cross_validation(sess, args)
+        # BayesOptimize(sess, args)
 
-        NN.try_all_fold()
+def simple_train(sess, args):
+    NN = NeuralNet(sess, args)
+    NN.read_nn_data()
+    NN.build_model()
+    # show network architecture
+    show_all_variables()
+    # launch the graph in a session
+    NN.train()
+    # NN.visualize_results(args.epoch - 1)
+    print(" [*] Training finished!")
 
-        NN.BayesOptimize()
-        # assert False
-        # visualize learned generator
-        # NN.visualize_results(args.epoch - 1)
-        print(" [*] Training finished!")
-        # best_score = NN.test()
-        # print(" [*] Test finished!")
-        # return best_score
+def cross_validation(sess, args):
+    NN = NeuralNet(sess, args)
+    NN.read_nn_data()
+    NN.build_model()
+    show_all_variables()
 
-def BayesOptimize():
-    args = parse_args()
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
-    if args is None:
-        exit()
-    # open session
-    with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
-        NN = NeuralNet(sess, args)
-        NN.read_nn_data()
-        NN.build_model()
-        NN.BayesOptimize()
+    lr = 10 ** -1.7965511862094083
+    w_stddev = 10 ** -1.1072880677553867
+    NN.set_lr(lr)
+    NN.set_weight_stddev(w_stddev)
+
+    NN.try_all_fold()
+    print(" [*] k-fold cross validation finished!")
+
+def BayesOptimize(sess, args):
+    NN = NeuralNet(sess, args)
+    # target': 87.0, 'params':
+    # {'init_learning_rate_log': -1.4511864960726752,
+    # 'weight_stddev_log': -1.2848106336275804}}
+
+    #'target': 93.0, 'params':
+    # {'init_lr_log': -1.4511864960726752,
+    # 'w_stddev_log': -1.2848106336275804}}
+
+    # best score? in NC vs ADD
+    # -1.3681144349771235, -1.601517024863694
+
+    # NC vs MCI vs AD
+    # -1.7965511862094083, -1.1072880677553867}}
+    NN.read_nn_data()
+    NN.build_model()
+    NN.BayesOptimize()
+    print(" [*] Bayesian Optimization finished!")
 
 def print_result_file(result_file_name):
     file = open(result_file_name, 'rt')
@@ -105,6 +120,7 @@ def print_result_file(result_file_name):
     file.close()
 
 if __name__ == '__main__':
-    BayesOptimize()
+    # cross_validation()
+    run()
     # run()
 

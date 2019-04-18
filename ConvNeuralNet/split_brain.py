@@ -4,6 +4,7 @@ sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/sample_image')
 import numpy as np
 import SimpleITK as sitk
+from skimage import exposure
 
 def normalize_3D(X_, L):
     min = np.amin(X_)
@@ -21,7 +22,8 @@ def normalize_3D(X_, L):
 def split_brain_mri():
     sample_folder_path = '/home/sp/PycharmProjects/brainMRI_classification/sample_image'
     # file_name = ['brain_aAD.nii','brain_ADD.nii']
-    file_name = ['brain_NC.nii']
+    # file_name = ['brain_NC.nii']
+    file_name = ['brain_aAD.nii','brain_ADD.nii','brain_NC.nii']
     for file in file_name:
         file_path = os.path.join(sample_folder_path, file)
         # file_path = file
@@ -47,23 +49,24 @@ def split_brain_mri():
         gap_array = np.subtract(lh_array,rh_array)
         gap_array = np.abs(gap_array)
 
-        over_cover = np.where(gap_array == lh_array)
-        gap_array[np.where(gap_array == lh_array)] = 0
-        gap_array[np.where(gap_array == rh_array)] = 0
-
-        # for i in over_cover:
-        #     gap_array[i] = 0
-
-        print(over_cover)
+        '''
+        remove the over covered region.
+        i can use the binary brain bask !
+        '''
+        gap_array[np.where(lh_array*rh_array == 0)] = 0
+        '''
+        histogram equalization ???
+        '''
+        # gap_array = exposure.equalize_hist(gap_array)
         gap_array = normalize_3D(gap_array, 256)
         print(gap_array.shape)
         # assert False
 
-        lh_file = sitk.GetImageFromArray(lh_array)
-        rh_file = sitk.GetImageFromArray(rh_array)
+        # lh_file = sitk.GetImageFromArray(lh_array)
+        # rh_file = sitk.GetImageFromArray(rh_array)
+        # lh_file.CopyInformation(itk_file)
+        # rh_file.CopyInformation(itk_file)
         gap_file = sitk.GetImageFromArray(gap_array)
-        lh_file.CopyInformation(itk_file)
-        rh_file.CopyInformation(itk_file)
         gap_file.CopyInformation(itk_file)
 
         # assert False

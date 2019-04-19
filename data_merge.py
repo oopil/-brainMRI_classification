@@ -78,7 +78,8 @@ class MRI_chosun_data():
         'mtype', 'c4', ...]
         '''
         self.cnn_data = \
-            [[self.data_excel[i][0],self.data_excel[i][4],self.data_excel[i][5],self.data_excel[i][6]]\
+            [[self.data_excel[i][0],self.data_excel[i][4],self.data_excel[i][5],\
+              self.data_excel[i][6],self.data_excel[i][2]]\
              for i in range(1, len(self.data_excel)) if i%3 == 0]
         print('label infomation length : {}' .format(len(self.cnn_data)))
         return self.cnn_data
@@ -102,14 +103,25 @@ class MRI_chosun_data():
         excel_id_col = list(excel_np[:,0])
         for i, path in enumerate(self.input_image_path_list):
             '''
-            self.input_image_path_list is aligned with the order [aAD, ADD, mAD NC]
+                self.input_image_path_list is aligned with the order [aAD, ADD, mAD NC]
             '''
             id ,input_path = path[1], path[2]
             excel_index = excel_id_col.index(id)
             self.cnn_data[excel_index].append(input_path)
 
-        # for i in range(10):
-        #     print(self.cnn_data[i])
+        # test printing
+        for i in range(10):
+            print(self.cnn_data[i])
+
+        self.cnn_data = np.array(self.cnn_data)
+        # self.cnn_label_info = []
+        # for i in range(len(self.cnn_data)):
+        #     '''
+        #         i can use age or education factors but i don't use it now.
+        #     '''
+        #     label_info = self.cnn_data[i][1:4]
+        #     self.cnn_label_info.append(label_info)
+        return self.cnn_data[:,-1], self.cnn_data[:,1:4]
 
     def squeeze_excel(self, excel_option):
         '''
@@ -232,8 +244,44 @@ class MRI_chosun_data():
         print('there is no appropriate label name. :')
         print(self.class_array, label)
         assert False
+#%%
+    def set_label_func(self, label_info):
+        if self.diag_type == 'PET':
+            self.class_array = self.class_option_dict_pet[class_option]
+            self.label_name = label_info[:,0]
+            # print(self.label_name, self.class_array)
+            self.label_func = self.label_pet
 
-    def define_label(self, label_info, class_option):
+        elif self.diag_type == 'clinic':
+            self.class_array = self.class_option_dict_clinic[class_option]
+            self.label_name = label_info[:,1]
+            self.label_func = self.label_clinic
+
+        elif self.diag_type == 'new':
+            self.class_array = self.class_option_dict_new[class_option]
+            self.label_name = label_info[:,2]
+            self.label_func = self.label_new
+        else:
+            print('diagnosis type is wrong. : ', self.diag_type)
+            assert False
+        print('class option : {} / class array : {}'.format(class_option, self.class_array))
+
+    def remove_minus_one_label(self):
+        '''
+            remove the -1 line of label and data
+        '''
+        print('remove the -1 line of label and data.')
+        self.label_list = np.array(self.label_list)
+        label_length = len(self.label_list)
+        for row in range(len(self.label_list)):
+            row_index = label_length - row - 1
+            label = self.label_list[row_index]
+            # print(row, len(self.label_list), row_index)
+            if label == -1:
+                self.data = np.delete(self.data, row_index, 0)
+                self.label_list = np.delete(self.label_list, row_index, 0)
+
+    def define_label_nn(self, label_info, class_option):
         '''
         :param label_info: it has 3 columns : pet, new, clinic
         :param class_option:  'PET pos vs neg', 'NC vs MCI vs AD' 'NC vs mAD vs aAD vs ADD'
@@ -245,58 +293,50 @@ class MRI_chosun_data():
         if is_print: pass
         print('start labeling...' )
         label_info = np.array(label_info)
+        self.data = self.nn_data
         self.label_list = []
         # self.class_array = self.get_class_array(class_option)
-        if self.diag_type == 'PET':
-            self.class_array = self.class_option_dict_pet[class_option]
-            label_name = label_info[:,0]
-            # print(label_name, self.class_array)
-            for i, label in enumerate(label_name):
-                self.label_list.append(self.label_pet(label, self.class_array))
+        self.set_label_func(label_info)
+        for i, label in enumerate(self.label_name):
+            self.label_list.append(self.label_func(label, self.class_array))
 
-        elif self.diag_type == 'clinic':
-            self.class_array = self.class_option_dict_clinic[class_option]
-            label_name = label_info[:,1]
-            for i, label in enumerate(label_name):
-                self.label_list.append(self.label_clinic(label, self.class_array))
-
-        elif self.diag_type == 'new':
-            self.class_array = self.class_option_dict_new[class_option]
-            label_name = label_info[:,2]
-            for i, label in enumerate(label_name):
-                self.label_list.append(self.label_new(label, self.class_array))
-
-        else:
-            print('diagnosis type is wrong. : ', self.diag_type)
-            assert False
-        print('class option : {} / class array : {}'.format(class_option, self.class_array))
-
-        '''
-        remove the -1 line of label and data
-        '''
-        print('remove the -1 line of label and data.')
-        self.label_list = np.array(self.label_list)
-
+        self.remove_minus_one_label()
         if is_print:
-            print(self.label_list)
-            print(len(self.nn_data),len(self.label_list))
-        label_length = len(self.label_list)
-        for row in range(len(self.label_list)):
-            row_index = label_length - row - 1
-            label = self.label_list[row_index]
-            # print(row, len(self.label_list), row_index)
-            if label == -1:
-                self.nn_data = np.delete(self.nn_data, row_index, 0)
-                self.label_list = np.delete(self.label_list, row_index, 0)
-            pass
-
-        if is_print:
-            print(len(self.nn_data),len(self.label_list))
-            print(type(self.nn_data),type(self.label_list))
+            print(len(self.data),len(self.label_list))
+            print(type(self.data),type(self.label_list))
             # print(self.nn_data[0])
             print(self.label_list)
 
-        return self.nn_data, self.label_list
+        return self.data, self.label_list
+
+    def define_label_cnn(self, label_info, class_option):
+        '''
+        :param label_info: it has 3 columns : pet, new, clinic
+        :param class_option:  'PET pos vs neg', 'NC vs MCI vs AD' 'NC vs mAD vs aAD vs ADD'
+        :return:
+
+        when we use the class option as NC vs AD, we need to remove MCI line.
+        '''
+        is_print = True
+        if is_print: pass
+        print('start labeling...' )
+        label_info = np.array(label_info)
+        self.data = self.cnn_data
+        self.label_list = []
+        # self.class_array = self.get_class_array(class_option)
+        self.set_label_func(label_info)
+        for i, label in enumerate(self.label_name):
+            self.label_list.append(self.label_func(label, self.class_array))
+        self.remove_minus_one_label()
+        self.label_list = np.array(self.label_list)
+
+        if is_print:
+            print(len(self.data),len(self.label_list))
+            print(type(self.data),type(self.label_list))
+            # print(self.nn_data[0])
+            print(self.label_list)
+
+        return self.data[:,-1], self.label_list
 
     def shuffle_data(self, data, label):
         assert len(data)==len(label)
@@ -492,7 +532,6 @@ def NN_dataloader(diag_type, class_option, \
     3. make label list (O)
     4. shuffle (O)
     6. split train and test dataset (O)
-    7. data augment - add noise
     :return: train and test data and lable
     '''
 
@@ -516,10 +555,9 @@ def NN_dataloader(diag_type, class_option, \
     loader.squeeze_excel(excel_option=excel_option)
     data, label_info = loader.remove_zero_column()
 
-    data, label = loader.define_label(label_info, class_option)
+    data, label = loader.define_label_nn(label_info, class_option)
     # normalize each column separately.
     data = normalize_col(data)
-    # augment_noise(data, label, 2)
     # data = normalize_separate_col(data)
     # print(data.shape)
     # data = normalize(data)
@@ -543,27 +581,38 @@ def NN_dataloader(diag_type, class_option, \
         '''
         return loader.split_data_by_fold(shuffle_data, shuffle_label, fold_num)
 
-def CNN_dataloader():
+def CNN_dataloader(base_folder_path ,diag_type, class_option, \
+                  excel_path, test_num, fold_num, is_split_by_num):
     '''
     1. read excel data
     2. read input file path from dataset folder path
     3. merge excel and path information
     4. make label list
-    5. shuffle
-    5. normalization
-    7. split train and test dataset
+    5. split train and test dataset
+
+    # handle with tensorflow dataset api
+    6. shuffle
+    7. normalization
+    8. make batch
     :return: train and test data and lable
     '''
     loader = MRI_chosun_data()
-    loader.set_diagnosis_type('new')
-    base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
-    # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
-    excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
+    loader.set_diagnosis_type(diag_type)
     loader.read_excel_data(excel_path)
     path_list = loader.extr_input_path_list(base_folder_path)
     print(path_list[0])
+    '''
+    i need to modify this line below.
+    because i need to use the image after registration.
+    but now, just go ahead.
+    '''
     loader.get_label_info_excel()
-    loader.merge_info()
+    data, label_info = loader.merge_info()
+    print(label_info)
+    data, label = loader.define_label_cnn(label_info, class_option)
+    for i in range(10):
+        print(label[i], data[i])
+
     pass
 
 if __name__ == '__main__':
@@ -582,7 +631,10 @@ if __name__ == '__main__':
     test_num = 10
     fold_num = 5
     is_split_by_num = False
-    NN_dataloader(diag_type, class_option, excel_path, excel_option, test_num, fold_num, is_split_by_num)
+    # NN_dataloader(diag_type, class_option, excel_path, \
+    #               excel_option, test_num, fold_num, is_split_by_num)
+    CNN_dataloader(base_folder_path ,diag_type, class_option, \
+                  excel_path, test_num, fold_num, is_split_by_num)
 
 '''
 <<numpy array column api>> 

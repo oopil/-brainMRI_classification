@@ -1,9 +1,6 @@
-from excel_class import XL, Printer
 from sklearn.utils import shuffle
 import openpyxl
 import numpy as np
-import random
-
 class DataLoader():
     def __init__(self, frd):
         self.meta = []

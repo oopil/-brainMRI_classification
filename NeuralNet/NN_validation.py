@@ -3,7 +3,7 @@ import tensorflow as tf
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')
 # from NeuralNet.neuralnet_ops import *
-from NeuralNet.neuralnet_ops import *
+from NeuralNet.NN_ops import *
 from data_merge import *
 
 def try_all_fold(self)->list:

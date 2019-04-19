@@ -1,27 +1,29 @@
 import sys
-import tensorflow as tf
+
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')
 # from NeuralNet.neuralnet_ops import *
-import NeuralNet.neuralnet_validation as _validation
-from NeuralNet.neuralnet_ops import *
+import NeuralNet.NN_validation as _validation
+import NeuralNet.NN_BO as _BO
+import tensorflow as tf
+from NeuralNet.NN_ops import *
+from NeuralNet.CNN_data import *
 from data_merge import *
-from bayes_opt import BayesianOptimization
 
-class NeuralNet(object):
+class ConvNeuralNet:
     def __init__(self, sess, args):
-        self.model_name = "NeuralNet"  # name for checkpoint
+        self.model_name = "CNN"  # name for checkpoint
         self.sess = sess
         self.excel_path = args.excel_path
         self.base_folder_path = args.base_folder_path
         self.result_file_name = args.result_file_name
 
         if args.neural_net == 'simple':
-            self.model_name = self.neural_net_simple
-        if args.neural_net == 'basic':
-            self.model_name = self.neural_net_basic
-        if args.neural_net == 'simple':
-            self.model_name = self.neural_net_simple
+            self.model_name = self.cnn_simple
+        # if args.neural_net == 'basic':
+        #     self.model_name = self.neural_net_basic
+        # if args.neural_net == 'simple':
+        #     self.model_name = self.neural_net_simple
 
         self.diag_type = args.diag_type
         self.excel_option = args.excel_option
@@ -79,7 +81,7 @@ class NeuralNet(object):
         if is_print:
             print('build neural network')
             print(x.shape)
-        with tf.variable_scope("neuralnet", reuse=reuse):
+        with tf.variable_scope("cnn", reuse=reuse):
             ch = 64
             x = conv(x, channels=ch, kernel=4, stride=2, pad=1, sn=self.sn, use_bias=False, scope='conv')
             x = lrelu(x, 0.2)
@@ -135,48 +137,11 @@ class NeuralNet(object):
             # x = lrelu(x, 0.1)
             x = relu(x, scope=scope)
         return x
-    # def attention(self, x, ch, sn=False, scope='attention', reuse=False):
-    #     with tf.variable_scope(scope, reuse=reuse):
-    #         ch_ = ch // 8
-    #         if ch_ == 0: ch_ = 1
-    #         f = conv(x, ch_, kernel=1, stride=1, sn=sn, scope='f_conv') # [bs, h, w, c']
-    #         g = conv(x, ch_, kernel=1, stride=1, sn=sn, scope='g_conv') # [bs, h, w, c']
-    #         h = conv(x, ch, kernel=1, stride=1, sn=sn, scope='h_conv') # [bs, h, w, c]
-    #
-    #         # N = h * w
-    #         s = tf.matmul(hw_flatten(g), hw_flatten(f), transpose_b=True) # # [bs, N, N]
-    #
-    #         beta = tf.nn.softmax(s, axis=-1)  # attention map
-    #
-    #         o = tf.matmul(beta, hw_flatten(h)) # [bs, N, C]
-    #         gamma = tf.get_variable("gamma", [1], initializer=tf.constant_initializer(0.0))
-    #         print(o.shape, s.shape, f.shape, g.shape, h.shape)
-    #
-    #         o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
-    #         x = gamma * o + x
-    #     return x
-
     ##################################################################################
-    # Neural Network Model
+    # Convolutional Neural Network Model
     ##################################################################################
-    def neural_net_simple(self, x, is_training=True, reuse=False):
-        layer_num = 3
-        is_print = self.is_print
-        if is_print:
-            print('build neural network')
-            print(x.shape)
-        with tf.variable_scope("neuralnet", reuse=reuse):
-            x = self.fc_layer(x, 512, 'fc_input_1')
-            x = self.fc_layer(x, 1024, 'fc_input_2')
-            for i in range(layer_num):
-                x = self.fc_layer(x, 1024, 'fc'+str(i))
-            x = self.fc_layer(x, 512, 'fc_1')
-            x = self.fc_layer(x, 256, 'fc_fin')
-            # x = self.fc_layer(x, self.class_num, 'fc_last')
-            x = fully_connected(x, self.class_num,\
-                                weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
-            # tf.summary.histogram('last_active', x)
-            return x
+    def cnn_simple(self, x, is_training=True, reuse=False):
+        pass
 
     def neural_net_basic(self, x, is_training=True, reuse=False):
         is_print = self.is_print
@@ -184,7 +149,7 @@ class NeuralNet(object):
             print('build neural network')
             print(x.shape)
 
-        with tf.variable_scope("neuralnet", reuse=reuse):
+        with tf.variable_scope("cnn", reuse=reuse):
             # x = fully_connected(x, self.class_num, use_bias=True, scope='fc2')
             # x = lrelu(x, 0.1)
             x = self.fc_layer(x, 512, 'fc1')
@@ -194,24 +159,30 @@ class NeuralNet(object):
     ##################################################################################
     # Dataset
     ##################################################################################
-    def read_nn_data(self):
+    def read_cnn_data(self):
         # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
         sampling_option_str = 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'  # ADASYN
         sampling_option_split = sampling_option_str.split(' ')
-        whole_set = NN_dataloader(self.diag_type, self.class_option,\
-                                  self.excel_path, self.excel_option, self.test_num, self.fold_num, self.is_split_by_num)
-        whole_set = np.array(whole_set)
+        whole_set = CNN_dataloader(self.base_folder_path, self.diag_type, self.class_option,\
+                                  self.excel_path, self.test_num, self.fold_num, self.is_split_by_num)
+        # whole_set = np.array(whole_set)
         self.train_data, self.train_label, self.test_data, self.test_label = whole_set[0]
         self.train_data = np.array(self.train_data)
         self.train_label = np.array(self.train_label)
         self.test_data = np.array(self.test_data)
         self.test_label = np.array(self.test_label)
+
         self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
         self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
-        self.input_feature_num = len(self.train_data[0])
 
-        if self.noise_augment:
-            self.augment_noise()
+        self.check_image_shape()
+
+        # if self.noise_augment:
+        #     self.augment_noise()
+    def check_image_shape(self):
+        sample_image_path = self.train_data[0]
+        self.input_image_shape = check_image_shape(sample_image_path)
+        print('input image shape : ',self.input_image_shape)
 
     def augment_noise(self):
         self.train_data, self.train_label = \
@@ -224,54 +195,16 @@ class NeuralNet(object):
         result_list = _validation.try_all_fold(self)
         _validation.save_results(self, result_list)
 
-    # def BO_train_and_validate(self, init_lr_log, w_stddev_log):
-    def BO_train_and_validate(self, init_lr_log, w_stddev_log):
-        self.set_lr(10**init_lr_log)
-        self.set_weight_stddev(10**w_stddev_log)
-        print('-'*100)
-        # print('learning rate : {}\nstddev of weight : {}'.\
-        #       format(self.learning_rate, 10**w_stddev_log))
-        print('learning rate : {}\nstddev of weight : {}'.\
-              format(self.learning_rate, 10**w_stddev_log))
-        return self.train()
-
-    def BayesOptimize(self):
-        bayes_optimizer = BayesianOptimization(
-            f=self.BO_train_and_validate,
-            pbounds={
-                # 78 <= -1.2892029132535314,-1.2185073691640054
-                # 85 <= -1.2254855784556566, -1.142561108840614}}
-                'init_lr_log': (-2.0,-1.0),
-                'w_stddev_log': (-2.0,-1.0)
-            },
-            random_state=0,
-            # verbose=2
-        )
-        bayes_optimizer.maximize(
-            init_points=5,
-            n_iter=40,
-            acq='ei',
-            xi=0.01
-        )
-        BO_results = []
-        BO_results.append('\n\t\t<<< class option : {} >>>\n' .format(self.class_option))
-        BO_result_file_name = "BO_result/BayesOpt_results"\
-                              + str(time.time()) + '_' + self.class_option
-        fd = open(BO_result_file_name, 'a+t')
-        for i, ressult in enumerate(bayes_optimizer.res):
-            BO_results.append('Iteration {}:{}\n'.format(i, ressult))
-            print('Iteration {}: {}'.format(i, ressult))
-            fd.writelines('Iteration {}:{}\n'.format(i, ressult))
-        BO_results.append('Final result: {}\n'.format(bayes_optimizer.max))
-        fd.writelines('Final result: {}\n'.format(bayes_optimizer.max))
-        print('Final result: {}\n'.format(bayes_optimizer.max))
-        fd.close()
+    def BayesOptimize(self, init_lr_log, w_stddev_log):
+        _BO.BayesOptimize(init_lr_log, w_stddev_log)
     ##################################################################################
     # Model
     ##################################################################################
     def build_model(self):
         """ Graph Input """
-        self.input = tf.placeholder(tf.float32, [None, self.input_feature_num], name='inputs')
+        s1,s2,s3 = self.input_image_shape
+        self.input = tf.placeholder(tf.float32, [None, s1,s2,s3, 1], name='inputs')
+        print(self.input.shape)
         # self.label = tf.placeholder(tf.float32, [None, self.class_num], name='targets')
         self.label = tf.placeholder(tf.int32, [None], name='targets')
         self.label_onehot = onehot(self.label, self.class_num)
@@ -289,14 +222,16 @@ class NeuralNet(object):
         """ Training """
         # divide trainable variables into a group for D and a group for G
         t_vars = tf.trainable_variables()
-        vars = [var for var in t_vars if 'neuralnet' in var.name]
+        vars = [var for var in t_vars if 'cnn' in var.name]
 
         # optimizers
         # should apply learning rate decay
-        start_lr = self.learning_rate
-        global_step = tf.Variable(0, trainable=False)
-        total_learning = self.epoch
-        lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
+        with tf.name_scope('learning rate'):
+            start_lr = self.learning_rate
+            global_step = tf.Variable(0, trainable=False)
+            total_learning = self.epoch
+            lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
+
         self.optim = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
         # self.optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
         # self.d_optim = tf.train.AdamOptimizer(d_lr, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
@@ -314,6 +249,8 @@ class NeuralNet(object):
         #--------------------------------------------------------------------------------------------------
         # initialize all variables
         tf.global_variables_initializer().run()
+
+
         # graph inputs for visualize training results
         # saver to save model
         self.saver = tf.train.Saver()
@@ -341,29 +278,33 @@ class NeuralNet(object):
 
         self.valid_accur = []
         self.train_accur = []
+        # set training data
+        self.next_element, self.iterator = get_dataset(self.train_data, self.train_label)
+        self.sess.run(self.iterator.initializer)
         for epoch in range(start_epoch, self.epoch):
             # get batch data
             for idx in range(start_batch_id, self.iteration):
+                train_data, train_label = self.sess.run(self.next_element)
                 #---------------------------------------------------
                 train_feed_dict = {
-                    self.input : self.train_data,
-                    self.label : self.train_label
+                    self.input : train_data,
+                    self.label : train_label
                 }
-                _, merged_summary_str, loss, pred, accur = self.sess.run(\
+                _, merged_summary_str, loss, pred, accur = self.sess.run( \
                     [self.optim, self.merged_summary, self.loss, self.pred, self.accur], \
                     feed_dict=train_feed_dict)
                 # self.train_writer.add_summary(merged_summary_str, global_step=counter)
                 if epoch % self.print_freq == 0:
-                        print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}"\
-                              .format(epoch, self.epoch, idx, self.iteration,loss, accur))
-                        # print("Epoch: [%2d/%2d] [%5d/%5d] time: %4.4f, loss: %.8f" \
-                        #       % (epoch, self.epoch, idx, self.iteration, time.time() - start_time, loss))
-                        # print("pred : {}".format(self.train_label))
-                        # print("pred : {}".format(pred))
-                        test_accur, test_summary = self.test(counter)
-                        self.valid_accur.append(test_accur)
-                        self.train_accur.append(accur)
-                        print('=' * 100)
+                    print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}" \
+                          .format(epoch, self.epoch, idx, self.iteration,loss, accur))
+                    # print("Epoch: [%2d/%2d] [%5d/%5d] time: %4.4f, loss: %.8f" \
+                    #       % (epoch, self.epoch, idx, self.iteration, time.time() - start_time, loss))
+                    # print("pred : {}".format(self.train_label))
+                    # print("pred : {}".format(pred))
+                    test_accur, test_summary = self.test(counter)
+                    self.valid_accur.append(test_accur)
+                    self.train_accur.append(accur)
+                    print('=' * 100)
 
                 if epoch % self.summary_freq == 0:
                     self.train_writer.add_summary(merged_summary_str, global_step=counter)

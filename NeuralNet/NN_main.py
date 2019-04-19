@@ -1,6 +1,7 @@
 import argparse
-from NeuralNet.neuralnet_model import NeuralNet
-from NeuralNet.neuralnet_utils import *
+from NeuralNet.NN_model import NeuralNet
+from NeuralNet.CNN_model import ConvNeuralNet
+from NeuralNet.NN_utils import *
 '''
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append is needed only when using jupyter notebook
@@ -22,17 +23,18 @@ def parse_args() -> argparse:
     # diag_type = "PET"
     # diag_type = "new"
     # diag_type = "clinic"
-    parser.add_argument('--class_option', default='CN vs MCI vs AD', type=str)
+    parser.add_argument('--class_option', default='CN vs AD', type=str)
     #PET    # class_option = 'PET pos vs neg'
     #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
-    parser.add_argument('--noise_augment', default=1, type=int)
+    parser.add_argument('--noise_augment', default=0, type=int)
     parser.add_argument('--class_option_index', default=0, type=int)
     parser.add_argument('--test_num', default=20, type=int)
     parser.add_argument('--fold_num', default=5, type=int)
     parser.add_argument('--excel_option', default='merge', type=str)
     parser.add_argument('--loss_function', default='normal', type=str) # normal / cross_entropy
-    parser.add_argument('--sampling_option', default='RANDOM', type=str)
+    # 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'
+    parser.add_argument('--sampling_option', default='None', type=str)
 
     parser.add_argument('--is_split_by_num', default=False, type=bool)
     parser.add_argument('--investigate_validation', default=False, type=bool)
@@ -63,11 +65,22 @@ def run():
         exit()
     # open session
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
-        simple_train(sess, args)
-        # cross_validation(sess, args)
-        # BayesOptimize(sess, args)
+        CNN_simple_train(sess, args)
+        # NN_cross_validation(sess, args)
+        # NN_BayesOptimize(sess, args)
 
-def simple_train(sess, args):
+def CNN_simple_train(sess, args):
+    CNN = ConvNeuralNet(sess, args)
+    CNN.read_cnn_data()
+    CNN.build_model()
+    # show network architecture
+    show_all_variables()
+    # launch the graph in a session
+    CNN.train()
+    # NN.visualize_results(args.epoch - 1)
+    print(" [*] Training finished!")
+
+def NN_simple_train(sess, args):
     NN = NeuralNet(sess, args)
     NN.read_nn_data()
     NN.build_model()
@@ -78,7 +91,7 @@ def simple_train(sess, args):
     # NN.visualize_results(args.epoch - 1)
     print(" [*] Training finished!")
 
-def cross_validation(sess, args):
+def NN_cross_validation(sess, args):
     NN = NeuralNet(sess, args)
     NN.read_nn_data()
     NN.build_model()
@@ -92,7 +105,7 @@ def cross_validation(sess, args):
     NN.try_all_fold()
     print(" [*] k-fold cross validation finished!")
 
-def BayesOptimize(sess, args):
+def NN_BayesOptimize(sess, args):
     NN = NeuralNet(sess, args)
     # target': 87.0, 'params':
     # {'init_learning_rate_log': -1.4511864960726752,
@@ -120,7 +133,7 @@ def print_result_file(result_file_name):
     file.close()
 
 if __name__ == '__main__':
-    # cross_validation()
+    # NN_cross_validation()
     run()
     # run()
 

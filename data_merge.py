@@ -110,17 +110,13 @@ class MRI_chosun_data():
             self.cnn_data[excel_index].append(input_path)
 
         # test printing
-        for i in range(10):
-            print(self.cnn_data[i])
+        # for i in range(10):
+        #     print(self.cnn_data[i])
 
         self.cnn_data = np.array(self.cnn_data)
-        # self.cnn_label_info = []
-        # for i in range(len(self.cnn_data)):
-        #     '''
-        #         i can use age or education factors but i don't use it now.
-        #     '''
-        #     label_info = self.cnn_data[i][1:4]
-        #     self.cnn_label_info.append(label_info)
+        '''
+            i can use age or education factors but i don't use it now.
+        '''
         return self.cnn_data[:,-1], self.cnn_data[:,1:4]
 
     def squeeze_excel(self, excel_option):
@@ -245,7 +241,7 @@ class MRI_chosun_data():
         print(self.class_array, label)
         assert False
 #%%
-    def set_label_func(self, label_info):
+    def set_label_func(self, label_info, class_option):
         if self.diag_type == 'PET':
             self.class_array = self.class_option_dict_pet[class_option]
             self.label_name = label_info[:,0]
@@ -296,7 +292,7 @@ class MRI_chosun_data():
         self.data = self.nn_data
         self.label_list = []
         # self.class_array = self.get_class_array(class_option)
-        self.set_label_func(label_info)
+        self.set_label_func(label_info, class_option)
         for i, label in enumerate(self.label_name):
             self.label_list.append(self.label_func(label, self.class_array))
 
@@ -324,7 +320,7 @@ class MRI_chosun_data():
         self.data = self.cnn_data
         self.label_list = []
         # self.class_array = self.get_class_array(class_option)
-        self.set_label_func(label_info)
+        self.set_label_func(label_info, class_option)
         for i, label in enumerate(self.label_name):
             self.label_list.append(self.label_func(label, self.class_array))
         self.remove_minus_one_label()
@@ -591,6 +587,7 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, \
     5. split train and test dataset
 
     # handle with tensorflow dataset api
+    5. oversampling
     6. shuffle
     7. normalization
     8. make batch
@@ -608,12 +605,25 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, \
     '''
     loader.get_label_info_excel()
     data, label_info = loader.merge_info()
-    print(label_info)
+    # print(label_info)
     data, label = loader.define_label_cnn(label_info, class_option)
-    for i in range(10):
-        print(label[i], data[i])
-
-    pass
+    # for i in range(10):
+    #     print(label[i], data[i])
+    if is_split_by_num:
+        shuffle_data, shuffle_label = loader.shuffle_data(data, label)
+        # test_num = 20
+        '''
+            return only one train and test set
+        '''
+        return loader.split_data_by_num(shuffle_data, shuffle_label, test_num)
+    else:
+        shuffle_data, shuffle_label = loader.shuffle_data(data, label)
+        # fold_num = 5
+        # fold_index = 0
+        '''
+            return all train and test sets devided by fold. 
+        '''
+        return loader.split_data_by_fold(shuffle_data, shuffle_label, fold_num)
 
 if __name__ == '__main__':
     base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'

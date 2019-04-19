@@ -1,5 +1,5 @@
 import time
-from NeuralNet.neuralnet_ops import *
+from NeuralNet.NN_ops import *
 from utils import *
 from dataloader import *
 

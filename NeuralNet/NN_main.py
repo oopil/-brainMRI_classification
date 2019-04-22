@@ -50,7 +50,7 @@ def parse_args() -> argparse:
     #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
     parser.add_argument('--lr', default=0.01, type=float) #0.01 #0.0602
-    # parser.add_argument('--batch_size', default=200, type=int)
+    parser.add_argument('--batch_size', default=2, type=int)
     parser.add_argument('--weight_stddev', default=0.05, type=float) #0.05 #0.0721
     parser.add_argument('--epoch', default=1500, type=int)
     parser.add_argument('--loss_function', default='normal', type=str) # normal / cross_entropy
@@ -77,6 +77,7 @@ def CNN_simple_train(sess, args):
     # show network architecture
     show_all_variables()
     # launch the graph in a session
+    # CNN.test_data_read()
     CNN.train()
     # NN.visualize_results(args.epoch - 1)
     print(" [*] Training finished!")

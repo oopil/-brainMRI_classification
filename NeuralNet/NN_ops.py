@@ -206,7 +206,8 @@ def up_sample(x, scale_factor=2):
 # Activation function
 ##################################################################################
 def lrelu(x, alpha=0.2):
-    return tf.nn.leaky_relu(x, alpha)
+    with tf.name_scope("lrelu"):
+        return tf.nn.leaky_relu(x, alpha)
 
 def relu(x, scope):
     with tf.name_scope("relu"):

@@ -1,5 +1,41 @@
 import tensorflow as tf
 import numpy as np
+##################################################################################
+# for 3D CNN
+##################################################################################
+
+def batch_norm(x, name="batch_norm"):
+    return tf.contrib.layers.batch_norm(x, decay=0.9, updates_collections=None, epsilon=1e-5, scale=True, scope=name)
+
+def instance_norm(input, name="instance_norm"):
+    with tf.variable_scope(name):
+        depth = input.get_shape()[4]
+        scale = tf.get_variable("scale", [depth], initializer=tf.random_normal_initializer(1.0, 0.02, dtype=tf.float32))
+        offset = tf.get_variable("offset", [depth], initializer=tf.constant_initializer(0.0))
+        mean, variance = tf.nn.moments(input, axes=[0,1,2], keep_dims=True)
+        epsilon = 1e-5
+        inv = tf.rsqrt(variance + epsilon)
+        normalized = (input-mean)*inv
+        return scale*normalized + offset
+
+def conv3d(input_, output_dim, ks=4, s=(2,2,2), stddev=0.02, padding='SAME', name="conv3d"):
+    with tf.variable_scope(name):
+        print('conv3d shape : {} => {}'.format(input_.shape, output_dim))
+        return tf.layers.conv3d(input_, output_dim, ks, s, padding=padding,
+                            kernel_initializer=tf.truncated_normal_initializer(stddev=stddev),
+                            bias_initializer=None)
+
+def deconv3d(input_, output_dim, ks=4, s=(2,2,2), stddev=0.02, name="deconv3d"):
+    with tf.variable_scope(name):
+        # print('deconv3d input shape : ', input_.shape)
+        # print('deconv3d output dimension : ', output_dim)
+        return tf.layers.conv3d_transpose(input_, output_dim, ks, s, padding='SAME',
+                                    kernel_initializer=tf.truncated_normal_initializer(stddev=stddev),
+                                    bias_initializer=None)
+
+##################################################################################
+# from old file
+##################################################################################
 def batch_norm(x, is_training=True, scope='batch_norm'):
     # mean, var = tf.nn.moments(x, axes=0)
     return tf.contrib.layers.batch_norm(x, decay=0.9, epsilon=1e-05,
@@ -83,8 +119,6 @@ def fully_connected_layer(inputs, input_shape, output_shape, keep_prob, activati
 
 import tensorflow as tf
 import tensorflow.contrib as tf_contrib
-def onehot(x, depth):
-    return tf.one_hot(x, depth)
 
 # Xavier : tf_contrib.layers.xavier_initializer()
 # He : tf_contrib.layers.variance_scaling_initializer()
@@ -153,6 +187,9 @@ def flatten(x) :
 
 def hw_flatten(x) :
     return tf.reshape(x, shape=[x.shape[0], -1, x.shape[-1]])
+
+def onehot(x, depth):
+    return tf.one_hot(x, depth)
 ##################################################################################
 # Sampling
 ##################################################################################

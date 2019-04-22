@@ -56,10 +56,14 @@ class ConvNeuralNet:
         # self.iteration = args.iteration
         # self.batch_size = args.batch_size
         self.is_print = True
+        self.args = args
 
         print()
         print("##### Information #####")
-        print("# epoch : ", self.epoch)
+        for i, arg in enumerate(vars(args)):
+            print(i, arg, getattr(args, arg))
+        # assert False
+        # print("# epoch : ", self.epoch)
 
 
     ##################################################################################
@@ -85,9 +89,6 @@ class ConvNeuralNet:
             ch = 64
             x = conv(x, channels=ch, kernel=4, stride=2, pad=1, sn=self.sn, use_bias=False, scope='conv')
             x = lrelu(x, 0.2)
-            if is_print:
-                print(x.shape)
-                print('repeat layer : {}'.format(self.layer_num))
             for i in range(self.layer_num // 2):
                 x = conv(x, channels=ch * 2, kernel=4, stride=2, pad=1, sn=self.sn, use_bias=False, scope='conv_' + str(i))
                 x = batch_norm(x, is_training, scope='batch_norm' + str(i))
@@ -98,13 +99,11 @@ class ConvNeuralNet:
             if is_print:
                 print('attention !')
                 print(x.shape)
-            if is_print:print('repeat layer : {}'.format(self.layer_num))
+                print('repeat layer : {}'.format(self.layer_num))
             # for i in range(self.layer_num // 2, self.layer_num):
             for i in range(12):
                 x = resblock(x, ch, use_bias=True,sn=False, scope='resblock'+str(i))
-            if is_print:print(x.shape)
             x = conv(x, channels=4, stride=1, sn=self.sn, use_bias=False, scope='D_logit')
-            if is_print:print(x.shape)
             # assert False
             return x
 
@@ -141,13 +140,33 @@ class ConvNeuralNet:
     # Convolutional Neural Network Model
     ##################################################################################
     def cnn_simple(self, x, is_training=True, reuse=False):
-        pass
+        is_print = self.is_print
+        if is_print:
+            print('build neural network')
+            print('input shape : {}'.format(x.shape))
+
+        with tf.variable_scope("cnn", reuse=reuse):
+            ch = 128
+            x = lrelu(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer1'))
+            # h0 is (128 x 128 x self.df_dim)
+            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer2'), 'd_bn1'))
+            # h1 is (64 x 64 x self.df_dim*2)
+            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer3'), 'd_bn1'))
+            # h2 is (32x 32 x self.df_dim*4)
+            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer4'), 'd_bn1'))
+
+        with tf.variable_scope("fcn", reuse=reuse):
+            x = flatten(x)
+            x = self.fc_layer(x, 512, 'fc1')
+            x = self.fc_layer(x, self.class_num, 'fc2')
+
+            return x
 
     def neural_net_basic(self, x, is_training=True, reuse=False):
         is_print = self.is_print
         if is_print:
             print('build neural network')
-            print(x.shape)
+            print('input shape : {}'.format(x.shape))
 
         with tf.variable_scope("cnn", reuse=reuse):
             # x = fully_connected(x, self.class_num, use_bias=True, scope='fc2')
@@ -226,7 +245,7 @@ class ConvNeuralNet:
 
         # optimizers
         # should apply learning rate decay
-        with tf.name_scope('learning rate'):
+        with tf.name_scope('learning_rate'):
             start_lr = self.learning_rate
             global_step = tf.Variable(0, trainable=False)
             total_learning = self.epoch

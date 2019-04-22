@@ -11,8 +11,7 @@ def normalize_3D(X_, L):
     max = np.amax(X_)
     if max == 0:
         print('failed to normalize. the max element is zero.')
-        print(min)
-        print(max)
+        print(min, max)
         # print(X_)
         assert False
     print(min)
@@ -62,17 +61,17 @@ def split_brain_mri():
         print(gap_array.shape)
         # assert False
 
+        gap_file = sitk.GetImageFromArray(gap_array)
+        gap_file.CopyInformation(itk_file)
+        sitk.WriteImage(gap_file, gap_file_path)
+
         # lh_file = sitk.GetImageFromArray(lh_array)
         # rh_file = sitk.GetImageFromArray(rh_array)
         # lh_file.CopyInformation(itk_file)
         # rh_file.CopyInformation(itk_file)
-        gap_file = sitk.GetImageFromArray(gap_array)
-        gap_file.CopyInformation(itk_file)
-
-        # assert False
         # sitk.WriteImage(lh_file, lh_file_path)
         # sitk.WriteImage(rh_file, rh_file_path)
-        sitk.WriteImage(gap_file, gap_file_path)
+
 
 def main():
     split_brain_mri()

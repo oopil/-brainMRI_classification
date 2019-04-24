@@ -268,9 +268,9 @@ class ConvNeuralNet:
     def test_data_read(self):
         self.next_element, self.iterator = get_dataset(self.train_data, self.train_label, self.batch_size)
         self.sess.run(self.iterator.initializer)
-        train_data, train_label = self.sess.run(self.next_element)
-        print(train_label)
-
+        for i in range(10):
+            train_data, train_label = self.sess.run(self.next_element)
+            print(train_label)
     def train(self):
         #--------------------------------------------------------------------------------------------------
         # initialize all variables

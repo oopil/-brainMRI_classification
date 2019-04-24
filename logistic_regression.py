@@ -59,8 +59,8 @@ def main():
     # 'PET pos vs neg', 'NC vs MCI vs AD' 'NC vs mAD vs aAD vs ADD'
     # diag_type = "PET"
     # class_option = 'PET pos vs neg'
-    diag_type = "new"
-    class_option = 'NC vs ADD'#'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
+    diag_type = "clinic"
+    class_option = 'CN vs AD'#'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     # diag_type = "clinic"
     # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
     class_split = class_option.split('vs')

@@ -4,7 +4,11 @@ sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')
 # from NeuralNet.neuralnet_ops import *
 import NeuralNet.NN_validation as _validation
+import NeuralNet.NN_BO as _BO
 from NeuralNet.NN_ops import *
+# import NN_validation as _validation
+# import NN_BO as _BO
+# from NN_ops import *
 from data_merge import *
 from bayes_opt import BayesianOptimization
 
@@ -20,8 +24,12 @@ class NeuralNet(object):
             self.model_name = self.neural_net_simple
         if args.neural_net == 'basic':
             self.model_name = self.neural_net_basic
-        if args.neural_net == 'simple':
-            self.model_name = self.neural_net_simple
+        if args.neural_net == 'attention':
+            self.model_name = self.neural_net_attention
+        if args.neural_net == 'attention_self':
+            self.model_name = self.neural_net_self_attention
+        if args.neural_net == 'attention_often':
+            self.model_name = self.neural_net_attention_often
 
         self.diag_type = args.diag_type
         self.excel_option = args.excel_option
@@ -55,10 +63,11 @@ class NeuralNet(object):
         # self.batch_size = args.batch_size
         self.is_print = True
 
+        self.args = args
         print()
         print("##### Information #####")
-        print("# epoch : ", self.epoch)
-
+        for i, arg in enumerate(vars(args)):
+            print(i, arg, getattr(args, arg))
 
     ##################################################################################
     # Set private variable
@@ -71,6 +80,9 @@ class NeuralNet(object):
     def set_lr(self, lr):
         self.learning_rate = lr
         print('learning rate is set to : {}' .format(self.learning_rate))
+
+    def set_model(self, model):
+        pass
     ##################################################################################
     # Custom Operation
     ##################################################################################
@@ -106,24 +118,36 @@ class NeuralNet(object):
             # assert False
             return x
 
-    def attention_nn(self, x, ch, sn=False, scope='attention', reuse=False):
+    def self_attention_nn(self, x, ch, scope='attention', reuse=False):
+        assert ch//8 >= 1
         with tf.variable_scope(scope, reuse=reuse):
             ch_ = ch // 8
             if ch_ == 0: ch_ = 1
-            f = conv(x, ch_, kernel=1, stride=1, sn=sn, scope='f_conv') # [bs, h, w, c']
-            g = conv(x, ch_, kernel=1, stride=1, sn=sn, scope='g_conv') # [bs, h, w, c']
-            h = conv(x, ch, kernel=1, stride=1, sn=sn, scope='h_conv') # [bs, h, w, c]
-
+            f = self.fc_layer(x, ch_, 'f_nn') # [bs, h, w, c']
+            g = self.fc_layer(x, ch_, 'g_nn') # [bs, h, w, c']
+            h = self.fc_layer(x, ch, 'h_nn') # [bs, h, w, c]
             # N = h * w
-            s = tf.matmul(hw_flatten(g), hw_flatten(f), transpose_b=True) # # [bs, N, N]
-
+            s = tf.matmul(g, f, transpose_b=True) # # [bs, N, N]
             beta = tf.nn.softmax(s, axis=-1)  # attention map
-
-            o = tf.matmul(beta, hw_flatten(h)) # [bs, N, C]
+            o = tf.matmul(beta, h) # [bs, N, C]
             gamma = tf.get_variable("gamma", [1], initializer=tf.constant_initializer(0.0))
             print(o.shape, s.shape, f.shape, g.shape, h.shape)
+            # o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
+            x = gamma * o + x
+        return x
 
-            o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
+    def attention_nn(self, x, ch, scope='attention', reuse=False):
+        assert ch//8 >= 1
+        with tf.variable_scope(scope, reuse=reuse):
+            i = self.fc_layer(x, ch, 'fc_1')
+            i = self.fc_layer(i, ch//4, 'fc_2')
+            i = self.fc_layer(i, ch//8, 'fc_3')
+            i = self.fc_layer(i, ch//4, 'fc_4')
+            i = self.fc_layer(i, ch, 'fc_5')
+            o = tf.nn.softmax(i, axis=-1)  # attention map
+            gamma = tf.get_variable("gamma", [1], initializer=tf.constant_initializer(0.0))
+            print(i.shape, o.shape)
+            # o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
             x = gamma * o + x
         return x
 
@@ -166,6 +190,7 @@ class NeuralNet(object):
             print('build neural network')
             print(x.shape)
         with tf.variable_scope("neuralnet", reuse=reuse):
+            if self.noise_augment: x = gaussian_noise_layer(x, std=0.1)
             x = self.fc_layer(x, 512, 'fc_input_1')
             x = self.fc_layer(x, 1024, 'fc_input_2')
             for i in range(layer_num):
@@ -175,6 +200,76 @@ class NeuralNet(object):
             # x = self.fc_layer(x, self.class_num, 'fc_last')
             x = fully_connected(x, self.class_num,\
                                 weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
+            # tf.summary.histogram('last_active', x)
+            return x
+
+    def neural_net_attention(self, x, is_training=True, reuse=False):
+        layer_num = 2
+        is_print = self.is_print
+        if is_print:
+            print('build neural network')
+            print(x.shape)
+        with tf.variable_scope("neuralnet", reuse=reuse):
+            if self.noise_augment: x = gaussian_noise_layer(x, std=0.1)
+            x = self.fc_layer(x, 1024, 'fc_en_1')
+            x = self.fc_layer(x, 512, 'fc_en_2')
+            x = self.fc_layer(x, 256, 'fc_en_3')
+            x = self.fc_layer(x, 256, 'fc_en_4')
+            x = self.attention_nn(x, 256)
+            x = self.fc_layer(x, 256, 'fc_de_1')
+            x = self.fc_layer(x, 512, 'fc_de_2')
+            x = self.fc_layer(x, 512, 'fc_de_3')
+            x = self.fc_layer(x, 256, 'fc_de_4')
+            x = fully_connected(x, self.class_num, \
+                                weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
+            # x = self.fc_layer(x, self.class_num, 'fc_last')
+            # tf.summary.histogram('last_active', x)
+            return x
+
+    def neural_net_attention_often(self, x, is_training=True, reuse=False):
+        layer_num = 2
+        is_print = self.is_print
+        if is_print:
+            print('build neural network')
+            print(x.shape)
+        with tf.variable_scope("neuralnet", reuse=reuse):
+            en_dim = 256
+            de_dim = 256
+            x = self.fc_layer(x, 1024, 'fc_en_1')
+            x = self.fc_layer(x, 512, 'fc_en_2')
+            x = self.fc_layer(x, 256, 'fc_en_3')
+            x = self.attention_nn(x, 256, 'attention_1')
+            x = self.fc_layer(x, 256, 'bridge_1')
+            x = self.attention_nn(x, 256, 'attention_2')
+            x = self.fc_layer(x, 256, 'bridge_2')
+            x = self.attention_nn(x, 256, 'attention_3')
+            x = self.fc_layer(x, 512, 'fc_de_1')
+            x = self.fc_layer(x, 256, 'fc_de_2')
+            x = self.fc_layer(x, 128, 'fc_de_3')
+            x = fully_connected(x, self.class_num, \
+                                weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
+            # x = self.fc_layer(x, self.class_num, 'fc_last')
+            # tf.summary.histogram('last_active', x)
+            return x
+
+    def neural_net_self_attention(self, x, is_training=True, reuse=False):
+        layer_num = 2
+        is_print = self.is_print
+        if is_print:
+            print('build neural network')
+            print(x.shape)
+        with tf.variable_scope("neuralnet", reuse=reuse):
+            x = self.fc_layer(x, 512, 'fc_input_1')
+            x = self.fc_layer(x, 256, 'fc_input_2')
+            x = self.fc_layer(x, 128, 'fc_input_3')
+            x = self.self_attention_nn(x, 128)
+            x = self.fc_layer(x, 256, 'fc_input_4')
+            x = self.fc_layer(x, 256, 'fc_input_5')
+            x = self.fc_layer(x, 256, 'fc_input_6')
+            x = fully_connected(x, self.class_num, \
+                                weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
+
+            # x = self.fc_layer(x, self.class_num, 'fc_last')
             # tf.summary.histogram('last_active', x)
             return x
 
@@ -209,13 +304,9 @@ class NeuralNet(object):
         self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
         self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
         self.input_feature_num = len(self.train_data[0])
-
-        if self.noise_augment:
-            self.augment_noise()
-
-    def augment_noise(self):
-        self.train_data, self.train_label = \
-            augment_noise(self.train_data, self.train_label, self.noise_augment)
+    # def augment_noise(self):
+    #     self.train_data, self.train_label = \
+    #         augment_noise(self.train_data, self.train_label, self.noise_augment)
 
     ##################################################################################
     # validation
@@ -234,6 +325,9 @@ class NeuralNet(object):
         print('learning rate : {}\nstddev of weight : {}'.\
               format(self.learning_rate, 10**w_stddev_log))
         return self.train()
+
+    def BayesOptimize(self, init_lr_log, w_stddev_log):
+        _BO.BayesOptimize(init_lr_log, w_stddev_log)
 
     def BayesOptimize(self):
         bayes_optimizer = BayesianOptimization(
@@ -277,6 +371,7 @@ class NeuralNet(object):
         self.label_onehot = onehot(self.label, self.class_num)
         # output of D for real images
         print(self.input)
+
         self.logits = self.model_name(self.input, reuse=False)
         self.pred = tf.argmax(self.logits,1)
         self.accur = accuracy(self.logits, self.label_onehot) //1

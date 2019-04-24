@@ -182,6 +182,10 @@ def fully_connected(x, units, weight_initializer, use_bias=True, sn=False, scope
         x = tf.layers.dense(x, units=units, kernel_initializer=weight_initializer, kernel_regularizer=weight_regularizer, use_bias=use_bias)
         return x
 
+def gaussian_noise_layer(input_layer, std):
+    noise = tf.random_normal(shape=tf.shape(input_layer), mean=0.0, stddev=std, dtype=tf.float32)
+    return input_layer + noise
+
 def flatten(x) :
     return tf.layers.flatten(x)
 
@@ -294,3 +298,7 @@ def resblock(x_init, channels, use_bias=True, is_training=True, sn=False, scope=
             x = batch_norm(x, is_training)
 
         return x + x_init
+
+##################################################################################
+# noise addition
+##################################################################################

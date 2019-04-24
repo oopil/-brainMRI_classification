@@ -182,9 +182,15 @@ def fully_connected(x, units, weight_initializer, use_bias=True, sn=False, scope
         x = tf.layers.dense(x, units=units, kernel_initializer=weight_initializer, kernel_regularizer=weight_regularizer, use_bias=use_bias)
         return x
 
-def gaussian_noise_layer(input_layer, std):
+def gaussian_noise_layer(train_data, std):
+    noise = np.random.normal(0, std, np.shape(train_data))
+    return train_data + noise
+
+
+def gaussian_noise_layer_tf(input_layer, std):
     noise = tf.random_normal(shape=tf.shape(input_layer), mean=0.0, stddev=std, dtype=tf.float32)
     return input_layer + noise
+
 
 def flatten(x) :
     return tf.layers.flatten(x)

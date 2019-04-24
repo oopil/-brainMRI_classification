@@ -190,7 +190,6 @@ class NeuralNet(object):
             print('build neural network')
             print(x.shape)
         with tf.variable_scope("neuralnet", reuse=reuse):
-            if self.noise_augment: x = gaussian_noise_layer(x, std=0.1)
             x = self.fc_layer(x, 512, 'fc_input_1')
             x = self.fc_layer(x, 1024, 'fc_input_2')
             for i in range(layer_num):
@@ -210,7 +209,6 @@ class NeuralNet(object):
             print('build neural network')
             print(x.shape)
         with tf.variable_scope("neuralnet", reuse=reuse):
-            if self.noise_augment: x = gaussian_noise_layer(x, std=0.1)
             x = self.fc_layer(x, 1024, 'fc_en_1')
             x = self.fc_layer(x, 512, 'fc_en_2')
             x = self.fc_layer(x, 256, 'fc_en_3')
@@ -391,8 +389,12 @@ class NeuralNet(object):
         start_lr = self.learning_rate
         global_step = tf.Variable(0, trainable=False)
         total_learning = self.epoch
-        lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
-        self.optim = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
+        lr = tf.train.exponential_decay(start_lr, global_step,
+                                        decay_steps=self.epoch//100,
+                                        decay_rate=.96,
+                                        staircase=True)
+        # self.optim = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
+        self.optim = tf.train.GradientDescentOptimizer(lr).minimize(self.loss)
         # self.optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
         # self.d_optim = tf.train.AdamOptimizer(d_lr, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
         #self.d_optim = tf.train.AdagradOptimizer(d_lr).minimize(self.loss, var_list=d_vars)
@@ -440,9 +442,12 @@ class NeuralNet(object):
             # get batch data
             for idx in range(start_batch_id, self.iteration):
                 #---------------------------------------------------
+                train_data = self.train_data
+                if self.noise_augment:
+                    train_data = gaussian_noise_layer(self.train_data, std=0.1)
                 train_feed_dict = {
-                    self.input : self.train_data,
-                    self.label : self.train_label
+                    self.input: train_data,
+                    self.label: self.train_label
                 }
                 _, merged_summary_str, loss, pred, accur = self.sess.run(\
                     [self.optim, self.merged_summary, self.loss, self.pred, self.accur], \
@@ -504,8 +509,11 @@ class NeuralNet(object):
         for epoch in range(start_epoch, self.epoch):
             for idx in range(start_batch_id, self.iteration):
                 # ---------------------------------------------------
+                train_data = self.train_data
+                if self.noise_augment:
+                    train_data = gaussian_noise_layer(self.train_data, std=0.05)
                 train_feed_dict = {
-                    self.input: self.train_data,
+                    self.input: train_data,
                     self.label: self.train_label
                 }
                 _, loss, pred, accur = self.sess.run( \

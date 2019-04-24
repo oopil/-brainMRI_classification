@@ -44,11 +44,11 @@ def parse_args() -> argparse:
     # neural_net ## simple basic attention self_attention attention_often
     # conv_neural_net ## simple, basic attention
     parser.add_argument('--neural_net', \
-                        default='attention', type=str)
+                        default='simple', type=str)
     parser.add_argument('--conv_neural_net', \
                         default='simple', type=str)
     parser.add_argument('--class_option', \
-                        default='CN vs AD', type=str)
+                        default='CN vs MCI', type=str)
     #PET    # class_option = 'PET pos vs neg'
     #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
@@ -59,7 +59,7 @@ def parse_args() -> argparse:
     parser.add_argument('--weight_stddev', \
                         default=0.05, type=float) #0.05 #0.0721
     parser.add_argument('--epoch', \
-                        default=7000, type=int)
+                        default=10000, type=int)
     parser.add_argument('--loss_function', \
                         default='normal', type=str) # normal / cross_entropy
     parser.add_argument('--sampling_option', \

@@ -14,7 +14,7 @@ def parse_args() -> argparse:
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', default=0, type=int)
     parser.add_argument('--excel_path', default='/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx', type=str)
-    parser.add_argument('--base_folder_path', default='/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0', type=str)
+    parser.add_argument('--base_folder_path', default='/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed', type=str)
     parser.add_argument('--result_file_name', default='/home/sp/PycharmProjects/brainMRI_classification/nn_result/chosun_MRI_excel_AD_nn_result', type=str)
     # 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'
     parser.add_argument('--excel_option', default='merge', type=str)
@@ -31,7 +31,7 @@ def parse_args() -> argparse:
     parser.add_argument('--log_dir', default='log', type=str)
     parser.add_argument('--checkpoint_dir', default='checkpoint', type=str)
 
-    parser.add_argument('--diag_type', default='new', type=str)
+    parser.add_argument('--diag_type', default='clinic', type=str)
     # diag_type = "PET"
     # diag_type = "new"
     # diag_type = "clinic"
@@ -47,7 +47,7 @@ def parse_args() -> argparse:
     parser.add_argument('--conv_neural_net', \
                         default='simple', type=str)
     parser.add_argument('--class_option', \
-                        default='mAD vs ADD', type=str)
+                        default='CN vs AD', type=str)
     #PET    # class_option = 'PET pos vs neg'
     #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
@@ -62,7 +62,7 @@ def parse_args() -> argparse:
     parser.add_argument('--loss_function', \
                         default='normal', type=str) # normal / cross_entropy
     parser.add_argument('--sampling_option', \
-                        default='RANDOM', type=str)
+                        default='None', type=str)
     parser.add_argument('--noise_augment', \
                         default=True, type=bool)
     # if i use this nosie augment, the desktop stop
@@ -79,9 +79,9 @@ def run():
         exit()
     # open session
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
-        # CNN_simple_train(sess, args)
+        CNN_simple_train(sess, args)
         # NN_simple_train(sess, args)
-        NN_cross_validation(sess, args)
+        # NN_cross_validation(sess, args)
         # NN_BayesOptimize(sess, args)
 
 def CNN_simple_train(sess, args):

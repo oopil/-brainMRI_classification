@@ -1,5 +1,4 @@
 import sys
-
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')
 # from NeuralNet.neuralnet_ops import *
@@ -204,9 +203,8 @@ class ConvNeuralNet:
         self.input_image_shape = check_image_shape(sample_image_path)
         print('input image shape : ',self.input_image_shape)
 
-    def augment_noise(self):
-        self.train_data, self.train_label = \
-            augment_noise(self.train_data, self.train_label, self.noise_augment)
+    def noise_addition(self, data):
+        return gaussian_noise_layer(data, std=0.01)
 
     ##################################################################################
     # validation
@@ -271,6 +269,7 @@ class ConvNeuralNet:
         for i in range(10):
             train_data, train_label = self.sess.run(self.next_element)
             print(train_label)
+
     def train(self):
         #--------------------------------------------------------------------------------------------------
         # initialize all variables

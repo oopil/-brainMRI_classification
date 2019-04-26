@@ -49,6 +49,8 @@ def get_patch_dataset(img_l, label_l, batch_size=1):
     print(type(img_l), np.shape(img_l))
     img_l1 = img_l[:,0]
     img_l2 = img_l[:,1]
+    print(img_l1)
+    print(img_l2)
     assert False
     # dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l))
     dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l))

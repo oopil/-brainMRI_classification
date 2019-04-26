@@ -122,6 +122,7 @@ class MRI_chosun_data():
     def merge_info_patch(self):
         '''
         merge the real data path and excel label information.
+        but i have to remove some rows that pipelines are not done completely.
         '''
         excel_np =  np.array(self.cnn_data)
         excel_id_col = list(excel_np[:,0])
@@ -133,16 +134,29 @@ class MRI_chosun_data():
             excel_index = excel_id_col.index(id)
             self.cnn_data[excel_index] = np.append(self.cnn_data[excel_index], input_path)
             self.cnn_data[excel_index] = np.append(self.cnn_data[excel_index], label_path)
-            # self.cnn_data[excel_index].append(input_path)
-            # self.cnn_data[excel_index].append(label_path)
-            # self.cnn_data[excel_index] = np.array(self.cnn_data[excel_index])
+            # print(self.cnn_data[excel_index])
 
+        # remove subjects which does not have final label input.
+        data_num = len(self.cnn_data)
+        print(data_num)
+        for index in range(len(self.cnn_data)):
+            i = data_num - index - 1
+            # print(self.cnn_data[i])
+            if len(self.cnn_data[i]) < 6:
+                print('this subject does not have input files : {}'.format(self.cnn_data[i][0]))
+                self.cnn_data = np.delete(self.cnn_data, i, 0)
+        data_num_after = len(self.cnn_data)
+        print('data count : {} -> {}'.format(data_num, data_num_after))
         # test printing
         # for i in range(10):
         #     print(self.cnn_data[i])
         self.cnn_data = np.array(self.cnn_data)
         print(self.cnn_data.shape)
         print(self.cnn_data[0].shape)
+
+        # for line in column(self.cnn_data, 5, 2):
+        #     print(line)
+        # assert False
         '''
             i can use age or education factors but i don't use it now.
         '''
@@ -522,7 +536,13 @@ def normalize_col(X_, axis=0):
     return (X_-np.amin(X_,axis=axis))/np.amax(X_, axis=axis)
 
 def column(matrix, i, num):
-    return [row[i:i+num] for row in matrix]
+    col = [row[i:i+num] for row in matrix]
+    for row in matrix:
+        if row[i:i+num] == []:
+            print('Here is the criminal')
+            print(row)
+            assert False
+    return col
 
 def NN_dataloader(diag_type, class_option, \
                   excel_path, excel_option, test_num, fold_num, is_split_by_num):
@@ -612,11 +632,15 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, \
     but now, just go ahead.
     '''
     loader.get_label_info_excel()
-    data, label_info = loader.merge_info_patch()
+    # for i in range(len(path_list)):
+    #     print(path_list[i])
+
+    data, label_info = loader.merge_info_patch() # here is a problem!
     # print(label_info)
+    # for i in range(len(data)): # there are two blanks....
+    #     print(data[i])
+        # print(label[i], data[i])
     data, label = loader.define_label_cnn(label_info, class_option)
-    for i in range(10):
-        print(label[i], data[i])
     if is_split_by_num:
         shuffle_data, shuffle_label = loader.shuffle_data(data, label)
         # test_num = 20

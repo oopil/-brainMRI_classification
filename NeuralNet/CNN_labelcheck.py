@@ -4,7 +4,6 @@ sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/sample_image')
 import numpy as np
 import SimpleITK as sitk
-from skimage import exposure
 
 def _read_py_function_1_patch(img_path, label_path, label):
     print("file path : {}" .format(img_path))

@@ -1,8 +1,76 @@
+import numpy as np
 import tensorflow as tf
 import SimpleITK as sitk
-from chosun_pipeline import *
-from data import *
+#######################################################################
+### for reading patched mri data
+#######################################################################
+def _read_py_function_1_patch(img_path, label_path, label):
+    '''
+    use only when we need to extract some patches.
+    '''
+    print("file path : {}" .format(img_path))
+    img_path_decoded = img_path.decode()
+    itk_file = sitk.ReadImage(img_path_decoded)
+    array = sitk.GetArrayFromImage(itk_file)
 
+    label_path_decoded = label_path.decode()
+    label_itk_file = sitk.ReadImage(img_path_decoded)
+    label_array = sitk.GetArrayFromImage(label_itk_file)
+
+    # find the patch position
+    patch_size = 48
+    hs = patch_size // 2
+    x,y,z = label_size_check(label_array, 17)
+    p1= array[x-hs:x+hs,y-hs:y+hs,z-hs:z+hs]
+    x,y,z = label_size_check(label_array, 53)
+    p2= array[x-hs:x+hs,y-hs:y+hs,z-hs:z+hs]
+
+    patch_array = np.concatenate((p1,p2),axis=0)
+    # extract patch and concatenate
+    print(patch_array.shape, type(patch_array))
+    array = np.expand_dims(array, 3)
+    return patch_array.astype(np.float32), label.astype(np.int32)
+
+def label_size_check(label_array, label_num):
+    '''
+    print the size of label square
+    :return: return the center position
+    '''
+    # print(label_array, label_num)
+    position_array = np.where(label_array == label_num)
+    # print(position_array)
+    # print(np.amax(position_array, axis=1))
+    max_pos = np.amax(position_array, axis=1)
+    min_pos = np.amin(position_array, axis=1)
+    print('label square size  {}'.format(max_pos - min_pos))
+    return (max_pos+min_pos)//2
+
+def get_patch_dataset(img_l, label_l, batch_size=1):
+    print(type(img_l), np.shape(img_l))
+    img_l1 = img_l[:,0]
+    img_l2 = img_l[:,1]
+    assert False
+    # dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l))
+    dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l))
+    dataset = dataset.map(\
+        lambda img_l1,img_l2,label_l: \
+        tuple(tf.py_func(_read_py_function_1_patch, [img_l1,img_l2,label_l], \
+        [tf.float32, tf.int32])))
+    # dataset = dataset.repeat()
+    # dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + 3 * batch_size))
+    dataset = dataset.shuffle(buffer_size=(len(img_l) * batch_size))
+    dataset = dataset.batch(batch_size)
+    print(dataset)
+
+    # handle = tf.placeholder(tf.string, shape=[])
+    iterator = dataset.make_initializable_iterator()
+    # iterator = tf.data.Iterator.from_string_handle(
+    #     handle, dataset.output_types, ([None, 212, 320, 240, 1], [None, 1]))  # image dimension[212, 320, 240]
+    next_element = iterator.get_next()
+    return next_element, iterator
+#######################################################################
+### for reading whole mri data
+#######################################################################
 def _read_py_function(img_path, label):
     img_path_decoded = img_path.decode() # what the fuck !!! careful about decoding
     itk_file = sitk.ReadImage(img_path_decoded)
@@ -12,11 +80,6 @@ def _read_py_function(img_path, label):
     # label = tf.img.decode_png(label_path)
     array = np.expand_dims(array, 3)
     return array.astype(np.float32), label.astype(np.int32)
-
-def test():
-    path = '/home/sp/Datasets/MRI_chosun/test_sample_2/aAD/T1sag/14092806/T1.nii.gz'
-    array, label = _read_py_function(path, 0)
-    print(array)
 
 def get_dataset(img_l, label_l, batch_size=1):
     # dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l))
@@ -44,6 +107,11 @@ def get_dataset(img_l, label_l, batch_size=1):
     # iterator = dataset.make_one_shot_iterator()
     # # print(img_stacked, label_stacked)
     # return next_element, iterator, handle
+
+def test():
+    path = '/home/sp/Datasets/MRI_chosun/test_sample_2/aAD/T1sag/14092806/T1.nii.gz'
+    array, label = _read_py_function(path, 0)
+    print(array)
 
 if __name__ == '__main__':
     # test()

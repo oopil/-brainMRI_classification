@@ -156,8 +156,6 @@ class MRI_chosun_data():
 
         choose only one line or merge all of them
         and then remove only zero column
-        :param option:
-        :return:
         '''
         print('squeeze the excel.')
         if not excel_option in self.excel_option:
@@ -357,14 +355,15 @@ class MRI_chosun_data():
         self.label_list = np.array(self.label_list)
 
         if is_print:
-            print(len(self.data),len(self.label_list))
+            print('data and label length : ', len(self.data), ' = ',len(self.label_list))
             print(type(self.data),type(self.label_list))
             # print(self.nn_data[0])
             print(self.label_list)
 
-        return self.data[:,-1], self.label_list
+        return column(self.data, 5, 2), self.label_list
 
     def shuffle_data(self, data, label):
+        print('shuffle the data and label - data length : ',len(data),' = ', len(label) )
         assert len(data)==len(label)
         random_list = [i for i in range(len(data))]
         '''
@@ -383,9 +382,6 @@ class MRI_chosun_data():
 
     def split_data_by_num(self, data, label, test_num):
         '''
-        :param data:
-        :param label:
-        :param test_num:
         :return:just one train and test set.
         '''
         label_set = list(set(label))
@@ -413,9 +409,6 @@ class MRI_chosun_data():
 
     def split_data_by_fold(self, data, label, fold_num):
         '''
-        :param data:
-        :param label:
-        :param fold_num:
         :return: return all possible train and test set according to the fold number.
         '''
 
@@ -622,8 +615,8 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, \
     data, label_info = loader.merge_info_patch()
     # print(label_info)
     data, label = loader.define_label_cnn(label_info, class_option)
-    # for i in range(10):
-    #     print(label[i], data[i])
+    for i in range(10):
+        print(label[i], data[i])
     if is_split_by_num:
         shuffle_data, shuffle_label = loader.shuffle_data(data, label)
         # test_num = 20
@@ -652,8 +645,8 @@ if __name__ == '__main__':
     # 'PET pos vs neg', 'NC vs MCI vs AD' 'NC vs mAD vs aAD vs ADD'
     # diag_type = "PET"
     # class_option = 'PET pos vs neg'
-    diag_type = "new"
-    class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
+    diag_type = "clinic"
+    class_option = 'CN vs AD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     # diag_type = "clinic"
     # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
     excel_option = 'merge'

@@ -20,7 +20,6 @@ def parse_args() -> argparse:
     parser.add_argument('--excel_option', default='merge', type=str)
     parser.add_argument('--is_split_by_num', default=False, type=bool)
     parser.add_argument('--investigate_validation', default=False, type=bool)
-
     parser.add_argument('--iter', default=1, type=int)
     parser.add_argument('--print_freq', default=100, type=int)
     parser.add_argument('--save_freq', default=200, type=int)
@@ -32,7 +31,7 @@ def parse_args() -> argparse:
     parser.add_argument('--log_dir', default='log', type=str)
     parser.add_argument('--checkpoint_dir', default='checkpoint', type=str)
 
-    parser.add_argument('--diag_type', default='clinic', type=str)
+    parser.add_argument('--diag_type', default='new', type=str)
     # diag_type = "PET"
     # diag_type = "new"
     # diag_type = "clinic"
@@ -48,7 +47,7 @@ def parse_args() -> argparse:
     parser.add_argument('--conv_neural_net', \
                         default='simple', type=str)
     parser.add_argument('--class_option', \
-                        default='CN vs MCI', type=str)
+                        default='mAD vs ADD', type=str)
     #PET    # class_option = 'PET pos vs neg'
     #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'

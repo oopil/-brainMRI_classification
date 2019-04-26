@@ -302,9 +302,9 @@ class NeuralNet(object):
         self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
         self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
         self.input_feature_num = len(self.train_data[0])
-    # def augment_noise(self):
-    #     self.train_data, self.train_label = \
-    #         augment_noise(self.train_data, self.train_label, self.noise_augment)
+
+    def noise_addition(self, data):
+        return gaussian_noise_layer(data, std=0.01)
 
     ##################################################################################
     # validation
@@ -442,9 +442,7 @@ class NeuralNet(object):
             # get batch data
             for idx in range(start_batch_id, self.iteration):
                 #---------------------------------------------------
-                train_data = self.train_data
-                if self.noise_augment:
-                    train_data = gaussian_noise_layer(self.train_data, std=0.1)
+                train_data = self.noise_addition(self.train_data)
                 train_feed_dict = {
                     self.input: train_data,
                     self.label: self.train_label
@@ -509,9 +507,7 @@ class NeuralNet(object):
         for epoch in range(start_epoch, self.epoch):
             for idx in range(start_batch_id, self.iteration):
                 # ---------------------------------------------------
-                train_data = self.train_data
-                if self.noise_augment:
-                    train_data = gaussian_noise_layer(self.train_data, std=0.05)
+                train_data = self.noise_addition(self.train_data)
                 train_feed_dict = {
                     self.input: train_data,
                     self.label: self.train_label

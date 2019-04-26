@@ -498,25 +498,6 @@ def normalize_col(X_, axis=0):
     assert np.all(np.amax(X_,axis=axis) != 0)
     return (X_-np.amin(X_,axis=axis))/np.amax(X_, axis=axis)
 
-def augment_noise(data, label, times=1):
-    print('start data augmentation... add noise {} times'.format(times))
-    # print(data.shape)
-    data = np.array(data)
-    data_orig = np.copy(data)
-    data_shape, label_shape = data.shape, label.shape
-    mu, sigma = 0, 0.01
-    for i in range(times):
-        noise = np.random.normal(mu, sigma, data_shape)
-        data_noised = data_orig + noise
-        # print(noise.shape)
-        # print(noise)
-        data = np.concatenate((data, data_noised), axis=0)
-
-    label = np.tile(label, times+1)
-    print(data_shape , '=>', data.shape)
-    print(label_shape, '=>', label.shape)
-    return data, label
-
 def NN_dataloader(diag_type, class_option, \
                   excel_path, excel_option, test_num, fold_num, is_split_by_num):
     '''

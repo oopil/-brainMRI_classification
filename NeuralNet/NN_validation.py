@@ -42,6 +42,7 @@ def try_all_fold(self)->list:
     # result_list.append('[[ avg top train : {}, avg top test : {} ]]\n{}\n{}' \
     #                    .format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list), top_train_accur_list,
     #                            top_valid_accur_list))
+
     ##########################################################################
     # Random sampling
     ##########################################################################

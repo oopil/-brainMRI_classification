@@ -1,3 +1,4 @@
+import time
 import sys
 import tensorflow as tf
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')

@@ -1,4 +1,6 @@
+import os
 import sys
+import subprocess
 import tensorflow as tf
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')

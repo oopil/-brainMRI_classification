@@ -1,5 +1,5 @@
 from sklearn.utils import shuffle
-from class_metabot import *
+from chosun_ad_bot import *
 from random import shuffle
 import openpyxl
 import numpy as np
@@ -87,10 +87,10 @@ class MRI_chosun_data():
     def extr_input_path_list(self, base_folder_path):
         folder_name = ['aAD', 'ADD', 'mAD', 'NC']
         print('start to extract meta data from dataset folder')
-        bot = MetaBot(base_folder_path)
+        bot = ADBrainMRI(base_folder_path)
         self.input_image_path_list = []
         for class_name in folder_name:
-            self.input_image_path_list = self.input_image_path_list + bot.MRI_chosun(class_name)
+            self.input_image_path_list = self.input_image_path_list + bot.MRI_chosun_patch_cnn(class_name)
         print(folder_name, len(self.input_image_path_list), self.input_image_path_list)
         del bot
         return self.input_image_path_list
@@ -118,6 +118,36 @@ class MRI_chosun_data():
             i can use age or education factors but i don't use it now.
         '''
         return self.cnn_data[:,-1], self.cnn_data[:,1:4]
+
+    def merge_info_patch(self):
+        '''
+        merge the real data path and excel label information.
+        '''
+        excel_np =  np.array(self.cnn_data)
+        excel_id_col = list(excel_np[:,0])
+        for i, path in enumerate(self.input_image_path_list):
+            '''
+                self.input_image_path_list is aligned with the order [aAD, ADD, mAD NC]
+            '''
+            id ,input_path, label_path = path[1:4]
+            excel_index = excel_id_col.index(id)
+            self.cnn_data[excel_index] = np.append(self.cnn_data[excel_index], input_path)
+            self.cnn_data[excel_index] = np.append(self.cnn_data[excel_index], label_path)
+            # self.cnn_data[excel_index].append(input_path)
+            # self.cnn_data[excel_index].append(label_path)
+            # self.cnn_data[excel_index] = np.array(self.cnn_data[excel_index])
+
+        # test printing
+        # for i in range(10):
+        #     print(self.cnn_data[i])
+        self.cnn_data = np.array(self.cnn_data)
+        print(self.cnn_data.shape)
+        print(self.cnn_data[0].shape)
+        '''
+            i can use age or education factors but i don't use it now.
+        '''
+        # print(column(self.cnn_data, 5, 2))
+        return column(self.cnn_data, 5, 2), column(self.cnn_data, 1, 3)
 
     def squeeze_excel(self, excel_option):
         '''
@@ -498,6 +528,9 @@ def normalize_col(X_, axis=0):
     assert np.all(np.amax(X_,axis=axis) != 0)
     return (X_-np.amin(X_,axis=axis))/np.amax(X_, axis=axis)
 
+def column(matrix, i, num):
+    return [row[i:i+num] for row in matrix]
+
 def NN_dataloader(diag_type, class_option, \
                   excel_path, excel_option, test_num, fold_num, is_split_by_num):
     '''
@@ -566,12 +599,13 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, \
     3. merge excel and path information
     4. make label list
     5. split train and test dataset
+    6. oversampling
+    7. balance test data
 
     # handle with tensorflow dataset api
-    5. oversampling
-    6. shuffle
-    7. normalization
-    8. make batch
+    1. shuffle
+    2. normalization
+    3. make batch
     :return: train and test data and lable
     '''
     loader = MRI_chosun_data()
@@ -585,7 +619,7 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, \
     but now, just go ahead.
     '''
     loader.get_label_info_excel()
-    data, label_info = loader.merge_info()
+    data, label_info = loader.merge_info_patch()
     # print(label_info)
     data, label = loader.define_label_cnn(label_info, class_option)
     # for i in range(10):
@@ -607,7 +641,11 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, \
         return loader.split_data_by_fold(shuffle_data, shuffle_label, fold_num)
 
 if __name__ == '__main__':
-    base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
+    # a = np.array([[1,2],[3,4]])
+    # print(a[:,0])
+    # assert False
+
+    base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed'# desktop setting
     # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
     excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
     # "clinic" or "new" or "PET"

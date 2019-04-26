@@ -193,15 +193,23 @@ class ConvNeuralNet:
         self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
         self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
 
-        self.check_image_shape()
+        self.check_patch_shape(patch_size=48)
 
         # if self.noise_augment:
         #     self.augment_noise()
 
     def check_image_shape(self):
         sample_image_path = self.train_data[0]
+        print('checking image shape... : ', sample_image_path)
         self.input_image_shape = check_image_shape(sample_image_path)
         print('input image shape : ',self.input_image_shape)
+
+    def check_patch_shape(self, patch_size):
+        sample_image_path1, sample_image_path2 = self.train_data[0]
+        print('checking patch image shape... : ', sample_image_path1)
+        # self.input_image_shape = check_image_shape(sample_image_path1)
+        self.input_image_shape = (patch_size,patch_size,patch_size)
+        print('input patch shape : ',self.input_image_shape)
 
     def noise_addition(self, data):
         return gaussian_noise_layer(data, std=0.01)
@@ -264,7 +272,7 @@ class ConvNeuralNet:
     # Train
     ##################################################################################
     def test_data_read(self):
-        self.next_element, self.iterator = get_dataset(self.train_data, self.train_label, self.batch_size)
+        self.next_element, self.iterator = get_patch_dataset(self.train_data, self.train_label, self.batch_size)
         self.sess.run(self.iterator.initializer)
         for i in range(10):
             train_data, train_label = self.sess.run(self.next_element)
@@ -302,7 +310,7 @@ class ConvNeuralNet:
         self.valid_accur = []
         self.train_accur = []
         # set training data
-        self.next_element, self.iterator = get_dataset(self.train_data, self.train_label, self.batch_size)
+        self.next_element, self.iterator = get_patch_dataset(self.train_data, self.train_label, self.batch_size)
         self.sess.run(self.iterator.initializer)
         for epoch in range(start_epoch, self.epoch):
             # get batch data

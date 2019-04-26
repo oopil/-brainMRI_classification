@@ -47,8 +47,8 @@ def label_size_check(label_array, label_num):
 
 def get_patch_dataset(img_l, label_l, batch_size=1):
     print(type(img_l), np.shape(img_l))
-    img_l1 = img_l[:,0]
-    img_l2 = img_l[:,1]
+    img_l1 = column(img_l,0,1)
+    img_l2 = column(img_l,1,1)
     print(img_l1)
     print(img_l2)
     assert False
@@ -109,6 +109,12 @@ def get_dataset(img_l, label_l, batch_size=1):
     # iterator = dataset.make_one_shot_iterator()
     # # print(img_stacked, label_stacked)
     # return next_element, iterator, handle
+
+#######################################################################
+### Rest of them
+#######################################################################
+def column(matrix, i, num):
+    return [row[i:i+num] for row in matrix]
 
 def test():
     path = '/home/sp/Datasets/MRI_chosun/test_sample_2/aAD/T1sag/14092806/T1.nii.gz'

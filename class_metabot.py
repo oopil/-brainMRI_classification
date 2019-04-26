@@ -1,4 +1,6 @@
-import os, subprocess, time
+import os
+import time
+import subprocess
 
 class Printer():
 	def __init__(self):
@@ -20,7 +22,7 @@ class Printer():
 			
 #%%
 def print_by_i(string,i):
-	 #assert string != None
+	#assert string != None
 	if string == None:
 		print('the string is NoneType in print_by_i')
 		return
@@ -49,7 +51,7 @@ class System():
 		print(self.command)
 		program = self.command.split()[0]
 		process = subprocess.Popen(self.command.split())
-		time.sleep(0.1)
+		time.sleep(0.01)
 		process.wait()
 		print("{} process ends".format(program))
 
@@ -84,22 +86,46 @@ class Dcm2nii():
 class FileRemover():
 	def __init__(self):
 		pass
-	
+
 	def set_fld_list(self, fld_list):
 		self.fld_list = fld_list
-	
+
 	def set_rm_list(self, rm_list):
 		self.rm_list = rm_list
-	
+
 	def remove_all(self, fld_path, sub_str):
 		sys = System('rm', fld_path+'/*'+sub_str+'*')
 		sys.run()
-	
+
 	def remove_options(self):
 		for fld in self.fld_list:
 			for option in self.rm_list:
 				self.remove_all(fld, option)
-		
+#%%
+class MakeDirectory:
+	def __init__(self):
+		pass
+
+	def mkdir(self, path):
+		sys = System('mkdir', path)
+		sys.run()
+
+	def mkdir_sub(self, path):
+		sys = System('mkdir', path)
+		sys.sub_run()
+#%%
+class FileCopy:
+	def __init__(self):
+		pass
+
+	def copy_file(self, path):
+		sys = System('cp', path)
+		sys.sub_run()
+
+	def copy_dir(self, path):
+		sys=System('cp -r', path)
+		sys.sub_run()
+
 #%%
 class MetaBot():
 	def __init__(self, path):
@@ -108,7 +134,12 @@ class MetaBot():
 		self.image_list = []
 		self.img_l_mv = []
 		self.type = ['T1_DSPGR','T2','DTI','fMRI']
-	
+
+		self.remover = FileRemover()
+		self.Copy = FileCopy()
+		self.Dir = MakeDirectory()
+
+
 	def get_fld_by_type(self, fld_type):
 		for fld_name in self.type:
 			if fld_type in fld_name:
@@ -119,56 +150,50 @@ class MetaBot():
 	def set_base_fld(self, path):
 		self.base_path = path
 
+	def get_fld_list(self):
+		return self.fld_list
 		#file all fld path that contain dicom file
-	def find_all_fld(self, path):
+
+	def get_all_image_count(self):
+		return self.all_image_count
+
+	def get_file_list(self, directory):
+		try:
+			image_list = os.listdir(directory)
+		except FileNotFoundError as e:
+			print(e)
+			image_list = []
+		return image_list
+#%%
+	def find_all_fld_MTLE(self, path):
 		file_list = self.get_file_list(path)
 		for file_name in file_list:
-			# check the dicom file exist in fld
-			# whether the 1st letter is I
-#			prs_l = path.split('/')
-#			fld_name = prs_l[-1]
 			new_path = self.join_path(path,file_name)
-			#if self.is_1st_letter_sm(self.letter_option, file_name) and self.is_dir(new_path) == False:
 			if 'I00' in file_name:
 				self.fld_list.append(path)
 				break
-	
+
 			if self.is_dir(new_path):
-				self.find_all_fld(new_path)
-	
-	def get_fld_list(self):
-		return self.fld_list
-	
-	def MRI_chosun(self, class_name)->list:
-		class_path = self.join_path(self.base_path, class_name)
-		class_path = self.join_path(class_path, 'T1sag')
-		subj_name_list = self.get_file_list(class_path)
-		# print(subj_name_list)
+				self.find_all_fld_MTLE(new_path)
 
-		meta_list = []
-		for subj in sorted(subj_name_list):
-			subj_path = self.join_path(class_path, subj)
-			if not self.is_dir(subj_path):
-				continue
-			T1_path = self.join_path(subj_path, 'T1.nii.gz')
-			if not self.is_exist(T1_path):
-				print('T1 image does not exists.', T1_path, subj)
-				assert False
-			folder_path = class_path
-			subj_name = subj
-			input = T1_path
+#%%
+	def make_directory(self, dir_path):
+		self.Dir.mkdir(dir_path)
 
-			new_line = [folder_path, subj_name, input]
-			meta_list.append(new_line)
-			# print(new_line)
+	def make_directory_sub(self, dir_path):
+		self.Dir.mkdir_sub(dir_path)
+# %%
+	def copy_file(self, path1, path2):
+		self.Copy.copy_file(path1+' '+path2)
 
-		return meta_list
-
-	def rm_all_sm_file(self, fld_list):
+	def copy_dir(self, path1, path2):
+		self.Copy.copy_dir(path1+' '+path2)
+#%%
+	def remove_same_file(self, fld_list):
 		for fld in fld_list:
-			self.rm_sm_file_in_fld(fld)
+			self.remove_same_file_in_folder(fld)
 
-	def rm_sm_file_in_fld(self, fld_path):
+	def remove_same_file_in_folder(self, fld_path):
 		tmp_list = self.get_file_list(fld_path)
 		new = ''
 		old = ''
@@ -178,15 +203,14 @@ class MetaBot():
 			self.rm_sm_file(old, new)
 
 	def rm_sm_file(self, f1, f2):
-		remover = FileRemover()
 		if self.gz_clone(f1,f2) or self.f_clone(f1,f2):
 			print('there are files with same name and diff extensions')
-			remover.remove(f2)
+			self.remover.remove(f2)
 		elif self.gz_clone(f2,f1) or self.f_clone(f2,f1):
 			print('there are files with same name and diff extensions')
-			remover.remove(f1)
-		del remover
-	
+			self.remover.remove(f1)
+		del self.remover
+#%%
 	def f_clone(self, f1, f2):
 		if 'f'+f1 ==f2: return True
 		else: return False
@@ -202,17 +226,9 @@ class MetaBot():
 				files.append(elem)
 		return files
 
-	def is_exist(self, path):
-		return os.path.exists(path)
-
-	def is_contain_substr(self, name, substr):
-		if substr in name:
-			return True
-		return False
-
 	def join_path(self, path, name):
 		return path + '/' + name
-	
+
 	def find_no_DTI_fld(self, dti_img_l):
 		find_list = []
 		for img_set in dti_img_l:
@@ -221,6 +237,14 @@ class MetaBot():
 					find_list.append(img_set)
 					break
 		return find_list
+#%%
+	def is_exist(self, path):
+		return os.path.exists(path)
+
+	def is_contain_substr(self, name, substr):
+		if substr in name:
+			return True
+		return False
 
 	def is_1st_letter_sm(self, letter, name):
 		if name[0] == str(letter) and len(name) > 1: return True
@@ -231,30 +255,19 @@ class MetaBot():
 			if option in name:
 				return True
 		return False
-	
+
 	def is_dir(self, path):
 		return os.path.isdir(path)
-	
-	def get_all_image_count(self):
-		return self.all_image_count
 
-	def get_file_list(self, directory):
-		try:
-			image_list = os.listdir(directory)
-		except FileNotFoundError as e:
-			print(e)
-			image_list = []
-		return image_list
-		
 	def is_image(self, row):
 		if row[2] == 'O':
 			return True
 		else:
 			self.no_image_people.append(row[1])
 			return False
-
+#%%
 	def option(self, name):
-		 # we use the files does not start with c or co
+		# we use the files does not start with c or co
 		if 'brain' in name:
 			return False
 

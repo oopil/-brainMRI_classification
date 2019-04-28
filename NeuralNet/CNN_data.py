@@ -4,17 +4,19 @@ import SimpleITK as sitk
 #######################################################################
 ### for reading patched mri data
 #######################################################################
-def _read_py_function_1_patch(img_path, label_path, label):
+def _read_py_function_1_patch(path, label):
     '''
     use only when we need to extract some patches.
     '''
-    print("file path : {}" .format(img_path))
-    img_path_decoded = img_path.decode()
+    print("file path : {}" .format(path))
+    path_decoded = path.decode()
+    img_path_decoded, label_path_decoded = path_decoded.split(',')
+    # img_path_decoded = img_path.decode()
     itk_file = sitk.ReadImage(img_path_decoded)
     array = sitk.GetArrayFromImage(itk_file)
 
-    label_path_decoded = label_path.decode()
-    label_itk_file = sitk.ReadImage(img_path_decoded)
+    # label_path_decoded = label_path.decode()
+    label_itk_file = sitk.ReadImage(label_path_decoded)
     label_array = sitk.GetArrayFromImage(label_itk_file)
 
     # find the patch position
@@ -47,19 +49,11 @@ def label_size_check(label_array, label_num):
 
 def get_patch_dataset(img_l, label_l, batch_size=1):
     print(type(img_l), np.shape(img_l))
-    img_l1 = column_to_list(img_l,0,1)
-    img_l2 = column_to_list(img_l,1,1)
-    print(img_l1)
-    print(img_l2)
     # for line in img_l:
     #     print(line)
     # assert False
-    # dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l))
-    dataset = tf.data.Dataset.from_tensor_slices((img_l1,img_l2,label_l))
-    dataset = dataset.map(\
-        lambda img_l1,img_l2,label_l: \
-        tuple(tf.py_func(_read_py_function_1_patch, [img_l1,img_l2,label_l], \
-        [tf.float32, tf.int32])))
+    dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l))
+    dataset = dataset.map(lambda img_l, label_l: tuple(tf.py_func(_read_py_function_1_patch, [img_l, label_l], [tf.float32, tf.int32])))
     # dataset = dataset.repeat()
     # dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + 3 * batch_size))
     dataset = dataset.shuffle(buffer_size=(len(img_l) * batch_size))

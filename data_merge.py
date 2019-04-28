@@ -101,6 +101,7 @@ class MRI_chosun_data():
         '''
         excel_np =  np.array(self.cnn_data)
         excel_id_col = list(excel_np[:,0])
+        my_array = []
         for i, path in enumerate(self.input_image_path_list):
             '''
                 self.input_image_path_list is aligned with the order [aAD, ADD, mAD NC]
@@ -108,60 +109,14 @@ class MRI_chosun_data():
             id ,input_path = path[1], path[2]
             excel_index = excel_id_col.index(id)
             self.cnn_data[excel_index].append(input_path)
+            my_array.append(self.cnn_data[excel_index])
 
-        # test printing
-        # for i in range(10):
-        #     print(self.cnn_data[i])
-
-        self.cnn_data = np.array(self.cnn_data)
+        self.cnn_data = np.array(my_array)
+        print(self.cnn_data.shape)
         '''
             i can use age or education factors but i don't use it now.
         '''
         return self.cnn_data[:,-1], self.cnn_data[:,1:4]
-
-    def merge_info_patch(self):
-        '''
-        merge the real data path and excel label information.
-        but i have to remove some rows that pipelines are not done completely.
-        '''
-        excel_np =  np.array(self.cnn_data)
-        excel_id_col = list(excel_np[:,0])
-        for i, path in enumerate(self.input_image_path_list):
-            '''
-                self.input_image_path_list is aligned with the order [aAD, ADD, mAD NC]
-            '''
-            id ,input_path, label_path = path[1:4]
-            excel_index = excel_id_col.index(id)
-            self.cnn_data[excel_index] = np.append(self.cnn_data[excel_index], input_path)
-            self.cnn_data[excel_index] = np.append(self.cnn_data[excel_index], label_path)
-            # print(self.cnn_data[excel_index])
-
-        # remove subjects which does not have final label input.
-        data_num = len(self.cnn_data)
-        print(data_num)
-        for index in range(len(self.cnn_data)):
-            i = data_num - index - 1
-            # print(self.cnn_data[i])
-            if len(self.cnn_data[i]) < 6:
-                print('this subject does not have input files : {}'.format(self.cnn_data[i][0]))
-                self.cnn_data = np.delete(self.cnn_data, i, 0)
-        data_num_after = len(self.cnn_data)
-        print('data count : {} -> {}'.format(data_num, data_num_after))
-        # test printing
-        # for i in range(10):
-        #     print(self.cnn_data[i])
-        self.cnn_data = np.array(self.cnn_data)
-        print(self.cnn_data.shape)
-        print(self.cnn_data[0].shape)
-
-        # for line in column(self.cnn_data, 5, 2):
-        #     print(line)
-        # assert False
-        '''
-            i can use age or education factors but i don't use it now.
-        '''
-        # print(column(self.cnn_data, 5, 2))
-        return column(self.cnn_data, 5, 2), column(self.cnn_data, 1, 3)
 
     def squeeze_excel(self, excel_option):
         '''
@@ -374,7 +329,7 @@ class MRI_chosun_data():
             # print(self.nn_data[0])
             print(self.label_list)
 
-        return column(self.data, 5, 2), self.label_list
+        return self.data[:,-1], self.label_list
 
     def shuffle_data(self, data, label):
         print('shuffle the data and label - data length : ',len(data),' = ', len(label) )
@@ -635,7 +590,7 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, \
     # for i in range(len(path_list)):
     #     print(path_list[i])
 
-    data, label_info = loader.merge_info_patch() # here is a problem!
+    data, label_info = loader.merge_info() # here is a problem!
     # print(label_info)
     # for i in range(len(data)): # there are two blanks....
     #     print(data[i])

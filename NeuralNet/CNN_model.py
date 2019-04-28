@@ -205,7 +205,8 @@ class ConvNeuralNet:
         print('input image shape : ',self.input_image_shape)
 
     def check_patch_shape(self, patch_size):
-        sample_image_path1, sample_image_path2 = self.train_data[0]
+        sample_image_path1, sample_image_path2 = self.train_data[0].split(',')
+        # sample_image_path1, sample_image_path2 = self.train_data[0]
         print('checking patch image shape... : ', sample_image_path1)
         # self.input_image_shape = check_image_shape(sample_image_path1)
         self.input_image_shape = (patch_size,patch_size,patch_size)

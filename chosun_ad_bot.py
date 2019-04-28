@@ -59,9 +59,9 @@ class ADBrainMRI(MetaBot):
                 continue
             folder_path = class_path
             subj_name = subj
-            input_path = T1_path
+            input_path = T1_path + ','+label_path
 
-            new_line = [folder_path, subj_name, input_path, label_path]
+            new_line = [folder_path, subj_name, input_path]
             meta_list.append(new_line)
             # print(new_line)
         print('Subject which is not included : {}'.format(excluded_list))

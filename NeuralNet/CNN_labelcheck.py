@@ -5,14 +5,19 @@ sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/sample_image')
 import numpy as np
 import SimpleITK as sitk
 
-def _read_py_function_1_patch(img_path, label_path, label):
-    print("file path : {}" .format(img_path))
-    img_path_decoded = img_path.decode() # what the fuck !!! careful about decoding
+def _read_py_function_1_patch(path, label):
+    '''
+    use only when we need to extract some patches.
+    '''
+    print("file path : {}" .format(path))
+    path_decoded = path.decode()
+    img_path_decoded, label_path_decoded = path_decoded.split(',')
+    # img_path_decoded = img_path.decode()
     itk_file = sitk.ReadImage(img_path_decoded)
     array = sitk.GetArrayFromImage(itk_file)
 
-    label_path_decoded = label_path.decode() # what the fuck !!! careful about decoding
-    label_itk_file = sitk.ReadImage(img_path_decoded)
+    # label_path_decoded = label_path.decode()
+    label_itk_file = sitk.ReadImage(label_path_decoded)
     label_array = sitk.GetArrayFromImage(label_itk_file)
 
     # find the patch position

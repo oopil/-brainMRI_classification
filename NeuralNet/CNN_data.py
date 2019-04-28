@@ -8,7 +8,8 @@ def _read_py_function_1_patch(path, label):
     '''
     use only when we need to extract some patches.
     '''
-    print("file path : {}" .format(path))
+    isp = False
+    if isp:print("file path : {}" .format(path))
     path_decoded = path.decode()
     img_path_decoded, label_path_decoded = path_decoded.split(',')
     # img_path_decoded = img_path.decode()
@@ -22,18 +23,18 @@ def _read_py_function_1_patch(path, label):
     # find the patch position
     patch_size = 48
     hs = patch_size // 2
-    x,y,z = label_size_check(label_array, 17)
-    p1= array[x-hs:x+hs,y-hs:y+hs,z-hs:z+hs]
-    x,y,z = label_size_check(label_array, 53)
-    p2= array[x-hs:x+hs,y-hs:y+hs,z-hs:z+hs]
-
-    patch_array = np.concatenate((p1,p2),axis=0)
+    x1,y1,z1 = label_size_check(label_array, 17, isp)
+    x2,y2,z2 = label_size_check(label_array, 53, isp)
+    # p1= array[x1-hs:x1+hs,y1-hs:y1+hs,z1-hs:z1+hs]
+    # p2= array[x2-hs:x2+hs,y2-hs:y2+hs,z2-hs:z2+hs]
+    patch_array = np.concatenate((array[x1-hs:x1+hs,y1-hs:y1+hs,z1-hs:z1+hs],\
+                                  array[x2-hs:x2+hs,y2-hs:y2+hs,z2-hs:z2+hs]),axis=0)
     # extract patch and concatenate
-    print(patch_array.shape, type(patch_array))
+    if isp: print(patch_array.shape, type(patch_array))
     array = np.expand_dims(array, 3)
     return patch_array.astype(np.float32), label.astype(np.int32)
 
-def label_size_check(label_array, label_num):
+def label_size_check(label_array, label_num, isp):
     '''
     print the size of label square
     :return: return the center position
@@ -44,7 +45,7 @@ def label_size_check(label_array, label_num):
     # print(np.amax(position_array, axis=1))
     max_pos = np.amax(position_array, axis=1)
     min_pos = np.amin(position_array, axis=1)
-    print('label square size  {}'.format(max_pos - min_pos))
+    if isp: print('label square size  {}'.format(max_pos - min_pos))
     return (max_pos+min_pos)//2
 
 def get_patch_dataset(img_l, label_l, batch_size=1):

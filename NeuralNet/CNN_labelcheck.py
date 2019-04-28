@@ -9,7 +9,8 @@ def _read_py_function_1_patch(path, label):
     '''
     use only when we need to extract some patches.
     '''
-    print("file path : {}" .format(path))
+    isp = False
+    if isp:print("file path : {}" .format(path))
     path_decoded = path.decode()
     img_path_decoded, label_path_decoded = path_decoded.split(',')
     # img_path_decoded = img_path.decode()
@@ -23,16 +24,30 @@ def _read_py_function_1_patch(path, label):
     # find the patch position
     patch_size = 48
     hs = patch_size // 2
-    x,y,z = label_size_check(label_array, 17)
-    p1= array[x-hs:x+hs,y-hs:y+hs,z-hs:z+hs]
-    x,y,z = label_size_check(label_array, 53)
-    p2= array[x-hs:x+hs,y-hs:y+hs,z-hs:z+hs]
-
-    patch_array = np.concatenate((p1,p2),axis=0)
+    x1,y1,z1 = label_size_check(label_array, 17, isp)
+    x2,y2,z2 = label_size_check(label_array, 53, isp)
+    # p1= array[x1-hs:x1+hs,y1-hs:y1+hs,z1-hs:z1+hs]
+    # p2= array[x2-hs:x2+hs,y2-hs:y2+hs,z2-hs:z2+hs]
+    patch_array = np.concatenate((array[x1-hs:x1+hs,y1-hs:y1+hs,z1-hs:z1+hs],\
+                                  array[x2-hs:x2+hs,y2-hs:y2+hs,z2-hs:z2+hs]),axis=0)
     # extract patch and concatenate
-    print(patch_array.shape, type(patch_array))
+    if isp: print(patch_array.shape, type(patch_array))
     array = np.expand_dims(array, 3)
     return patch_array.astype(np.float32), label.astype(np.int32)
+
+def label_size_check(label_array, label_num, isp):
+    '''
+    print the size of label square
+    :return: return the center position
+    '''
+    # print(label_array, label_num)
+    position_array = np.where(label_array == label_num)
+    # print(position_array)
+    # print(np.amax(position_array, axis=1))
+    max_pos = np.amax(position_array, axis=1)
+    min_pos = np.amin(position_array, axis=1)
+    if isp: print('label square size  {}'.format(max_pos - min_pos))
+    return (max_pos+min_pos)//2
 
 def read_MRI(img_path, label):
     print("file path : {}" .format(img_path))
@@ -53,20 +68,6 @@ def count_label_num(label_array):
     label_list = list(set(label_list))
     print('Total label number : {}'.format(len(label_list)))
     return label_list
-
-def label_size_check(label_array, label_num):
-    '''
-    print the size of label square
-    :return: return the center position
-    '''
-    # print(label_array, label_num)
-    position_array = np.where(label_array == label_num)
-    # print(position_array)
-    # print(np.amax(position_array, axis=1))
-    max_pos = np.amax(position_array, axis=1)
-    min_pos = np.amin(position_array, axis=1)
-    print('label square size  {}'.format(max_pos - min_pos))
-    return (max_pos+min_pos)//2
 
 def draw_patch_box(space, center, size, label):
     x,y,z = center
@@ -101,7 +102,7 @@ def check_mri_label():
     file_name_str = 'T1Label.nii.gz  aparc.DKTatlas+aseg.nii  aseg.auto.nii aparc+aseg.nii  aparc.a2009s+aseg.nii'
     file_name = [ e for e in file_name_str.split(' ') if e != '']
     print('label file : ',file_name)
-
+    isp = True
     orig_file = file_name[0]
     label = 0 # ADD
     orig_file_path = os.path.join(sample_dir_path, orig_file)
@@ -137,9 +138,9 @@ def check_mri_label():
     draw_array = empty_space
     label_color = 1 # red
     patch_size = 48
-    center_pos = label_size_check(new_array, 17)
+    center_pos = label_size_check(new_array, 17, isp)
     draw_array = draw_patch_box(draw_array, center_pos, patch_size, label=label_color)
-    center_pos = label_size_check(new_array, 53)
+    center_pos = label_size_check(new_array, 53, isp)
     draw_array = draw_patch_box(draw_array, center_pos, patch_size, label=label_color)
     # label_size_check(new_array, 18)
     # label_size_check(new_array, 54)

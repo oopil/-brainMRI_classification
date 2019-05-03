@@ -52,9 +52,11 @@ class MRI_chosun_data():
             'PET pos vs neg': ['positive', 'negative']
         }
 #%%
+
     def set_diagnosis_type(self, type):
         self.diag_type = type
 #%%
+
     def read_excel_data(self, excel_path):
         xl_file_name = excel_path
         xl_password = '!adai2018@#'

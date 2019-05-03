@@ -122,7 +122,7 @@ class MRI_chosun_data():
 
     def squeeze_excel(self, excel_option):
         '''
-        because there are 3 line for each patient basically,
+        because there are 3 lines for each patient basically,
         we have to choose how to handle it.
 
         choose only one line or merge all of them

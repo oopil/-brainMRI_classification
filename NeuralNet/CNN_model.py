@@ -161,17 +161,27 @@ class ConvNeuralNet:
 
             return x
 
-    def neural_net_basic(self, x, is_training=True, reuse=False):
+    def cnn_simple(self, x, is_training=True, reuse=False):
         is_print = self.is_print
         if is_print:
             print('build neural network')
             print('input shape : {}'.format(x.shape))
 
         with tf.variable_scope("cnn", reuse=reuse):
-            # x = fully_connected(x, self.class_num, use_bias=True, scope='fc2')
-            # x = lrelu(x, 0.1)
+            ch = 128
+            x = lrelu(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer1'))
+            # h0 is (128 x 128 x self.df_dim)
+            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer2')))
+            # h1 is (64 x 64 x self.df_dim*2)
+            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer3')))
+            # h2 is (32x 32 x self.df_dim*4)
+            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer4')))
+
+        with tf.variable_scope("fcn", reuse=reuse):
+            x = flatten(x)
             x = self.fc_layer(x, 512, 'fc1')
             x = self.fc_layer(x, self.class_num, 'fc2')
+
             return x
 
     ##################################################################################

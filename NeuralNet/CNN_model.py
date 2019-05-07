@@ -146,13 +146,13 @@ class ConvNeuralNet:
 
         with tf.variable_scope("cnn", reuse=reuse):
             ch = 128
-            x = lrelu(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer1'))
+            x = lrelu(conv3d(x, ch, ks=4, s=(2, 2, 2), name='1'))
             # h0 is (128 x 128 x self.df_dim)
-            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer2')))
+            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='2')))
             # h1 is (64 x 64 x self.df_dim*2)
-            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer3')))
+            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='3')))
             # h2 is (32x 32 x self.df_dim*4)
-            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer4')))
+            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='4')))
 
         with tf.variable_scope("fcn", reuse=reuse):
             x = flatten(x)
@@ -161,7 +161,7 @@ class ConvNeuralNet:
 
             return x
 
-    def cnn_simple(self, x, is_training=True, reuse=False):
+    def cnn_siamese(self, x, is_training=True, reuse=False):
         is_print = self.is_print
         if is_print:
             print('build neural network')
@@ -283,14 +283,14 @@ class ConvNeuralNet:
     # Train
     ##################################################################################
     def test_data_read(self):
+        print("test data reading ... not training ...")
         self.next_element, self.iterator = get_patch_dataset(self.train_data, self.train_label, self.batch_size)
         self.sess.run(self.iterator.initializer)
-        for i in range(10):
+        for i in range(3):
             train_data, train_label = self.sess.run(self.next_element)
             print(train_label)
 
     def train(self):
-        #--------------------------------------------------------------------------------------------------
         # initialize all variables
         tf.global_variables_initializer().run()
         # graph inputs for visualize training results
@@ -335,20 +335,20 @@ class ConvNeuralNet:
                 _, merged_summary_str, loss, pred, accur = self.sess.run( \
                     [self.optim, self.merged_summary, self.loss, self.pred, self.accur], \
                     feed_dict=train_feed_dict)
-                # self.train_writer.add_summary(merged_summary_str, global_step=counter)
+                self.train_writer.add_summary(merged_summary_str, global_step=counter)
 
-                # if epoch % self.print_freq == 0:
-                #     print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}" \
-                #           .format(epoch, self.epoch, idx, self.iteration,loss, accur))
-                #     # print("Epoch: [%2d/%2d] [%5d/%5d] time: %4.4f, loss: %.8f" \
-                #     #       % (epoch, self.epoch, idx, self.iteration, time.time() - start_time, loss))
-                #     # print("pred : {}".format(self.train_label))
-                #     # print("pred : {}".format(pred))
-                #
-                #     test_accur, test_summary = self.test(counter)
-                #     self.valid_accur.append(test_accur)
-                #     self.train_accur.append(accur)
-                #     print('=' * 100)
+                if epoch % self.print_freq == 0:
+                    print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}" \
+                          .format(epoch, self.epoch, idx, self.iteration,loss, accur))
+                    # print("Epoch: [%2d/%2d] [%5d/%5d] time: %4.4f, loss: %.8f" \
+                    #       % (epoch, self.epoch, idx, self.iteration, time.time() - start_time, loss))
+                    # print("pred : {}".format(self.train_label))
+                    # print("pred : {}".format(pred))
+
+                    test_accur, test_summary = self.test(counter)
+                    self.valid_accur.append(test_accur)
+                    self.train_accur.append(accur)
+                    print('=' * 100)
                 #
                 # if epoch % self.summary_freq == 0:
                 #     self.train_writer.add_summary(merged_summary_str, global_step=counter)

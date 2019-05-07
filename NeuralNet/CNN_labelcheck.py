@@ -1,9 +1,10 @@
 import os
 import sys
-sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
-sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/sample_image')
+sys.path.append('/home/soopil/Desktop/github/brainMRI_classification')
+sys.path.append('/home/soopil/Desktop/github/brainMRI_classification/sample_image')
 import numpy as np
 import SimpleITK as sitk
+# /home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed
 
 def _read_py_function_1_patch(path, label):
     '''

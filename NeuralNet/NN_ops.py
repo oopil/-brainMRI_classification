@@ -224,7 +224,8 @@ def relu(x, scope):
         return tf.nn.relu(x)
 
 def tanh(x):
-    return tf.tanh(x)
+    with tf.name_scope("tanh"):
+        return tf.tanh(x)
 
 ##################################################################################
 # Normalization function

@@ -3,7 +3,7 @@ from NeuralNet.NN_model import NeuralNet
 from NeuralNet.CNN_model import ConvNeuralNet
 from NeuralNet.NN_utils import *
 '''
-sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
+sys.path.append('/home/soopil/PycharmProjects/brainMRI_classification')
 sys.path.append is needed only when using jupyter notebook
 '''
 '''
@@ -13,16 +13,14 @@ I could observe high training speed and high testing accuracy.
 def parse_args() -> argparse:
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', default=0, type=int)
-    parser.add_argument('--excel_path', default='/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx', type=str)
-    parser.add_argument('--base_folder_path', default='/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed', type=str)
-    parser.add_argument('--result_file_name', default='/home/sp/PycharmProjects/brainMRI_classification/nn_result/chosun_MRI_excel_AD_nn_result', type=str)
+    parser.add_argument('--excel_path', default='/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx', type=str)
+    parser.add_argument('--base_folder_path', default='/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed', type=str)
+    parser.add_argument('--result_file_name', default='/home/soopil/Desktop/github/brainMRI_classification/nn_result/chosun_MRI_excel_AD_nn_result', type=str)
     # 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'
     parser.add_argument('--excel_option', default='merge', type=str)
     parser.add_argument('--is_split_by_num', default=False, type=bool)
     parser.add_argument('--investigate_validation', default=False, type=bool)
     parser.add_argument('--iter', default=1, type=int)
-    parser.add_argument('--print_freq', default=100, type=int)
-    parser.add_argument('--save_freq', default=200, type=int)
     parser.add_argument('--summary_freq', default=100, type=int)
     parser.add_argument('--class_option_index', default=0, type=int)
     parser.add_argument('--test_num', default=20, type=int)
@@ -30,6 +28,8 @@ def parse_args() -> argparse:
     parser.add_argument('--result_dir', default='nn_result', type=str)
     parser.add_argument('--log_dir', default='log', type=str)
     parser.add_argument('--checkpoint_dir', default='checkpoint', type=str)
+    parser.add_argument('--print_freq', default=50, type=int)
+    parser.add_argument('--save_freq', default=200, type=int)
 
     parser.add_argument('--diag_type', default='clinic', type=str)
     # diag_type = "PET"
@@ -58,7 +58,7 @@ def parse_args() -> argparse:
     parser.add_argument('--weight_stddev', \
                         default=0.05, type=float) #0.05 #0.0721
     parser.add_argument('--epoch', \
-                        default=10000, type=int)
+                        default=1000, type=int)
     parser.add_argument('--loss_function', \
                         default='normal', type=str) # normal / cross_entropy
     parser.add_argument('--sampling_option', \
@@ -91,8 +91,8 @@ def CNN_simple_train(sess, args):
     # show network architecture
     show_all_variables()
     # launch the graph in a session
-    CNN.test_data_read()
-    # CNN.train()
+    # CNN.test_data_read() # test only data reading
+    CNN.train()
     # NN.visualize_results(args.epoch - 1)
     print(" [*] Training finished!")
 

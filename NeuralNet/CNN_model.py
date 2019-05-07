@@ -18,7 +18,7 @@ class ConvNeuralNet:
         self.result_file_name = args.result_file_name
 
         if args.neural_net == 'simple':
-            self.model_name = self.cnn_simple
+            self.model_name = self.cnn_simple_patch
         # if args.neural_net == 'basic':
         #     self.model_name = self.neural_net_basic
         # if args.neural_net == 'simple':
@@ -54,6 +54,7 @@ class ConvNeuralNet:
         self.result_file_name = self.result_file_name + self.diag_type +'_' +self.class_option
         # self.iteration = args.iteration
         self.batch_size = args.batch_size
+        self.patch_size = args.patch_size
         self.is_print = True
         self.args = args
 
@@ -135,29 +136,49 @@ class ConvNeuralNet:
             # x = lrelu(x, 0.1)
             x = relu(x, scope=scope)
         return x
+
+    def cnn_layer(self, x, ch, ks, s, scope):
+        with tf.name_scope(scope):
+            return lrelu(conv3d(x, ch, ks=ks, s=s, name=scope))
+
     ##################################################################################
     # Convolutional Neural Network Model
     ##################################################################################
-    def cnn_simple(self, x, is_training=True, reuse=False):
+    def cnn_simple_patch(self, x, is_training=True, reuse=False):
         is_print = self.is_print
         if is_print:
             print('build neural network')
             print('input shape : {}'.format(x.shape))
-
-        with tf.variable_scope("cnn", reuse=reuse):
+        lh, rh = tf.split(x, [self.patch_size, self.patch_size], 1)
+        # print(lh.shape, rh.shape)
+        # assert False
+        with tf.variable_scope("L_cnn", reuse=reuse):
             ch = 128
-            x = lrelu(conv3d(x, ch, ks=4, s=(2, 2, 2), name='1'))
-            # h0 is (128 x 128 x self.df_dim)
-            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='2')))
-            # h1 is (64 x 64 x self.df_dim*2)
-            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='3')))
-            # h2 is (32x 32 x self.df_dim*4)
-            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='4')))
+            lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='1')
+            lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='2')
+            lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='3')
+            lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='4')
+            # lh = lrelu(conv3d(lh, ch, ks=4, s=(2, 2, 2), name='1'))
+            # # h0 is (128 lh 128 lh self.df_dim)
+            # lh = lrelu(instance_norm(conv3d(lh, ch, ks=4, s=(2, 2, 2), name='2')))
+            # # h1 is (64 lh 64 lh self.df_dim*2)
+            # lh = lrelu(instance_norm(conv3d(lh, ch, ks=4, s=(2, 2, 2), name='3')))
+            # # h2 is (32x 32 lh self.df_dim*4)
+            # lh = lrelu(instance_norm(conv3d(lh, ch, ks=4, s=(2, 2, 2), name='4')))
+
+        with tf.variable_scope("R_cnn", reuse=reuse):
+            ch = 128
+            rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='1')
+            rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='2')
+            rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='3')
+            rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='4')
 
         with tf.variable_scope("fcn", reuse=reuse):
-            x = flatten(x)
-            x = self.fc_layer(x, 512, 'fc1')
-            x = self.fc_layer(x, self.class_num, 'fc2')
+            lh = flatten(lh)
+            rh = flatten(rh)
+            x = tf.concat([lh,rh], -1)
+            x = self.fc_layer(x, 512, '1')
+            x = self.fc_layer(x, self.class_num, '2')
 
             return x
 
@@ -201,9 +222,10 @@ class ConvNeuralNet:
         self.test_label = np.array(self.test_label)
 
         self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)
-        self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
+        if self.sampling_option != "None":
+            self.train_data, self.train_label = over_sampling(self.train_data, self.train_label, self.sampling_option)
 
-        self.check_patch_shape(patch_size=48)
+        self.check_patch_shape(patch_size=self.patch_size)
 
         # if self.noise_augment:
         #     self.augment_noise()
@@ -240,15 +262,17 @@ class ConvNeuralNet:
     def build_model(self):
         """ Graph Input """
         s1,s2,s3 = self.input_image_shape
-        self.input = tf.placeholder(tf.float32, [None, s1,s2,s3, 1], name='inputs')
+        self.input = tf.placeholder(tf.float32, [None, s1*2 ,s2, s3, 1], name='inputs')
         print(self.input.shape)
         # self.label = tf.placeholder(tf.float32, [None, self.class_num], name='targets')
         self.label = tf.placeholder(tf.int32, [None], name='targets')
         self.label_onehot = onehot(self.label, self.class_num)
-        # output of D for real images
         print(self.input)
-        self.logits = self.model_name(self.input, reuse=tf.AUTO_REUSE)
+        self.logits = self.model_name(self.input, reuse=False) # tf.AUTO_REUSE
         self.pred = tf.argmax(self.logits,1)
+        print(self.logits.shape, self.pred.shape)
+        assert False
+
         self.accur = accuracy(self.logits, self.label_onehot) //1
 
         # get loss for discriminator
@@ -269,8 +293,10 @@ class ConvNeuralNet:
             total_learning = self.epoch
             lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
 
-        self.optim = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
-        # self.optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
+        self.beta1 = 0.9
+        self.beta2 = 0.999
+        # self.optim = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
+        self.optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=t_vars)
         # self.d_optim = tf.train.AdamOptimizer(d_lr, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
         #self.d_optim = tf.train.AdagradOptimizer(d_lr).minimize(self.loss, var_list=d_vars)
 
@@ -302,6 +328,7 @@ class ConvNeuralNet:
         if self.investigate_validation:
             self.test_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_test', self.sess.graph)
             self.test_writer.add_graph(self.sess.graph)
+
         # restore check-point if it exits
         could_load, checkpoint_counter = self.load(self.checkpoint_dir)
         if could_load:
@@ -321,8 +348,14 @@ class ConvNeuralNet:
         self.valid_accur = []
         self.train_accur = []
         # set training data
+        print("set training and testing dataset ... ")
         self.next_element, self.iterator = get_patch_dataset(self.train_data, self.train_label, self.batch_size)
+        self.test_element, self.test_iterator = get_patch_dataset(self.test_data, self.test_label, len(self.test_label))
         self.sess.run(self.iterator.initializer)
+        self.sess.run(self.test_iterator.initializer)
+        self.test_data_ts, self.test_label_ts = self.sess.run(self.test_element)
+
+        print("start training ... ")
         for epoch in range(start_epoch, self.epoch):
             # get batch data
             for idx in range(start_batch_id, self.iteration):
@@ -340,16 +373,13 @@ class ConvNeuralNet:
                 if epoch % self.print_freq == 0:
                     print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}" \
                           .format(epoch, self.epoch, idx, self.iteration,loss, accur))
-                    # print("Epoch: [%2d/%2d] [%5d/%5d] time: %4.4f, loss: %.8f" \
-                    #       % (epoch, self.epoch, idx, self.iteration, time.time() - start_time, loss))
-                    # print("pred : {}".format(self.train_label))
-                    # print("pred : {}".format(pred))
+                    print("label : {}".format(self.train_label))
+                    print("pred  : {}".format(pred))
 
                     test_accur, test_summary = self.test(counter)
                     self.valid_accur.append(test_accur)
                     self.train_accur.append(accur)
                     print('=' * 100)
-                #
                 # if epoch % self.summary_freq == 0:
                 #     self.train_writer.add_summary(merged_summary_str, global_step=counter)
                 #     if self.investigate_validation:
@@ -362,8 +392,8 @@ class ConvNeuralNet:
 
     def test(self, counter):
         test_feed_dict = {
-            self.input: self.test_data,
-            self.label: self.test_label
+            self.input: self.test_data_ts,
+            self.label: self.test_label_ts
         }
         # tf.global_variables_initializer().run()
         loss, accur, pred, merged_summary_str = self.sess.run([self.loss, self.accur, self.pred, self.merged_summary], feed_dict=test_feed_dict)
@@ -373,9 +403,25 @@ class ConvNeuralNet:
             pass
         else:
             print("Test result => accur : {}, loss : {}".format(accur, loss))
-            print("pred : {}".format(self.test_label))
-            print("pred : {}".format(pred))
+            print("label : {}".format(self.test_label))
+            print("pred  : {}".format(pred))
         return accur, merged_summary_str
+    # def test(self, counter):
+    #     test_feed_dict = {
+    #         self.input: self.test_data,
+    #         self.label: self.test_label
+    #     }
+    #     # tf.global_variables_initializer().run()
+    #     loss, accur, pred, merged_summary_str = self.sess.run([self.loss, self.accur, self.pred, self.merged_summary], feed_dict=test_feed_dict)
+    #
+    #     # self.test_writer.add_summary(merged_summary_str, counter)
+    #     if self.investigate_validation:
+    #         pass
+    #     else:
+    #         print("Test result => accur : {}, loss : {}".format(accur, loss))
+    #         print("pred : {}".format(self.test_label))
+    #         print("pred : {}".format(pred))
+    #     return accur, merged_summary_str
 
     def simple_test(self):
         test_feed_dict = {

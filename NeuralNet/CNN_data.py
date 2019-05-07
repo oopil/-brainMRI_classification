@@ -31,7 +31,7 @@ def _read_py_function_1_patch(path, label):
                                   array[x2-hs:x2+hs,y2-hs:y2+hs,z2-hs:z2+hs]),axis=0)
     # extract patch and concatenate
     if isp: print(patch_array.shape, type(patch_array))
-    array = np.expand_dims(array, 3)
+    patch_array = np.expand_dims(patch_array, 3)
     return patch_array.astype(np.float32), label.astype(np.int32)
 
 def label_size_check(label_array, label_num, isp):

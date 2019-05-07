@@ -426,6 +426,13 @@ from imblearn.over_sampling import *
 from imblearn.combine import *
 def over_sampling(X_imb, Y_imb, sampling_option):
     print('starts over sampling ...', sampling_option)
+    is_reshape = False
+    shape = X_imb.shape
+    if np.ndim(X_imb) == 1:
+        is_reshape = True
+        X_imb = X_imb.reshape(-1,1)
+        print(X_imb.shape)
+
     if sampling_option == 'ADASYN':
         X_samp, Y_samp = ADASYN().fit_sample(X_imb, Y_imb)
     elif sampling_option == 'SMOTE':
@@ -443,6 +450,12 @@ def over_sampling(X_imb, Y_imb, sampling_option):
     else:
         print('sampling option is not proper.', sampling_option)
         assert False
+
+    if is_reshape:
+        X_samp = np.squeeze(X_samp)
+        print(X_samp.shape)
+        # assert False
+
     imbalance_num = len(Y_imb)
     balance_num = len(Y_samp)
     print('over sampling from {:5} -> {:5}.'.format(imbalance_num, balance_num))

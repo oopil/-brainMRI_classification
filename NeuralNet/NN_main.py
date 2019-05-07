@@ -28,7 +28,7 @@ def parse_args() -> argparse:
     parser.add_argument('--result_dir', default='nn_result', type=str)
     parser.add_argument('--log_dir', default='log', type=str)
     parser.add_argument('--checkpoint_dir', default='checkpoint', type=str)
-    parser.add_argument('--print_freq', default=50, type=int)
+    parser.add_argument('--print_freq', default=5, type=int)
     parser.add_argument('--save_freq', default=200, type=int)
 
     parser.add_argument('--diag_type', default='clinic', type=str)
@@ -53,6 +53,8 @@ def parse_args() -> argparse:
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
     parser.add_argument('--lr', \
                         default=0.001, type=float) #0.01 #0.0602
+    parser.add_argument('--patch_size', \
+                        default=48, type=int)
     parser.add_argument('--batch_size', \
                         default=50, type=int)
     parser.add_argument('--weight_stddev', \
@@ -62,7 +64,7 @@ def parse_args() -> argparse:
     parser.add_argument('--loss_function', \
                         default='normal', type=str) # normal / cross_entropy
     parser.add_argument('--sampling_option', \
-                        default='None', type=str)
+                        default='RANDOM', type=str)
     parser.add_argument('--noise_augment', \
                         default=True, type=bool)
     # if i use this nosie augment, the desktop stop

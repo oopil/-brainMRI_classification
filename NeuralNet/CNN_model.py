@@ -158,6 +158,7 @@ class ConvNeuralNet:
             lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='2')
             lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='3')
             lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='4')
+            lh = flatten(lh)
             # lh = lrelu(conv3d(lh, ch, ks=4, s=(2, 2, 2), name='1'))
             # # h0 is (128 lh 128 lh self.df_dim)
             # lh = lrelu(instance_norm(conv3d(lh, ch, ks=4, s=(2, 2, 2), name='2')))
@@ -172,10 +173,9 @@ class ConvNeuralNet:
             rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='2')
             rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='3')
             rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='4')
+            rh = flatten(rh)
 
         with tf.variable_scope("fcn", reuse=reuse):
-            lh = flatten(lh)
-            rh = flatten(rh)
             x = tf.concat([lh,rh], -1)
             x = self.fc_layer(x, 512, '1')
             x = self.fc_layer(x, self.class_num, '2')
@@ -270,10 +270,8 @@ class ConvNeuralNet:
         print(self.input)
         self.logits = self.model_name(self.input, reuse=False) # tf.AUTO_REUSE
         self.pred = tf.argmax(self.logits,1)
+        self.accur = accuracy(self.logits, self.label_onehot) // 1
         print(self.logits.shape, self.pred.shape)
-        assert False
-
-        self.accur = accuracy(self.logits, self.label_onehot) //1
 
         # get loss for discriminator
         """ Loss Function """
@@ -301,7 +299,8 @@ class ConvNeuralNet:
         #self.d_optim = tf.train.AdagradOptimizer(d_lr).minimize(self.loss, var_list=d_vars)
 
         """ Summary """
-        tf.summary.scalar("loss", self.loss)
+        # print(self.loss.shape, self.accur.shape)
+        # tf.summary.scalar("loss__", self.loss)
         tf.summary.scalar('accuracy', self.accur)
         self.merged_summary = tf.summary.merge_all()
 
@@ -322,7 +321,7 @@ class ConvNeuralNet:
         # graph inputs for visualize training results
         # saver to save model
         self.saver = tf.train.Saver()
-        self.train_writer = tf.summary.FileWriter(self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
+        self.train_writer = tf.summary.FileWriter('../' + self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
         self.train_writer.add_graph(self.sess.graph)
 
         if self.investigate_validation:
@@ -350,10 +349,10 @@ class ConvNeuralNet:
         # set training data
         print("set training and testing dataset ... ")
         self.next_element, self.iterator = get_patch_dataset(self.train_data, self.train_label, self.batch_size)
-        self.test_element, self.test_iterator = get_patch_dataset(self.test_data, self.test_label, len(self.test_label))
         self.sess.run(self.iterator.initializer)
-        self.sess.run(self.test_iterator.initializer)
-        self.test_data_ts, self.test_label_ts = self.sess.run(self.test_element)
+        # self.test_element, self.test_iterator = get_patch_dataset(self.test_data, self.test_label, len(self.test_label))
+        # self.sess.run(self.test_iterator.initializer)
+        # self.test_data_ts, self.test_label_ts = self.sess.run(self.test_element)
 
         print("start training ... ")
         for epoch in range(start_epoch, self.epoch):
@@ -365,20 +364,19 @@ class ConvNeuralNet:
                     self.input : train_data,
                     self.label : train_label
                 }
-                _, merged_summary_str, loss, pred, accur = self.sess.run( \
-                    [self.optim, self.merged_summary, self.loss, self.pred, self.accur], \
+                _, merged_summary_str, loss, logits, pred, accur = self.sess.run( \
+                    [self.optim, self.merged_summary, self.loss, self.logits, self.pred, self.accur], \
                     feed_dict=train_feed_dict)
                 self.train_writer.add_summary(merged_summary_str, global_step=counter)
-
                 if epoch % self.print_freq == 0:
                     print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}" \
                           .format(epoch, self.epoch, idx, self.iteration,loss, accur))
-                    print("label : {}".format(self.train_label))
-                    print("pred  : {}".format(pred))
+                    print("label : {}".format(train_label))
+                    print("pred  : {}".format(logits))
 
-                    test_accur, test_summary = self.test(counter)
-                    self.valid_accur.append(test_accur)
-                    self.train_accur.append(accur)
+                    # test_accur, test_summary = self.test(counter)
+                    # self.valid_accur.append(test_accur)
+                    # self.train_accur.append(accur)
                     print('=' * 100)
                 # if epoch % self.summary_freq == 0:
                 #     self.train_writer.add_summary(merged_summary_str, global_step=counter)

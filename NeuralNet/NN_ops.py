@@ -193,7 +193,8 @@ def gaussian_noise_layer_tf(input_layer, std):
 
 
 def flatten(x) :
-    return tf.layers.flatten(x)
+    with tf.name_scope("flatten"):
+        return tf.layers.flatten(x)
 
 def hw_flatten(x) :
     return tf.reshape(x, shape=[x.shape[0], -1, x.shape[-1]])
@@ -277,8 +278,8 @@ def classifier_loss(loss_func, predictions, targets):
     if loss_func =='normal':
         loss = tf.reduce_mean(tf.squared_difference(targets, predictions))
     elif loss_func == 'cross_entropy':
-        loss = tf.nn.softmax_cross_entropy_with_logits(labels=targets, logits=predictions)
-
+        # loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=targets, logits=predictions)
+        loss = tf.losses.softmax_cross_entropy(targets, predictions)
     return loss
 
 def accuracy(predictions, labels):

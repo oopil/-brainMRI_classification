@@ -56,13 +56,13 @@ def parse_args() -> argparse:
     parser.add_argument('--patch_size', \
                         default=48, type=int)
     parser.add_argument('--batch_size', \
-                        default=50, type=int)
+                        default=5, type=int)
     parser.add_argument('--weight_stddev', \
                         default=0.05, type=float) #0.05 #0.0721
     parser.add_argument('--epoch', \
                         default=1000, type=int)
     parser.add_argument('--loss_function', \
-                        default='normal', type=str) # normal / cross_entropy
+                        default='cross_entropy', type=str) # normal / cross_entropy
     parser.add_argument('--sampling_option', \
                         default='RANDOM', type=str)
     parser.add_argument('--noise_augment', \
@@ -94,6 +94,8 @@ def CNN_simple_train(sess, args):
     show_all_variables()
     # launch the graph in a session
     # CNN.test_data_read() # test only data reading
+    CNN.set_lr(10 ** -1.7965511862094083)
+    CNN.set_weight_stddev(10 ** -1.1072880677553867)
     CNN.train()
     # NN.visualize_results(args.epoch - 1)
     print(" [*] Training finished!")

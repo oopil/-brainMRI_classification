@@ -366,6 +366,8 @@ class NeuralNet(object):
     def build_model(self):
         """ Graph Input """
         self.input = tf.placeholder(tf.float32, [None, self.input_feature_num], name='inputs')
+        tf.nn.batch_normalization()
+
         # self.label = tf.placeholder(tf.float32, [None, self.class_num], name='targets')
         self.label = tf.placeholder(tf.int32, [None], name='targets')
         self.label_onehot = onehot(self.label, self.class_num)

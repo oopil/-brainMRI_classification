@@ -12,11 +12,9 @@ def _read_py_function_1_patch(path, label):
     if isp:print("file path : {}" .format(path))
     path_decoded = path.decode()
     img_path_decoded, label_path_decoded = path_decoded.split(',')
-    # img_path_decoded = img_path.decode()
     itk_file = sitk.ReadImage(img_path_decoded)
     array = sitk.GetArrayFromImage(itk_file)
 
-    # label_path_decoded = label_path.decode()
     label_itk_file = sitk.ReadImage(label_path_decoded)
     label_array = sitk.GetArrayFromImage(label_itk_file)
 
@@ -25,8 +23,6 @@ def _read_py_function_1_patch(path, label):
     hs = patch_size // 2
     x1,y1,z1 = label_size_check(label_array, 17, isp)
     x2,y2,z2 = label_size_check(label_array, 53, isp)
-    # p1= array[x1-hs:x1+hs,y1-hs:y1+hs,z1-hs:z1+hs]
-    # p2= array[x2-hs:x2+hs,y2-hs:y2+hs,z2-hs:z2+hs]
     patch_array = np.concatenate((array[x1-hs:x1+hs,y1-hs:y1+hs,z1-hs:z1+hs],\
                                   array[x2-hs:x2+hs,y2-hs:y2+hs,z2-hs:z2+hs]),axis=0)
     # extract patch and concatenate

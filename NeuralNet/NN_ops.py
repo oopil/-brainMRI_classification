@@ -36,13 +36,13 @@ def deconv3d(input_, output_dim, ks=4, s=(2,2,2), stddev=0.02, name="deconv3d"):
 ##################################################################################
 # from old file
 ##################################################################################
-def batch_norm(x, is_training=True, scope='batch_norm'):
-    # mean, var = tf.nn.moments(x, axes=0)
-    return tf.contrib.layers.batch_norm(x, decay=0.9, epsilon=1e-05,
-                                        center=True, scale=True, updates_collections=None,
-                                        is_training=is_training)
-    # return tf.nn.batch_normalization(x,mean=mean,variance=var,\
-    #                                  offset=0.01, scale=1, variance_epsilon=1e-05)
+# def batch_norm(x, is_training=True, scope='batch_norm'):
+#     # mean, var = tf.nn.moments(x, axes=0)
+#     return tf.contrib.layers.batch_norm(x, decay=0.9, epsilon=1e-05,
+#                                         center=True, scale=True, updates_collections=None,
+#                                         is_training=is_training)
+#     # return tf.nn.batch_normalization(x,mean=mean,variance=var,\
+#     #                                  offset=0.01, scale=1, variance_epsilon=1e-05)
 
 def accuracy(predictions, labels):
     return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])

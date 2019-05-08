@@ -149,6 +149,8 @@ class ConvNeuralNet:
         if is_print:
             print('build neural network')
             print('input shape : {}'.format(x.shape))
+
+        x = batch_norm(x)
         lh, rh = tf.split(x, [self.patch_size, self.patch_size], 1)
         # print(lh.shape, rh.shape)
         # assert False
@@ -179,7 +181,7 @@ class ConvNeuralNet:
             x = tf.concat([lh,rh], -1)
             x = self.fc_layer(x, 512, '1')
             x = self.fc_layer(x, self.class_num, '2')
-
+            x = tf.nn.softmax(x)
             return x
 
     def cnn_siamese(self, x, is_training=True, reuse=False):
@@ -359,14 +361,12 @@ class ConvNeuralNet:
             # get batch data
             for idx in range(start_batch_id, self.iteration):
                 train_data, train_label = self.sess.run(self.next_element)
-                #---------------------------------------------------
                 train_feed_dict = {
                     self.input : train_data,
                     self.label : train_label
                 }
                 _, merged_summary_str, loss, logits, pred, accur = self.sess.run( \
-                    [self.optim, self.merged_summary, self.loss, self.logits, self.pred, self.accur], \
-                    feed_dict=train_feed_dict)
+                    [self.optim, self.merged_summary, self.loss, self.logits, self.pred, self.accur], feed_dict=train_feed_dict)
                 self.train_writer.add_summary(merged_summary_str, global_step=counter)
                 if epoch % self.print_freq == 0:
                     print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}" \

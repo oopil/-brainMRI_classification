@@ -3,6 +3,11 @@ import numpy as np
 ##################################################################################
 # for 3D CNN
 ##################################################################################
+def normalize_tf(x, name="normalize"):
+    with tf.name_scope("name"):
+        tf.reduce_max(x)
+        x = tf.subtract(x,tf.reduce_min(x))
+        return tf.divide(x, tf.reduce_max(x))
 
 def batch_norm(x, name="batch_norm"):
     return tf.contrib.layers.batch_norm(x, decay=0.9, updates_collections=None, epsilon=1e-5, scale=True, scope=name)

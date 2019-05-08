@@ -139,8 +139,7 @@ class ConvNeuralNet:
 
     def cnn_layer(self, x, ch, ks, s, scope):
         with tf.name_scope(scope):
-            return lrelu(conv3d(x, ch, ks=ks, s=s, name=scope))
-
+            return lrelu(conv3d(x, ch, ks=ks, s=s, stddev=self.weight_stddev, name=scope))
     ##################################################################################
     # Convolutional Neural Network Model
     ##################################################################################
@@ -150,24 +149,23 @@ class ConvNeuralNet:
             print('build neural network')
             print('input shape : {}'.format(x.shape))
 
-        x = batch_norm(x)
+        # x = batch_norm(x)
+        # x = normalize_tf(x)
+        tf.summary.histogram("input_normalize", x)
         lh, rh = tf.split(x, [self.patch_size, self.patch_size], 1)
         # print(lh.shape, rh.shape)
         # assert False
         with tf.variable_scope("L_cnn", reuse=reuse):
             ch = 128
             lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='1')
+            tf.summary.histogram("lh1", lh)
             lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='2')
+            tf.summary.histogram("lh2", lh)
             lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='3')
+            tf.summary.histogram("lh3", lh)
             lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='4')
+            tf.summary.histogram("lh4", lh)
             lh = flatten(lh)
-            # lh = lrelu(conv3d(lh, ch, ks=4, s=(2, 2, 2), name='1'))
-            # # h0 is (128 lh 128 lh self.df_dim)
-            # lh = lrelu(instance_norm(conv3d(lh, ch, ks=4, s=(2, 2, 2), name='2')))
-            # # h1 is (64 lh 64 lh self.df_dim*2)
-            # lh = lrelu(instance_norm(conv3d(lh, ch, ks=4, s=(2, 2, 2), name='3')))
-            # # h2 is (32x 32 lh self.df_dim*4)
-            # lh = lrelu(instance_norm(conv3d(lh, ch, ks=4, s=(2, 2, 2), name='4')))
 
         with tf.variable_scope("R_cnn", reuse=reuse):
             ch = 128
@@ -176,9 +174,11 @@ class ConvNeuralNet:
             rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='3')
             rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='4')
             rh = flatten(rh)
-
+        # tf.summary.histogram("lh", lh)
+        # tf.summary.histogram("rh", rh)
         with tf.variable_scope("fcn", reuse=reuse):
             x = tf.concat([lh,rh], -1)
+            tf.summary.histogram("flatt", x)
             x = self.fc_layer(x, 512, '1')
             x = self.fc_layer(x, self.class_num, '2')
             x = tf.nn.softmax(x)
@@ -302,7 +302,7 @@ class ConvNeuralNet:
 
         """ Summary """
         # print(self.loss.shape, self.accur.shape)
-        # tf.summary.scalar("loss__", self.loss)
+        tf.summary.scalar("loss__", self.loss)
         tf.summary.scalar('accuracy', self.accur)
         self.merged_summary = tf.summary.merge_all()
 

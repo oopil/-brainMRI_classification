@@ -64,6 +64,11 @@ def get_patch_dataset(img_l, label_l, batch_size=1):
     #     handle, dataset.output_types, ([None, 212, 320, 240, 1], [None, 1]))  # image dimension[212, 320, 240]
     next_element = iterator.get_next()
     return next_element, iterator
+
+def normalize_np(X_):
+    print('normalize the data ... ')
+    print(np.amax(X_), np.amin(X_))
+    return (X_-np.amin(X_))/np.amax(X_)
 #######################################################################
 ### for reading whole mri data
 #######################################################################

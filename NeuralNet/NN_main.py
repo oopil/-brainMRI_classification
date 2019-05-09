@@ -56,11 +56,11 @@ def parse_args() -> argparse:
     parser.add_argument('--patch_size', \
                         default=48, type=int)
     parser.add_argument('--batch_size', \
-                        default=10, type=int)
+                        default=5, type=int)
     parser.add_argument('--weight_stddev', \
                         default=0.05, type=float) #0.05 #0.0721
     parser.add_argument('--epoch', \
-                        default=1000, type=int)
+                        default=10, type=int)
     parser.add_argument('--loss_function', \
                         default='normal', type=str) # normal / cross_entropy
     parser.add_argument('--sampling_option', \
@@ -90,12 +90,12 @@ def CNN_simple_train(sess, args):
     CNN = ConvNeuralNet(sess, args)
     CNN.read_cnn_data()
     # show network architecture
-    # show_all_variables()
     # launch the graph in a session
     # CNN.test_data_read() # test only data reading
-    CNN.set_lr(.01)
-    CNN.set_weight_stddev(.2)
+    CNN.set_lr(.001)
+    CNN.set_weight_stddev(.05)
     CNN.build_model()
+    show_all_variables()
     CNN.train()
     # NN.visualize_results(args.epoch - 1)
     print(" [*] Training finished!")

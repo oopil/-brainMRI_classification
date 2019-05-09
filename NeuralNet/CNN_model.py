@@ -18,7 +18,8 @@ class ConvNeuralNet:
         self.result_file_name = args.result_file_name
 
         if args.neural_net == 'simple':
-            self.model_name = self.cnn_simple_patch
+            self.model_name = self.cnn_pool
+            # self.model_name = self.cnn_simple_patch
         # if args.neural_net == 'basic':
         #     self.model_name = self.neural_net_basic
         # if args.neural_net == 'simple':
@@ -139,7 +140,13 @@ class ConvNeuralNet:
 
     def cnn_layer(self, x, ch, ks, s, scope):
         with tf.name_scope(scope):
-            return lrelu(conv3d(x, ch, ks=ks, s=s, stddev=self.weight_stddev, name=scope))
+            # return lrelu(conv3d(x, ch, ks=ks, s=s, stddev=self.weight_stddev, name=scope))
+            return relu(conv3d(x, ch, ks=ks, s=s, stddev=self.weight_stddev, name=scope), scope=scope)
+
+    def maxpool(self, x, ks, s, scope):
+        with tf.name_scope(scope):
+            return max_pooling(x, ks=ks, s=s)
+
     ##################################################################################
     # Convolutional Neural Network Model
     ##################################################################################
@@ -150,61 +157,93 @@ class ConvNeuralNet:
             print('input shape : {}'.format(x.shape))
 
         # x = batch_norm(x)
-        # x = normalize_tf(x)
-        tf.summary.histogram("input_normalize", x)
-        lh, rh = tf.split(x, [self.patch_size, self.patch_size], 1)
+        with tf.name_scope("preprocess"):
+            x = tf.stop_gradient(normalize_tf(x))
+            tf.summary.histogram("input_normalize", x)
+            lh, rh = tf.stop_gradient(tf.split(x, [self.patch_size, self.patch_size], 1))
         # print(lh.shape, rh.shape)
         # assert False
         with tf.variable_scope("L_cnn", reuse=reuse):
-            ch = 128
+            ch = 64
             lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='1')
-            tf.summary.histogram("lh1", lh)
-            lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='2')
-            tf.summary.histogram("lh2", lh)
+            lh = self.cnn_layer(lh, ch, ks=3, s=(1, 1, 1), scope='2')
             lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='3')
-            tf.summary.histogram("lh3", lh)
-            lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='4')
-            tf.summary.histogram("lh4", lh)
+            lh = self.cnn_layer(lh, ch, ks=3, s=(1, 1, 1), scope='4')
+            lh = self.cnn_layer(lh, ch, ks=4, s=(2, 2, 2), scope='5')
             lh = flatten(lh)
 
-        with tf.variable_scope("R_cnn", reuse=reuse):
-            ch = 128
-            rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='1')
-            rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='2')
-            rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='3')
-            rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='4')
-            rh = flatten(rh)
-        # tf.summary.histogram("lh", lh)
-        # tf.summary.histogram("rh", rh)
+        # with tf.variable_scope("R_cnn", reuse=reuse):
+        #     ch = 128
+        #     rh = self.cnn_layer(rh, ch, ks=4, s=(1, 1, 1), scope='1')
+        #     rh = self.cnn_layer(rh, ch, ks=3, s=(1, 1, 1), scope='2') + rh
+        #     rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='3')
+        #     rh = self.cnn_layer(rh, ch, ks=3, s=(1, 1, 1), scope='4') + rh
+        #     rh = self.cnn_layer(rh, ch, ks=4, s=(2, 2, 2), scope='5')
+        #     rh = flatten(rh)
         with tf.variable_scope("fcn", reuse=reuse):
-            x = tf.concat([lh,rh], -1)
+            # x = tf.concat([lh,rh], -1)
+            x = lh
             tf.summary.histogram("flatt", x)
-            x = self.fc_layer(x, 512, '1')
-            x = self.fc_layer(x, self.class_num, '2')
-            x = tf.nn.softmax(x)
+            x = self.fc_layer(x, 2048, '1')
+            x = self.fc_layer(x, 1024, '2')
+            x = self.fc_layer(x, 512, '3')
+            x = self.fc_layer(x, 128, '4')
+            tf.summary.histogram("flatt_fin", x)
+            with tf.variable_scope("last", reuse=reuse):
+                x = fully_connected(x, self.class_num, weight_initializer=self.weight_initializer, use_bias=True)
+                # x = tf.nn.sigmoid(x)
+                # x = tf.nn.softmax(x)
             return x
 
-    def cnn_siamese(self, x, is_training=True, reuse=False):
+    def cnn_pool(self, x, is_training=True, reuse=False):
         is_print = self.is_print
         if is_print:
             print('build neural network')
             print('input shape : {}'.format(x.shape))
 
-        with tf.variable_scope("cnn", reuse=reuse):
-            ch = 128
-            x = lrelu(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer1'))
-            # h0 is (128 x 128 x self.df_dim)
-            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer2')))
-            # h1 is (64 x 64 x self.df_dim*2)
-            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer3')))
-            # h2 is (32x 32 x self.df_dim*4)
-            x = lrelu(instance_norm(conv3d(x, ch, ks=4, s=(2, 2, 2), name='layer4')))
+        with tf.name_scope("preprocess"):
+            x = tf.stop_gradient(normalize_tf(x))
+            # tf.summary.histogram("input_normalize", x)
+            # tf.summary.image("input0",x[0])
+            # tf.summary.image("input1",x[0])
+            # print(x.shape)
+            # assert False
+            lh, rh = tf.split(x, [self.patch_size, self.patch_size], 1)
+            check_lh = tf.expand_dims(lh[:, :, :, 0, 0], -1)
+            tf.summary.image("lh",lh[0],max_outputs=5)
+            # tf.summary.image("rh",rh[0])
+
+        with tf.variable_scope("L_cnn", reuse=reuse):
+            ch = 64
+            lh = self.cnn_layer(lh, ch, ks=7, s=(1, 1, 1), scope='1')
+            check_lh = tf.expand_dims(lh[:, :, :, 0, 0], -1)
+            tf.summary.image("lh1_cnn", check_lh,max_outputs=1)
+
+            lh = self.maxpool(lh, ks=[1,2,2,2,1], s=[1,2,2,2,1], scope='1')
+            check_lh = tf.expand_dims(lh[:,:,:,0,0], -1)
+            tf.summary.image("lh1_max", check_lh,max_outputs=1)
+
+            lh = self.cnn_layer(lh, ch, ks=5, s=(1, 1, 1), scope='2')
+            check_lh = tf.expand_dims(lh[:, :, :, 0, 0], -1)
+            tf.summary.image("lh2_cnn", check_lh,max_outputs=1)
+            lh = self.maxpool(lh, ks=[1,2,2,2,1], s=[1,2,2,2,1], scope='2')
+            # tf.summary.image("lh2", lh[0,:,:,:,1])
+            lh = self.cnn_layer(lh, ch, ks=3, s=(1, 1, 1), scope='3')
+            check_lh = tf.expand_dims(lh[:, :, :, 0, 0], -1)
+            tf.summary.image("lh3_cnn", check_lh,max_outputs=1)
+            lh = self.maxpool(lh, ks=[1,2,2,2,1], s=[1,2,2,2,1], scope='3')
+            # tf.summary.image("lh3", lh[0,:,:,:,1])
 
         with tf.variable_scope("fcn", reuse=reuse):
-            x = flatten(x)
-            x = self.fc_layer(x, 512, 'fc1')
-            x = self.fc_layer(x, self.class_num, 'fc2')
-
+            x = flatten(lh)
+            tf.summary.histogram("flatten", x)
+            x = self.fc_layer(x, 1024, '1')
+            x = self.fc_layer(x, 256, '2')
+            x = self.fc_layer(x, 64, '3')
+            with tf.variable_scope("last", reuse=reuse):
+                x = fully_connected(x, self.class_num, weight_initializer=self.weight_initializer, use_bias=True)
+                x = tf.nn.sigmoid(x)
+                # x = tf.nn.softmax(x)
             return x
 
     ##################################################################################
@@ -214,8 +253,7 @@ class ConvNeuralNet:
         # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
         sampling_option_str = 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'  # ADASYN
         sampling_option_split = sampling_option_str.split(' ')
-        whole_set = CNN_dataloader(self.base_folder_path, self.diag_type, self.class_option,\
-                                  self.excel_path, self.test_num, self.fold_num, self.is_split_by_num)
+        whole_set = CNN_dataloader(self.base_folder_path, self.diag_type, self.class_option, self.excel_path, self.test_num, self.fold_num, self.is_split_by_num)
         # whole_set = np.array(whole_set)
         self.train_data, self.train_label, self.test_data, self.test_label = whole_set[0]
         self.train_data = np.array(self.train_data)
@@ -268,13 +306,11 @@ class ConvNeuralNet:
         print(self.input.shape)
         # self.label = tf.placeholder(tf.float32, [None, self.class_num], name='targets')
         self.label = tf.placeholder(tf.int32, [None], name='targets')
-        self.label_onehot = onehot(self.label, self.class_num)
-        print(self.input)
+        self.label_onehot = tf.stop_gradient(onehot(self.label, self.class_num))
+
         self.logits = self.model_name(self.input, reuse=False) # tf.AUTO_REUSE
         self.pred = tf.argmax(self.logits,1)
         self.accur = accuracy(self.logits, self.label_onehot) // 1
-        print(self.logits.shape, self.pred.shape)
-
         # get loss for discriminator
         """ Loss Function """
         with tf.name_scope('Loss'):
@@ -283,8 +319,13 @@ class ConvNeuralNet:
         """ Training """
         # divide trainable variables into a group for D and a group for G
         t_vars = tf.trainable_variables()
-        vars = [var for var in t_vars if 'cnn' in var.name]
 
+        vars = [var for var in t_vars if 'cnn' in var.name]
+        for var in t_vars:
+            # tf.summary.image(var.name, var.)
+            # print(var)
+            tf.summary.histogram(var.name, var)
+        # assert False
         # optimizers
         # should apply learning rate decay
         with tf.name_scope('learning_rate'):
@@ -293,10 +334,10 @@ class ConvNeuralNet:
             total_learning = self.epoch
             lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
 
-        self.beta1 = 0.9
-        self.beta2 = 0.999
+        # self.beta1 = 0.9
+        # self.beta2 = 0.999
         # self.optim = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
-        self.optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=t_vars)
+        self.optim = tf.train.AdamOptimizer(self.learning_rate).minimize(self.loss)
         # self.d_optim = tf.train.AdamOptimizer(d_lr, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
         #self.d_optim = tf.train.AdagradOptimizer(d_lr).minimize(self.loss, var_list=d_vars)
 
@@ -367,6 +408,10 @@ class ConvNeuralNet:
                 }
                 _, merged_summary_str, loss, logits, pred, accur = self.sess.run( \
                     [self.optim, self.merged_summary, self.loss, self.logits, self.pred, self.accur], feed_dict=train_feed_dict)
+
+                # one_hot_label = self.sess.run([self.label_onehot],feed_dict=train_feed_dict)
+                # print(one_hot_label)
+
                 self.train_writer.add_summary(merged_summary_str, global_step=counter)
                 if epoch % self.print_freq == 0:
                     print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}" \

@@ -5,9 +5,8 @@ import numpy as np
 ##################################################################################
 def normalize_tf(x, name="normalize"):
     with tf.name_scope("name"):
-        tf.reduce_max(x)
         x = tf.subtract(x,tf.reduce_min(x))
-        return tf.divide(x, tf.reduce_max(x))
+        return tf.divide(x,tf.reduce_max(x))
 
 def batch_norm(x, name="batch_norm"):
     return tf.contrib.layers.batch_norm(x, decay=0.9, updates_collections=None, epsilon=1e-5, scale=True, scope=name)
@@ -210,6 +209,13 @@ def onehot(x, depth):
 # Sampling
 ##################################################################################
 
+def max_pooling(x,ks,s, padding="SAME"):
+    '''
+    3d max pooling
+    '''
+    with tf.name_scope("max_pool"):
+        return tf.nn.max_pool3d(x, ksize=ks, strides=s, padding=padding)
+
 def global_avg_pooling(x):
     gap = tf.reduce_mean(x, axis=[1, 2])
     return gap
@@ -288,6 +294,13 @@ def classifier_loss(loss_func, predictions, targets):
     return loss
 
 def accuracy(predictions, labels):
+    '''
+    we should check whether label is already one hot vectors.
+    :return:
+    '''
+    # print(type(tf.argmax(predictions, 1)), type(labels))
+    # print(predictions.shape, labels.shape)
+    # correct_pred = tf.equal(tf.argmax(predictions, 1),tf.cast(labels, dtype=tf.int64))
     correct_pred = tf.equal(tf.argmax(predictions, 1),tf.argmax(labels, 1))
     return tf.reduce_mean(tf.cast(correct_pred, "float")) * 100
 '''

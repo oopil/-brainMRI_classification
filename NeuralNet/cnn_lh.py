@@ -181,9 +181,10 @@ with tf.Session() as sess:
             print("Epoch: {}".format(epoch))
             print("Train loss = {}".format(loss_scr))
             print("Train accuracy = {:03.4f}".format(acc_scr // 0.01))
-            print(logit[:5], )
-            val_acc = sess.run(accuracy, feed_dict=test_feed_dict)
+            val_acc, val_logit = sess.run((accuracy,y), feed_dict=test_feed_dict)
             print("Validation accuracy = {:03.4f}".format(val_acc // 0.01))
+            print(logit[:5])
+            print(val_logit[:5])
 
             # accum_acc = 0
             #

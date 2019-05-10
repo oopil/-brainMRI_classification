@@ -30,16 +30,15 @@ def read_cnn_data():
     test_data, test_label = valence_class(test_data, test_label, class_num)
     if sampling_option != "None":
         train_data, train_label = over_sampling(train_data, train_label, sampling_option)
-    return train_data, train_label, test_data, test_label
+    return train_data, one_hot_pd(train_label), test_data, one_hot_pd(test_label)
     # print(train_data)
     # print(type(train_data))
 #%%
-
 print()
 print("Loading data...")
 print()
 train_data, train_label, val_data, val_label = read_cnn_data()
-train_label = pd.get_dummies(train_label)
+# train_label = pd.get_dummies(train_label)
 print()
 print("train data: {}".format(train_data.shape))
 print("train label: {}".format(train_label.shape))
@@ -47,16 +46,19 @@ print()
 print("validation data: {}".format(val_data.shape))
 print("validation label: {}".format(val_label.shape))
 print()
-
 #%%
+'''
+    model building parts
+'''
 class_num = 2
 patch_size = 48
 s1,s2,s3 = patch_size, patch_size, patch_size
 images = tf.placeholder(tf.float32, (None, s1 * 2, s2, s3, 1), name='inputs')
+lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
 
-x = tf.layers.conv3d(inputs=images, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+x = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
 x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
 x = tf.layers.conv3d(inputs=x, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
 x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
@@ -116,6 +118,7 @@ init = tf.global_variables_initializer()
 batch = 50
 dropout_prob = 0.5
 epochs = 200
+epoch_freq = 1
 
 data_read_test = False
 if data_read_test:
@@ -130,7 +133,6 @@ if data_read_test:
     assert False
 
 with tf.Session() as sess:
-
     try:
         saver.restore(sess, "../train/dogs_cats_cnn")
         print()
@@ -152,28 +154,29 @@ with tf.Session() as sess:
         accum_loss = 0
         accum_acc = 0
 
-        _, loss_scr, acc_scr = sess.run((train_step, loss, accuracy), \
+        _, loss_scr, acc_scr, logit = sess.run((train_step, loss, accuracy, y), \
             feed_dict = {images: train_data, y_gt: train_label, keep_prob: dropout_prob})
 
         accum_loss += loss_scr
         accum_acc += acc_scr
 
-        if epoch%10 == 0:
+        if epoch%epoch_freq == 0:
             print("Epoch: {}".format(epoch))
             print("Train loss = {}".format(accum_loss/train_data.shape[0]))
             print("Train accuracy = {:03.4f}".format(accum_acc/train_data.shape[0]))
+            print(y, train_label)
 
-            accum_acc = 0
-
-            for m in range(0, val_data.shape[0], batch):
-                m2 = min(val_data.shape[0], m+batch)
-                
-                acc_scr = sess.run((accuracy), \
-                    feed_dict = {x: val_data[m:m2], y_gt: val_label[m:m2], \
-                    keep_prob: 1})
-
-                accum_acc += acc_scr*(m2-m)
-            print("Validation accuracy = {:03.4f}".format(accum_acc/val_data.shape[0]))
+            # accum_acc = 0
+            #
+            # for m in range(0, val_data.shape[0], batch):
+            #     m2 = min(val_data.shape[0], m+batch)
+            #
+            #     acc_scr = sess.run((accuracy), \
+            #         feed_dict = {x: val_data[m:m2], y_gt: val_label[m:m2], \
+            #         keep_prob: 1})
+            #
+            #     accum_acc += acc_scr*(m2-m)
+            # print("Validation accuracy = {:03.4f}".format(accum_acc/val_data.shape[0]))
             print()
 
         save_path = saver.save(sess, "../train/dogs_cats_cnn")

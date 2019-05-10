@@ -1,4 +1,5 @@
 from sklearn.utils import shuffle
+from pandas import get_dummies
 from chosun_ad_bot import *
 from random import shuffle
 import openpyxl
@@ -141,7 +142,6 @@ class MRI_chosun_data():
         'Clinic Diagnosis', 'New Diag', 'mtype', 'c4', ...]
         '''
         for i in range(1,len(self.data_excel)):
-
             '''
             should test if or not demo score help the model classify correctly.
             the age factor seems to provide useful information.
@@ -393,7 +393,7 @@ class MRI_chosun_data():
             # print(i,l,label_count)
             separate_data[l].append(data[i])
             separate_label[l].append(label[i])
-        print(separate_label)
+        # print(separate_label)
         label_count = [len(i) for i in separate_label]
         test_count = [count//fold_num for count in label_count]
         print(label_count, test_count)
@@ -419,51 +419,14 @@ class MRI_chosun_data():
             # print(test_label)
             print(len(train_label)+len(test_label), len(train_label), len(test_label))
             train_data = np.array(train_data)
-            train_label = np.array(train_label)
             test_data = np.array(test_data)
+            train_label = np.array(train_label)
             test_label = np.array(test_label)
             whole_set.append([train_data, train_label, test_data, test_label])
         return whole_set
-
 #%%
-from imblearn.over_sampling import *
-from imblearn.combine import *
-def over_sampling(X_imb, Y_imb, sampling_option):
-    print('starts over sampling ...', sampling_option)
-    is_reshape = False
-    shape = X_imb.shape
-    if np.ndim(X_imb) == 1:
-        is_reshape = True
-        X_imb = X_imb.reshape(-1,1)
-        print(X_imb.shape)
-
-    if sampling_option == 'ADASYN':
-        X_samp, Y_samp = ADASYN().fit_sample(X_imb, Y_imb)
-    elif sampling_option == 'SMOTE':
-        X_samp, Y_samp = SMOTE(random_state=4).fit_sample(X_imb, Y_imb)
-    elif sampling_option == 'SMOTEENN':
-        X_samp, Y_samp = SMOTEENN(random_state=0).fit_sample(X_imb, Y_imb)
-    elif sampling_option == 'SMOTETomek':
-        X_samp, Y_samp = SMOTETomek(random_state=4).fit_sample(X_imb, Y_imb)
-    elif sampling_option == 'RANDOM':
-        X_samp, Y_samp = RandomOverSampler(random_state=0).fit_sample(X_imb, Y_imb)
-    elif sampling_option == 'BolderlineSMOTE':
-        X_samp, Y_samp = BorderlineSMOTE().fit_sample(X_imb, Y_imb)
-    elif sampling_option == 'None':
-        X_samp, Y_samp = X_imb, Y_imb
-    else:
-        print('sampling option is not proper.', sampling_option)
-        assert False
-
-    if is_reshape:
-        X_samp = np.squeeze(X_samp)
-        print(X_samp.shape)
-        # assert False
-
-    imbalance_num = len(Y_imb)
-    balance_num = len(Y_samp)
-    print('over sampling from {:5} -> {:5}.'.format(imbalance_num, balance_num))
-    return X_samp, Y_samp
+def one_hot_pd(label):
+    return get_dummies(label)
 
 def shuffle_static(arr1, arr2):
     return shuffle(arr1, arr2, random_state=0)
@@ -517,6 +480,37 @@ def column(matrix, i, num):
             print(row)
             assert False
     return col
+
+def CNN_dataloader(base_folder_path ,diag_type, class_option, \
+                  excel_path, test_num, fold_num, is_split_by_num):
+    '''
+    1. read excel data
+    2. read input file path from dataset folder path
+    3. merge excel and path information
+    4. make label list
+    5. split train and test dataset
+    6. oversampling
+    7. balance test data
+    # handle with tensorflow dataset api
+    1. shuffle
+    2. normalization
+    3. make batch
+    :return: train and test data and lable
+    '''
+    loader = MRI_chosun_data()
+    loader.set_diagnosis_type(diag_type)
+    loader.read_excel_data(excel_path)
+    path_list = loader.extr_input_path_list(base_folder_path)
+    print(path_list[0])
+    loader.get_label_info_excel()
+    data, label_info = loader.merge_info() # here is a problem!
+    data, label = loader.define_label_cnn(label_info, class_option)
+    split_func = loader.split_data_by_fold
+    shuffle_data, shuffle_label = loader.shuffle_data(data, label)
+    '''
+        return all train and test sets devided by fold.
+    '''
+    return split_func(shuffle_data, shuffle_label, fold_num)
 
 def NN_dataloader(diag_type, class_option, \
                   excel_path, excel_option, test_num, fold_num, is_split_by_num):
@@ -577,59 +571,44 @@ def NN_dataloader(diag_type, class_option, \
             return all train and test sets devided by fold. 
         '''
         return loader.split_data_by_fold(shuffle_data, shuffle_label, fold_num)
+from imblearn.over_sampling import *
+from imblearn.combine import *
+def over_sampling(X_imb, Y_imb, sampling_option):
+    print('starts over sampling ...', sampling_option)
+    is_reshape = False
+    shape = X_imb.shape
+    if np.ndim(X_imb) == 1:
+        is_reshape = True
+        X_imb = X_imb.reshape(-1,1)
+        print(X_imb.shape)
 
-def CNN_dataloader(base_folder_path ,diag_type, class_option, \
-                  excel_path, test_num, fold_num, is_split_by_num):
-    '''
-    1. read excel data
-    2. read input file path from dataset folder path
-    3. merge excel and path information
-    4. make label list
-    5. split train and test dataset
-    6. oversampling
-    7. balance test data
-
-    # handle with tensorflow dataset api
-    1. shuffle
-    2. normalization
-    3. make batch
-    :return: train and test data and lable
-    '''
-    loader = MRI_chosun_data()
-    loader.set_diagnosis_type(diag_type)
-    loader.read_excel_data(excel_path)
-    path_list = loader.extr_input_path_list(base_folder_path)
-    print(path_list[0])
-    '''
-    i need to modify this line below.
-    because i need to use the image after registration.
-    but now, just go ahead.
-    '''
-    loader.get_label_info_excel()
-    # for i in range(len(path_list)):
-    #     print(path_list[i])
-
-    data, label_info = loader.merge_info() # here is a problem!
-    # print(label_info)
-    # for i in range(len(data)): # there are two blanks....
-    #     print(data[i])
-        # print(label[i], data[i])
-    data, label = loader.define_label_cnn(label_info, class_option)
-    if is_split_by_num:
-        shuffle_data, shuffle_label = loader.shuffle_data(data, label)
-        # test_num = 20
-        '''
-            return only one train and test set
-        '''
-        return loader.split_data_by_num(shuffle_data, shuffle_label, test_num)
+    if sampling_option == 'ADASYN':
+        X_samp, Y_samp = ADASYN().fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'SMOTE':
+        X_samp, Y_samp = SMOTE(random_state=4).fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'SMOTEENN':
+        X_samp, Y_samp = SMOTEENN(random_state=0).fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'SMOTETomek':
+        X_samp, Y_samp = SMOTETomek(random_state=4).fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'RANDOM':
+        X_samp, Y_samp = RandomOverSampler(random_state=0).fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'BolderlineSMOTE':
+        X_samp, Y_samp = BorderlineSMOTE().fit_sample(X_imb, Y_imb)
+    elif sampling_option == 'None':
+        X_samp, Y_samp = X_imb, Y_imb
     else:
-        shuffle_data, shuffle_label = loader.shuffle_data(data, label)
-        # fold_num = 5
-        # fold_index = 0
-        '''
-            return all train and test sets devided by fold. 
-        '''
-        return loader.split_data_by_fold(shuffle_data, shuffle_label, fold_num)
+        print('sampling option is not proper.', sampling_option)
+        assert False
+
+    if is_reshape:
+        X_samp = np.squeeze(X_samp)
+        print(X_samp.shape)
+        # assert False
+
+    imbalance_num = len(Y_imb)
+    balance_num = len(Y_samp)
+    print('over sampling from {:5} -> {:5}.'.format(imbalance_num, balance_num))
+    return X_samp, Y_samp
 
 if __name__ == '__main__':
     # a = np.array([[1,2],[3,4]])

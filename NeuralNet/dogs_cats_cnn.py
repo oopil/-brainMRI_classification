@@ -6,7 +6,7 @@ import pandas as pd
 # from NeuralNet.CNN_data import *
 # from NeuralNet.NN_ops import *
 from sklearn.utils import shuffle
-from data_merge import *
+from ../data_merge import *
 # server setting
 from CNN_data import *
 from NN_ops import *

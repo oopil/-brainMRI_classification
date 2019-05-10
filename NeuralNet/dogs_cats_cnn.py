@@ -17,8 +17,10 @@ os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 
 def read_cnn_data():
-    base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
-    excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+    # base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+    base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy' # sv186
+    # excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+    excel_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx' # sv186
     diag_type = 'clinic'
     class_option = 'CN vs AD'
     class_num = 2
@@ -58,53 +60,47 @@ images = tf.placeholder(tf.float32, (None, s1 * 2, s2, s3, 1), name='inputs')
 lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
-x = batch_norm(lh)
-x = tf.layers.conv3d(inputs=x, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
-x = tf.layers.conv3d(inputs=x, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
-x = tf.layers.conv3d(inputs=x, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
-x = tf.layers.conv3d(inputs=x, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-x = tf.layers.flatten(x)
+with tf.variable_scope("Left", reuse=False):
+    lh = batch_norm(lh)
+    lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+    lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
+    lh = tf.layers.conv3d(inputs=lh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+    lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
+    lh = tf.layers.conv3d(inputs=lh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+    lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
+    lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+    lh = tf.layers.flatten(lh)
+
+with tf.variable_scope("Right", reuse=False):
+    rh = batch_norm(rh)
+    rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+    rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+    rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+    rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+    rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+    rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+    rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+    rh = tf.layers.flatten(rh)
 # x = tf.layers.dense(x, units=2048, kernel_initializer=weight_initializer, kernel_regularizer=weight_regularizer, use_bias=use_bias)
+x = tf.concat([lh,rh], -1)
 x = tf.layers.dense(x, units=2048, activation=tf.nn.relu)
 x = tf.layers.dense(x, units=512, activation=tf.nn.relu)
 x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
 y = x
-
-# layer_1_w = tf.Variable(tf.truncated_normal(shape=(5,5,3,32), mean=0, stddev=0.1))
-# layer_1_b = tf.Variable(tf.zeros(32))
-# layer_1 = tf.nn.conv2d(x, layer_1_w, strides=[1,1,1,1], padding='SAME') + layer_1_b
-# layer_1 = tf.nn.relu(layer_1)
-# layer_1 = tf.nn.max_pool(layer_1, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-#
-# layer_2_w = tf.Variable(tf.truncated_normal(shape=(5,5,32,64), mean=0, stddev=0.1))
-# layer_2_b = tf.Variable(tf.zeros(64))
-# layer_2 = tf.nn.conv2d(layer_1, layer_2_w, strides=[1,1,1,1], padding='SAME') + layer_2_b
-# layer_2 = tf.nn.relu(layer_2)
-# layer_2 = tf.nn.max_pool(layer_2, ksize=[1,2,2,1], strides=[1,2,2,1], padding='SAME')
-#
-# flat_arr = tf.reshape(layer_2, [-1, int(img_size[0]/4)*int(img_size[1]/4)*64])
-#
-# fcl_1_w = tf.Variable(tf.truncated_normal(shape=(int(img_size[0]/4)* \
-#     int(img_size[1]/4)*64,1024), mean=0, stddev=0.1))
-# fcl_1_b = tf.Variable(tf.zeros(1024))
-# fcl_1 = tf.matmul(flat_arr, fcl_1_w) + fcl_1_b
-# fcl_1 = tf.nn.dropout(fcl_1, keep_prob)
-#
-# fcl_2_w = tf.Variable(tf.truncated_normal(shape=(1024,2), mean=0, stddev=0.1))
-# fcl_2_b = tf.Variable(tf.zeros(2))
-# fcl_2 = tf.matmul(fcl_1, fcl_2_w) + fcl_2_b
-#
-# y = fcl_2
-
-
 #%%
+batch = 30
+dropout_prob = 0.5
+epochs = 20000
+epoch_freq = 10
 
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)
 
+with tf.name_scope('learning_rate_decay'):
+    start_lr = learning_rate
+    global_step = tf.Variable(0, trainable=False)
+    total_learning = epochs
+    lr = tf.train.exponential_decay(start_lr, global_step, total_learning, 0.99999, staircase=True)
 optimizer = tf.train.AdamOptimizer(1e-4)
 train_step = optimizer.minimize(loss)
 
@@ -116,10 +112,6 @@ saver = tf.train.Saver(max_to_keep = 0)
 init = tf.global_variables_initializer()
 
 #%%
-batch = 50
-dropout_prob = 0.5
-epochs = 200
-epoch_freq = 1
 
 data_read_test = False
 if data_read_test:

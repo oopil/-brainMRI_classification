@@ -158,13 +158,7 @@ def check_mri_masking():
     draw_array = draw_patch_box(lh_hippo_label, center_pos, patch_size, label=label_color)
 
     save_file_name = 'mask_lh_dilation'+str(dilation_iter)+'.nii'
-    draw_file_path = os.path.join(sample_dir_path, save_file_name)
-    draw_file = sitk.GetImageFromArray(draw_array)
-    draw_file.CopyInformation(itk_file)
-    sitk.WriteImage(draw_file, draw_file_path)
-    print('saved the file : {}'.format(draw_file_path))
-
-
+    save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name)
 
 def check_mri_label():
     print('start MRI label check.')
@@ -214,7 +208,7 @@ def check_mri_label():
     draw_array = draw_patch_box(draw_array, center_pos, patch_size, label=label_color)
     # label_size_check(new_array, 18)
     # label_size_check(new_array, 54)
-
+    save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name)
     draw_file_path = os.path.join(sample_dir_path, 'draw_patch_only.nii')
     draw_file = sitk.GetImageFromArray(draw_array)
     draw_file.CopyInformation(itk_file)

@@ -23,9 +23,10 @@ def _read_py_function_1_patch(path, label):
     hs = patch_size // 2
     x1,y1,z1 = label_size_check(label_array, 17, isp)
     x2,y2,z2 = label_size_check(label_array, 53, isp)
+    # extract patch and concatenate
     patch_array = np.concatenate((array[x1-hs:x1+hs,y1-hs:y1+hs,z1-hs:z1+hs],\
                                   array[x2-hs:x2+hs,y2-hs:y2+hs,z2-hs:z2+hs]),axis=0)
-    # extract patch and concatenate
+    #normalize
     if isp: print(patch_array.shape, type(patch_array))
     patch_array = np.expand_dims(patch_array, 3)
     return patch_array.astype(np.float32), label.astype(np.int32)

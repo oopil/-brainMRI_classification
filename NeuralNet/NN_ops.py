@@ -243,7 +243,7 @@ def tanh(x):
 # Normalization function
 ##################################################################################
 
-def batch_norm(x, is_training=True, scope='batch_norm'):
+def batch_norm_contrib(x, is_training=True, scope='batch_norm'):
     return tf_contrib.layers.batch_norm(x,
                                         decay=0.9, epsilon=1e-05,
                                         center=True, scale=True, updates_collections=None,

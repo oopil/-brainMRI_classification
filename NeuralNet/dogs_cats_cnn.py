@@ -4,6 +4,7 @@ import matplotlib.image as mpimg
 import os
 import pandas as pd
 from NeuralNet.CNN_data import *
+from NeuralNet.NN_ops import *
 from sklearn.utils import shuffle
 from data_merge import *
 
@@ -57,8 +58,8 @@ images = tf.placeholder(tf.float32, (None, s1 * 2, s2, s3, 1), name='inputs')
 lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
-
-x = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+x = batch_norm(lh)
+x = tf.layers.conv3d(inputs=x, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
 x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
 x = tf.layers.conv3d(inputs=x, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
 x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
@@ -164,7 +165,7 @@ with tf.Session() as sess:
             print("Epoch: {}".format(epoch))
             print("Train loss = {}".format(accum_loss/train_data.shape[0]))
             print("Train accuracy = {:03.4f}".format(accum_acc/train_data.shape[0]))
-            print(y, train_label)
+            print(logit[:5])
 
             # accum_acc = 0
             #

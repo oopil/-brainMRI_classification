@@ -98,7 +98,12 @@ def draw_patch_box(space, center, size, label):
     space[x - hs:x + hs, y + hs, z - hs:z + hs] = label
     return space
 
-def dilation():
+def save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name):
+    draw_file_path = os.path.join(sample_dir_path, save_file_name)
+    draw_file = sitk.GetImageFromArray(draw_array)
+    draw_file.CopyInformation(itk_file)
+    sitk.WriteImage(draw_file, draw_file_path)
+    print('saved the file : {}'.format(draw_file_path))
     pass
 
 def check_mri_masking():
@@ -118,6 +123,7 @@ def check_mri_masking():
     in this case, we use
     aparc.DKTatlas+aseg.nii
     17,53 : left and right hippocampus label
+    18,54 : amigdala label
     '''
     new_file = file_name[1] # aparc.DKTatlas+aseg.nii
     new_file_path = os.path.join(sample_dir_path, new_file)
@@ -147,7 +153,7 @@ def check_mri_masking():
     lh_hippo_label[lh_hippo_pos] = 3
     # print(lh_hippo_label)
 
-    # visualize bounding box
+    # bounding box drawing
     center_pos = label_size_check(new_array, 17, isp)
     draw_array = draw_patch_box(lh_hippo_label, center_pos, patch_size, label=label_color)
 

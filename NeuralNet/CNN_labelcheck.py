@@ -130,34 +130,39 @@ def check_mri_masking():
     new_array, itk_file = read_MRI(new_file_path, label)
     new_label_list = count_label_num(new_array)
 
+    dilation_iter = 2
     # extract label 17 area
+    hippo_color = 2
     lh_hippo_pos = np.where(new_array == 17)
     empty_space_shape = [256 for i in range(3)]
     lh_hippo_label = np.zeros(empty_space_shape)
-    lh_hippo_label[lh_hippo_pos] = 2 # maybe green color ??
+    lh_hippo_label[lh_hippo_pos] = hippo_color
+    # dialation
+    lh_hippo_label = ndimage.morphology.binary_dilation(lh_hippo_label, iterations=dilation_iter).astype(
+        lh_hippo_label.dtype)
+    lh_hippo_label[np.where(lh_hippo_label)] = hippo_color
+    lh_hippo_label[lh_hippo_pos] = hippo_color + 1
+
+    # extract label 18 area
+    amig_color = 4
+    lh_amig_pos = np.where(new_array == 18)
+    empty_space_shape = [256 for i in range(3)]
+    lh_amig_label = np.zeros(empty_space_shape)
+    lh_amig_label[lh_amig_pos] = amig_color
 
     label_color = 1
     patch_size = 48
-    # <save default label mask>
-    # center_pos = label_size_check(new_array, 17, isp)
-    # lh_hippo_mask = draw_patch_box(lh_hippo_label, center_pos, patch_size, label=label_color)
-    # draw_file_path = os.path.join(sample_dir_path, 'mask_lh.nii')
-    # draw_file = sitk.GetImageFromArray(lh_hippo_mask)
-    # draw_file.CopyInformation(itk_file)
-    # sitk.WriteImage(draw_file, draw_file_path)
 
-    # dialation
-    dilation_iter = 3
-    lh_hippo_label = ndimage.morphology.binary_dilation(lh_hippo_label, iterations=dilation_iter).astype(lh_hippo_label.dtype)
-    lh_hippo_label[np.where(lh_hippo_label)] = 2
-    lh_hippo_label[lh_hippo_pos] = 3
-    # print(lh_hippo_label)
+    lh_amig_label = ndimage.morphology.binary_dilation(lh_amig_label, iterations=dilation_iter).astype(
+        lh_amig_label.dtype)
+    lh_amig_label[np.where(lh_amig_label)] = amig_color
+    lh_amig_label[lh_amig_pos] = amig_color + 1
 
     # bounding box drawing
-    center_pos = label_size_check(new_array, 17, isp)
-    draw_array = draw_patch_box(lh_hippo_label, center_pos, patch_size, label=label_color)
-
-    save_file_name = 'mask_lh_dilation'+str(dilation_iter)+'.nii'
+    # center_pos = label_size_check(new_array, 17, isp)
+    # draw_array = draw_patch_box(lh_hippo_label, center_pos, patch_size, label=label_color)
+    draw_array = lh_amig_label + lh_hippo_label
+    save_file_name = 'mask_lh_hippo_amig'+str(dilation_iter)+'.nii'
     save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name)
 
 def check_mri_label():

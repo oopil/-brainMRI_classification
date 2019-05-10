@@ -26,10 +26,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def read_cnn_data():
-    # base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
-    base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy' # sv186
-    # excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
-    excel_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx' # sv186
+    base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+    # base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy' # sv186
+    excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+    # excel_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx' # sv186
     diag_type = 'clinic'
     class_option = 'CN vs AD'
     class_num = 2
@@ -104,8 +104,8 @@ y = x
 # %%
 batch = 30
 dropout_prob = 0.5
-epochs = 20000
-epoch_freq = 10
+epochs = 30
+epoch_freq = 1
 learning_rate = 1e-4
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)

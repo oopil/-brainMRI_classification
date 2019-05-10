@@ -418,6 +418,10 @@ class MRI_chosun_data():
             # print(train_label)
             # print(test_label)
             print(len(train_label)+len(test_label), len(train_label), len(test_label))
+            train_data = np.array(train_data)
+            train_label = np.array(train_label)
+            test_data = np.array(test_data)
+            test_label = np.array(test_label)
             whole_set.append([train_data, train_label, test_data, test_label])
         return whole_set
 

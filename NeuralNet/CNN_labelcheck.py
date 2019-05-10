@@ -4,6 +4,7 @@ sys.path.append('/home/soopil/Desktop/github/brainMRI_classification')
 sys.path.append('/home/soopil/Desktop/github/brainMRI_classification/sample_image')
 import numpy as np
 import SimpleITK as sitk
+from scipy import ndimage
 # /home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed
 
 def _read_py_function_1_patch(path, label):
@@ -42,11 +43,11 @@ def label_size_check(label_array, label_num, isp):
     :return: return the center position
     '''
     # print(label_array, label_num)
-    position_array = np.where(label_array == label_num)
-    # print(position_array)
-    # print(np.amax(position_array, axis=1))
-    max_pos = np.amax(position_array, axis=1)
-    min_pos = np.amin(position_array, axis=1)
+    lh_hippo_pos = np.where(label_array == label_num)
+    # print(lh_hippo_pos)
+    # print(np.amax(lh_hippo_pos, axis=1))
+    max_pos = np.amax(lh_hippo_pos, axis=1)
+    min_pos = np.amin(lh_hippo_pos, axis=1)
     if isp: print('label square size  {}'.format(max_pos - min_pos))
     return (max_pos+min_pos)//2
 
@@ -63,9 +64,9 @@ def count_label_num(label_array):
     label_list = []
     # print(np.where(label_array))
     # print(len(np.where(label_array)[0]))
-    position_array = np.where(label_array)
-    for i in range(len(position_array[0])):
-        label_list.append(label_array[position_array[0][i], position_array[1][i], position_array[2][i]])
+    lh_hippo_pos = np.where(label_array)
+    for i in range(len(lh_hippo_pos[0])):
+        label_list.append(label_array[lh_hippo_pos[0][i], lh_hippo_pos[1][i], lh_hippo_pos[2][i]])
     label_list = list(set(label_list))
     print('Total label number : {}'.format(len(label_list)))
     return label_list
@@ -97,9 +98,71 @@ def draw_patch_box(space, center, size, label):
     space[x - hs:x + hs, y + hs, z - hs:z + hs] = label
     return space
 
+def dilation():
+    pass
+
+def check_mri_masking():
+    print('start MRI label check.')
+    sample_dir_path = '/home/soopil/Desktop/github/brainMRI_classification/sample_image/ADDlabel'
+    file_name_str = 'T1Label.nii.gz  aparc.DKTatlas+aseg.nii  aseg.auto.nii aparc+aseg.nii  aparc.a2009s+aseg.nii'
+    file_name = [ e for e in file_name_str.split(' ') if e != '']
+    print('label file : ',file_name)
+    isp = True
+
+    orig_file = file_name[0]
+    label = 0 # ADD
+    orig_file_path = os.path.join(sample_dir_path, orig_file)
+    orig_array, itk_file = read_MRI(orig_file_path, label)
+    orig_label_list = count_label_num(orig_array)
+    '''
+    in this case, we use
+    aparc.DKTatlas+aseg.nii
+    17,53 : left and right hippocampus label
+    '''
+    new_file = file_name[1] # aparc.DKTatlas+aseg.nii
+    new_file_path = os.path.join(sample_dir_path, new_file)
+    new_array, itk_file = read_MRI(new_file_path, label)
+    new_label_list = count_label_num(new_array)
+
+    # extract label 17 area
+    lh_hippo_pos = np.where(new_array == 17)
+    empty_space_shape = [256 for i in range(3)]
+    lh_hippo_label = np.zeros(empty_space_shape)
+    lh_hippo_label[lh_hippo_pos] = 2 # maybe green color ??
+
+    label_color = 1
+    patch_size = 48
+    # <save default label mask>
+    # center_pos = label_size_check(new_array, 17, isp)
+    # lh_hippo_mask = draw_patch_box(lh_hippo_label, center_pos, patch_size, label=label_color)
+    # draw_file_path = os.path.join(sample_dir_path, 'mask_lh.nii')
+    # draw_file = sitk.GetImageFromArray(lh_hippo_mask)
+    # draw_file.CopyInformation(itk_file)
+    # sitk.WriteImage(draw_file, draw_file_path)
+
+    # dialation
+    dilation_iter = 3
+    lh_hippo_label = ndimage.morphology.binary_dilation(lh_hippo_label, iterations=dilation_iter).astype(lh_hippo_label.dtype)
+    lh_hippo_label[np.where(lh_hippo_label)] = 2
+    lh_hippo_label[lh_hippo_pos] = 3
+    # print(lh_hippo_label)
+
+    # visualize bounding box
+    center_pos = label_size_check(new_array, 17, isp)
+    draw_array = draw_patch_box(lh_hippo_label, center_pos, patch_size, label=label_color)
+
+    save_file_name = 'mask_lh_dilation'+str(dilation_iter)+'.nii'
+    draw_file_path = os.path.join(sample_dir_path, save_file_name)
+    draw_file = sitk.GetImageFromArray(draw_array)
+    draw_file.CopyInformation(itk_file)
+    sitk.WriteImage(draw_file, draw_file_path)
+    print('saved the file : {}'.format(draw_file_path))
+
+
+
 def check_mri_label():
     print('start MRI label check.')
-    sample_dir_path = '/home/sp/PycharmProjects/brainMRI_classification/sample_image/ADDlabel'
+    sample_dir_path = '/home/soopil/Desktop/github/brainMRI_classification/sample_image/ADDlabel'
     file_name_str = 'T1Label.nii.gz  aparc.DKTatlas+aseg.nii  aseg.auto.nii aparc+aseg.nii  aparc.a2009s+aseg.nii'
     file_name = [ e for e in file_name_str.split(' ') if e != '']
     print('label file : ',file_name)
@@ -153,7 +216,8 @@ def check_mri_label():
     print('saved the file : {}'.format(draw_file_path))
 
 def main():
-    check_mri_label()
+    # check_mri_label()
+    check_mri_masking()
 
 if __name__ == '__main__':
     main()

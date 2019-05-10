@@ -98,7 +98,7 @@ batch = 30
 dropout_prob = 0.5
 epochs = 20000
 epoch_freq = 10
-
+learning_rate = 1e-4
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)
 
@@ -107,7 +107,7 @@ with tf.name_scope('learning_rate_decay'):
     global_step = tf.Variable(0, trainable=False)
     total_learning = epochs
     lr = tf.train.exponential_decay(start_lr, global_step, total_learning, 0.99999, staircase=True)
-optimizer = tf.train.AdamOptimizer(1e-4)
+optimizer = tf.train.AdamOptimizer(lr)
 train_step = optimizer.minimize(loss)
 
 correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_gt, 1))

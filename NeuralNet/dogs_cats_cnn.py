@@ -77,18 +77,20 @@ with tf.variable_scope("Left", reuse=False):
     lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
     lh = tf.layers.flatten(lh)
 
-with tf.variable_scope("Right", reuse=False):
-    rh = batch_norm(rh)
-    rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-    rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-    rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-    rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-    rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-    rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-    rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-    rh = tf.layers.flatten(rh)
+# with tf.variable_scope("Right", reuse=False):
+#     rh = batch_norm(rh)
+#     rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+#     rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+#     rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+#     rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+#     rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+#     rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+#     rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+#     rh = tf.layers.flatten(rh)
+
 # x = tf.layers.dense(x, units=2048, kernel_initializer=weight_initializer, kernel_regularizer=weight_regularizer, use_bias=use_bias)
-x = tf.concat([lh,rh], -1)
+# x = tf.concat([lh,rh], -1)
+x = lh
 x = tf.layers.dense(x, units=2048, activation=tf.nn.relu)
 x = tf.layers.dense(x, units=512, activation=tf.nn.relu)
 x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)

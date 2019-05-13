@@ -138,8 +138,7 @@ def check_mri_masking():
     lh_hippo_label = np.zeros(empty_space_shape)
     lh_hippo_label[lh_hippo_pos] = hippo_color
     # dialation
-    lh_hippo_label = ndimage.morphology.binary_dilation(lh_hippo_label, iterations=dilation_iter).astype(
-        lh_hippo_label.dtype)
+    lh_hippo_label = ndimage.morphology.binary_dilation(lh_hippo_label, iterations=dilation_iter).astype(lh_hippo_label.dtype)
     lh_hippo_label[np.where(lh_hippo_label)] = hippo_color
     lh_hippo_label[lh_hippo_pos] = hippo_color + 1
 

@@ -1,9 +1,12 @@
 import numpy as np
 import tensorflow as tf
 import SimpleITK as sitk
+from scipy.ndimage.morphology import binary_dilation
+
 #######################################################################
 ### for reading patched mri data
 #######################################################################
+"""
 def _read_py_function_1_patch(path, label):
     '''
     use only when we need to extract some patches.
@@ -30,6 +33,53 @@ def _read_py_function_1_patch(path, label):
     if isp: print(patch_array.shape, type(patch_array))
     patch_array = np.expand_dims(patch_array, 3)
     return patch_array.astype(np.float32), label.astype(np.int32)
+"""
+def mask_dilation(image_patch, label_patch, label_num, patch_size):
+    dilation_iter = 2
+    empty_space_shape = [patch_size for i in range(3)]
+    label_pos = np.where(label_patch == label_num)
+    mask_label = np.zeros(empty_space_shape)
+    mask_label[label_pos] = label_num
+    mask_label = binary_dilation(mask_label, iterations=dilation_iter).astype(
+        mask_label.dtype)
+    image_patch[np.where(mask_label == 0)] = 0
+    return image_patch
+
+def _read_py_function_1_patch(path, label, is_masking=False):
+    '''
+    use only when we need to extract some patches.
+    '''
+    isp = False
+    if isp:print("file path : {}" .format(path))
+    path_decoded = path.decode()
+    img_path_decoded, label_path_decoded = path_decoded.split(',')
+    itk_file = sitk.ReadImage(img_path_decoded)
+    array = sitk.GetArrayFromImage(itk_file)
+
+    label_itk_file = sitk.ReadImage(label_path_decoded)
+    label_array = sitk.GetArrayFromImage(label_itk_file)
+
+    # find the patch position
+    patch_size = 48
+    hs = patch_size // 2
+
+    lh_hippo = 17
+    rh_hippo = 53
+    label_list = [lh_hippo, rh_hippo]
+    patch_list = []
+    for label_num in label_list:
+        x,y,z = label_size_check(label_array, label_num, isp)
+        image_patch = array[x - hs:x + hs, y - hs:y + hs, z - hs:z + hs]
+        if is_masking:
+            label_patch = label_array[x - hs:x + hs, y - hs:y + hs, z - hs:z + hs]
+            image_patch = mask_dilation(image_patch, label_patch, label_num, patch_size)
+        patch_list.append(image_patch)
+
+    patch_array = np.concatenate(patch_list, axis=0)
+    #normalize
+    if isp: print(patch_array.shape, type(patch_array))
+    patch_array = np.expand_dims(patch_array, 3)
+    return patch_array.astype(np.float32), label.astype(np.int32)
 
 def label_size_check(label_array, label_num, isp):
     '''
@@ -45,13 +95,13 @@ def label_size_check(label_array, label_num, isp):
     if isp: print('label square size  {}'.format(max_pos - min_pos))
     return (max_pos+min_pos)//2
 
-def get_patch_dataset(img_l, label_l, batch_size=1):
+def get_patch_dataset(img_l, label_l, is_masking=False, batch_size=1):
     print(type(img_l), np.shape(img_l))
-    # for line in img_l:
-    #     print(line)
-    # assert False
-    dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l))
-    dataset = dataset.map(lambda img_l, label_l: tuple(tf.py_func(_read_py_function_1_patch, [img_l, label_l], [tf.float32, tf.int32])))
+    mask_l = [False for _ in range(len(label_l))]
+    if is_masking:
+        mask_l = [True for _ in range(len(label_l))]
+    dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l, mask_l))
+    dataset = dataset.map(lambda img_l, label_l, mask_l: tuple(tf.py_func(_read_py_function_1_patch, [img_l, label_l, mask_l], [tf.float32, tf.int32])))
     dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + 3 * batch_size)).repeat().batch(batch_size)
     # dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + 3 * batch_size))
     # dataset = dataset.shuffle(buffer_size=(len(img_l) * batch_size))

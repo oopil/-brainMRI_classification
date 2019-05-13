@@ -66,9 +66,9 @@ class_num = 2
 patch_size = 48
 s1,s2,s3 = patch_size, patch_size, patch_size
 images = tf.placeholder(tf.float32, (None, s1 * 2, s2, s3, 1), name='inputs')
-lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
+lh, rh = tf.split(images, [patch_size, patch_size], 1)
 with tf.variable_scope("Left", reuse=False):
     lh = batch_norm(lh)
     lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
@@ -101,7 +101,7 @@ y = x
 #%%
 batch = 30
 dropout_prob = 0.5
-epochs = 30
+epochs = 3000
 epoch_freq = 1
 learning_rate = 1e-4
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)

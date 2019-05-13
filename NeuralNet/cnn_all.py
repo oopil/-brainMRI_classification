@@ -103,6 +103,7 @@ batch = 30
 dropout_prob = 0.5
 epochs = 3000
 epoch_freq = 1
+save_freq = 100
 learning_rate = 1e-4
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)
@@ -199,8 +200,8 @@ with tf.Session() as sess:
             #     accum_acc += acc_scr*(m2-m)
             # print("Validation accuracy = {:03.4f}".format(accum_acc/val_data.shape[0]))
             print()
-
-        save_path = saver.save(sess, "../cnn_all")
+        if epoch%save_freq == 0:
+            save_path = saver.save(sess, "../train/cnn_all")
 
 
 #%%

@@ -23,6 +23,8 @@ def parse_args() -> argparse:
     parser.add_argument('--setting', default='desktop', type=str)
     parser.add_argument('--mask', default=True, type=bool)
     parser.add_argument('--buffer_scale', default=3, type=int)
+    parser.add_argument('--epoch', default=50, type=int)
+
     return parser.parse_args()
 
 # %%
@@ -62,7 +64,7 @@ def read_cnn_data(sv_set = 0):
 is_mask = args.mask
 batch = 30
 dropout_prob = 0.5
-epochs = 20
+epochs = args.epoch
 print_freq = 5
 learning_rate = 1e-4
 '''

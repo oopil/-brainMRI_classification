@@ -118,6 +118,10 @@ train_step = optimizer.minimize(loss)
 correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_gt, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
+# Summarize
+tf.summary.scalar("loss", loss)
+tf.summary.scalar("accuracy", accuracy)
+
 saver = tf.train.Saver(max_to_keep = 0)
 init = tf.global_variables_initializer()
 

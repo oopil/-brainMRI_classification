@@ -76,7 +76,6 @@ images = tf.placeholder(tf.float32, (None, s1 * 2, s2, s3, 1), name='inputs')
 lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
-
 with tf.variable_scope("Model"):
     with tf.variable_scope("Left"):
         lh = batch_norm(lh)
@@ -89,8 +88,19 @@ with tf.variable_scope("Model"):
         lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.flatten(lh)
 
+    with tf.variable_scope("Right", reuse=False):
+        rh = batch_norm(rh)
+        rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+        rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+        rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+        rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.flatten(rh)
+
     with tf.variable_scope("FCN"):
-        x = lh
+        x = tf.concat([lh, rh], -1)
         x = tf.layers.dense(x, units=2048, activation=tf.nn.relu)
         x = tf.layers.dense(x, units=512, activation=tf.nn.relu)
         x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
@@ -189,46 +199,40 @@ for fold in whole_set:
 
 for i in range(len(train_result)):
     print("<< fold {} result>>".format(i))
-    print("CNN lh only model")
+    print("CNN lh and rh model")
     print("masking : {}".format(args.mask))
     print("train : {}".format(train_result))
     print("valid : {}".format(valid_result))
 
-
-# %%
-
-print("This is the end of the training")
-
 """
-print("Entering in testing mode")
-print()
-img_size = (28, 28)
 
-val_data, val_label = load_data(img_folder, test_list, img_size)
+with tf.variable_scope("Model"):
+    with tf.variable_scope("Left"):
+        lh = batch_norm(lh)
+        lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
+        lh = tf.layers.conv3d(inputs=lh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
+        lh = tf.layers.conv3d(inputs=lh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
+        lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        lh = tf.layers.flatten(lh)
 
-print("test data: {}".format(val_data.shape))
-print("test label: {}".format(val_label.shape))
-print()
+    with tf.variable_scope("Right", reuse=False):
+        rh = batch_norm(rh)
+        rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+        rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+        rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+        rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.flatten(rh)
 
-# %%
-
-with tf.Session() as sess:
-    saver.restore(sess, "./train/dogs_cats_cnn")
-    print()
-    print('Initialization loaded')
-    print()
-
-    accum_acc = 0
-
-    for m in range(0, val_data.shape[0], batch):
-        m2 = min(val_data.shape[0], m + batch)
-
-        acc_scr = sess.run((accuracy), \
-                           feed_dict={x: val_data[m:m2], y_gt: val_label[m:m2], \
-                                      keep_prob: 1})
-
-        accum_acc += acc_scr * (m2 - m)
-    print("Test accuracy = {:03.4f}".format(accum_acc / val_data.shape[0]))
-    print()
-
+    with tf.variable_scope("FCN"):
+        x = tf.concat([lh, rh], -1)
+        x = tf.layers.dense(x, units=2048, activation=tf.nn.relu)
+        x = tf.layers.dense(x, units=512, activation=tf.nn.relu)
+        x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
+        y = x
 """

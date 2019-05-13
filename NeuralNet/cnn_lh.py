@@ -6,7 +6,6 @@ from sklearn.model_selection import KFold
 
 # from NeuralNet.CNN_data import *
 # from NeuralNet.NN_ops import *
-from sklearn.utils import shuffle
 
 sys.path.append('..')
 sys.path.append('/home/soopil/Desktop/Dataset/github/brainMRI_classification/NeuralNet')
@@ -16,16 +15,16 @@ from data_merge import *
 from CNN_data import *
 from NN_ops import *
 
-
 # %%
 def parse_args() -> argparse:
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu', default='0', type=str)
     parser.add_argument('--setting', default='desktop', type=str)
+    parser.add_argument('--mask', default=True, type=bool)
+    parser.add_argument('--buffer_scale', default=3, type=int)
     return parser.parse_args()
 
 # %%
-
 args = parse_args()
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
@@ -62,21 +61,7 @@ def read_cnn_data(sv_set = 0):
     return train_data, one_hot_pd(train_label), val_data, one_hot_pd(val_label)
     # print(train_data)
     # print(type(train_data))
-
-
-# %%
-print()
-print("Loading data...")
-print()
-train_data, train_label, val_data, val_label = read_cnn_data(sv_set)
-print()
-print("train data: {}".format(train_data.shape))
-print("train label: {}".format(train_label.shape))
-print()
-print("validation data: {}".format(val_data.shape))
-print("validation label: {}".format(val_label.shape))
-print()
-# %%
+train_data, train_label, val_data, val_label = read_cnn_data()
 
 '''
     model building parts
@@ -85,6 +70,7 @@ class_num = 2
 patch_size = 48
 s1, s2, s3 = patch_size, patch_size, patch_size
 images = tf.placeholder(tf.float32, (None, s1 * 2, s2, s3, 1), name='inputs')
+# a = batch_norm(images)
 lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
@@ -110,6 +96,7 @@ with tf.variable_scope("Model"):
         y = x
 # %%
 is_mask = True
+buffer_scale = args.buffer_scale
 batch = 30
 dropout_prob = 0.5
 epochs = 100
@@ -123,6 +110,7 @@ with tf.name_scope('learning_rate_decay'):
     global_step = tf.Variable(0, trainable=False)
     total_learning = epochs
     lr = tf.train.exponential_decay(start_lr, global_step, total_learning, 0.99999, staircase=True)
+
 optimizer = tf.train.AdamOptimizer(lr)
 train_step = optimizer.minimize(loss)
 correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_gt, 1))
@@ -162,9 +150,9 @@ with tf.Session() as sess:
         print()
 
     # tensorflow dataset setting
-    next_element, iterator = get_patch_dataset(train_data, train_label, is_mask, batch)
+    next_element, iterator = get_patch_dataset(train_data, train_label, buffer_scale, is_mask, batch)
     sess.run(iterator.initializer)
-    test_element, test_iterator = get_patch_dataset(val_data, val_label, is_mask, len(val_label))
+    test_element, test_iterator = get_patch_dataset(val_data, val_label, buffer_scale, is_mask, len(val_label))
     sess.run(test_iterator.initializer)
     val_data_ts, test_label_ts = sess.run(test_element)
 
@@ -218,6 +206,43 @@ with tf.Session() as sess:
 
 print("This is the end of the training")
 
+whole_set = read_cnn_data(sv_set)
+train_result = []
+valid_result = []
+for fold in whole_set:
+    class_num = 2
+    sampling_option = "RANDOM"
+
+    train_data, train_label, val_data, val_label = fold
+    val_data, val_label = valence_class(val_data, val_label, class_num)
+    if sampling_option != "None":
+        train_data, train_label = over_sampling(train_data, train_label, sampling_option)
+        train_label, val_label = one_hot_pd(train_label), one_hot_pd(val_label)
+
+    print()
+    print("Loading data...")
+    print()
+    print()
+    print("train data: {}".format(train_data.shape))
+    print("train label: {}".format(train_label.shape))
+    print()
+    print("validation data: {}".format(val_data.shape))
+    print("validation label: {}".format(val_label.shape))
+    print()
+    tr, val = cross_validate(train_data, train_label, val_data, val_label, is_masking = args.mask, args=args)
+    train_result.append(tr)
+    valid_result.append(val)
+
+for i in range(len(train_result)):
+    print("<< fold {} result>>".format(i))
+    print("CNN lh model")
+    print("masking : {}".format(args.mask))
+    print("train : {}".format(train_result))
+    print("valid : {}".format(valid_result))
+
+# %%
+
+print("This is the end of the training")
 """
 print("Entering in testing mode")
 print()

@@ -3,6 +3,7 @@ pip install --ignore-installed --upgrade https://storage.googleapis.com/tensorfl
 pip install simpleitk
 pip install bayesian_optimization
 pip install scikit-image
+pip install sklearn
 pip install imblearn
 pip install openpyxl
 pip install pandas

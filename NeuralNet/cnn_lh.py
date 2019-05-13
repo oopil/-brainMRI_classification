@@ -2,6 +2,8 @@ import tensorflow as tf
 import os
 import sys
 import argparse
+from sklearn.model_selection import KFold
+
 # from NeuralNet.CNN_data import *
 # from NeuralNet.NN_ops import *
 from sklearn.utils import shuffle
@@ -36,7 +38,6 @@ sv_set_dict = {
 sv_set = sv_set_dict[args.setting]
 # %%
 
-
 def read_cnn_data(sv_set = 0):
     if sv_set == 186:
         base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy'
@@ -52,8 +53,7 @@ def read_cnn_data(sv_set = 0):
     fold_num = 5
     is_split_by_num = False
     sampling_option = "RANDOM"
-    whole_set = CNN_dataloader(base_folder_path, diag_type, class_option, excel_path, test_num, fold_num,
-                               is_split_by_num)
+    whole_set = CNN_dataloader(base_folder_path, diag_type, class_option, excel_path, test_num, fold_num, is_split_by_num)
 
     train_data, train_label, val_data, val_label = whole_set[0]
     val_data, val_label = valence_class(val_data, val_label, class_num)
@@ -212,7 +212,8 @@ with tf.Session() as sess:
             # print("Validation accuracy = {:03.4f}".format(accum_acc/val_data.shape[0]))
             print()
 
-    save_path = saver.save(sess, "../train/cnn_lh")
+    # save trained model
+    # save_path = saver.save(sess, "../train/cnn_lh")
 # %%
 
 print("This is the end of the training")

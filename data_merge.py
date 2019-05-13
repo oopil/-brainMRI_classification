@@ -382,7 +382,6 @@ class MRI_chosun_data():
         '''
         :return: return all possible train and test set according to the fold number.
         '''
-
         label_set = list(set(label))
         print('split the data into train and test by fold number. fold number : {} label set :{}' \
               .format(fold_num, label_set))

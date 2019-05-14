@@ -10,15 +10,17 @@ sys.path.append is needed only when using jupyter notebook
 when using the all 3 options to the features, 
 I could observe high training speed and high testing accuracy.
 '''
-def str2bool(v):
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 def parse_args() -> argparse:
+    def str2bool(v):
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu',                default='0', type=str)
     parser.add_argument('--setting',            default='desktop', type=str)

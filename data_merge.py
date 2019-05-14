@@ -536,7 +536,6 @@ def NN_dataloader(diag_type, class_option, \
     # base_folder_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0'
     # base_folder_path = '/home/sp/Datasets/MRI_chosun/test_sample_2'
     # excel_path = '/home/sp/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
-
     # excel_option = 'merge' # P V T merge
 
     loader = MRI_chosun_data()

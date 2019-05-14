@@ -121,9 +121,8 @@ with tf.variable_scope("Model"):
         x = tf.layers.dense(x, units=class_num, activation=tf.nn.softmax)
         # x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
         y = x
+
 # %%
-# %%
-a=1
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)
 

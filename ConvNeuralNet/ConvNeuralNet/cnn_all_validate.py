@@ -118,8 +118,7 @@ with tf.variable_scope("Model"):
         x = tf.concat([lh, rh], -1)
         x = tf.layers.dense(x, units=2048, activation=tf.nn.relu)
         x = tf.layers.dense(x, units=512, activation=tf.nn.relu)
-        x = tf.layers.dense(x, units=class_num, activation=tf.nn.softmax)
-        # x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
+        x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
         y = x
 # %%
 # %%

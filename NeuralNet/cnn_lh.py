@@ -99,7 +99,7 @@ is_mask = True
 buffer_scale = args.buffer_scale
 batch = 30
 dropout_prob = 0.5
-epochs = 100
+epochs = 20 # 100
 epoch_freq = 1
 learning_rate = 1e-4
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)

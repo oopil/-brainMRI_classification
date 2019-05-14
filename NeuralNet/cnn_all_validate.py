@@ -17,13 +17,22 @@ from CNN_data import *
 from NN_ops import *
 
 # %%
+
+
 def parse_args() -> argparse:
+    def str2bool(v):
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu', default='0', type=str)
-    parser.add_argument('--setting', default='desktop', type=str)
-    parser.add_argument('--mask', default=True, type=bool)
+    parser.add_argument('--gpu',        default='0', type=str)
+    parser.add_argument('--setting',    default='desktop', type=str)
+    parser.add_argument('--mask',       default=True, type=str2bool)
     parser.add_argument('--buffer_scale', default=3, type=int)
-    parser.add_argument('--epoch', default=50, type=int)
+    parser.add_argument('--epoch',      default=100, type=int)
     return parser.parse_args()
 
 # %%
@@ -37,6 +46,10 @@ sv_set_dict = {
     "sv202":202,
 }
 sv_set = sv_set_dict[args.setting]
+# is_mask = args.mask
+# print(is_mask)
+# print(type(is_mask))
+# assert False
 # %%
 
 def read_cnn_data(sv_set = 0):
@@ -60,10 +73,11 @@ def read_cnn_data(sv_set = 0):
     # print(type(train_data))
 
 
-is_mask = args.mask
+
 batch = 30
 dropout_prob = 0.5
 epochs = args.epoch
+is_mask = args.mask
 print_freq = 5
 learning_rate = 1e-4
 '''
@@ -107,6 +121,7 @@ with tf.variable_scope("Model"):
         x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
         y = x
 # %%
+# %%
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)
 
@@ -129,7 +144,11 @@ merged_summary = tf.summary.merge_all()
 whole_set = read_cnn_data(sv_set)
 train_result = []
 valid_result = []
+train_accur = []
+valid_accur = []
 for fold in whole_set:
+    train_accur = []
+    valid_accur = []
     class_num = 2
     sampling_option = "RANDOM"
     train_data, train_label, val_data, val_label = fold
@@ -164,8 +183,7 @@ for fold in whole_set:
 
         train_writer = tf.summary.FileWriter('../log/train', sess.graph)
         test_writer = tf.summary.FileWriter('../log/test')
-        train_accur = []
-        valid_accur = []
+
         for epoch in range(epochs):
             train_data, train_label = sess.run(next_element)
             train_feed_dict = {

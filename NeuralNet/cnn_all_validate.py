@@ -240,9 +240,9 @@ for i in range(len(train_result)):
     print("masking : {}".format(args.mask))
     print("train : {}".format(train_result[i]))
     print("valid : {}".format(valid_result[i]))
-    print("top train : {}" .format(top_train_accur_list))
-    print("top valid : {}" .format(top_valid_accur_list))
-    print("avg train top : {} , avg vaidation top : {}".format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list)))
+print("top train : {}" .format(top_train_accur_list))
+print("top valid : {}" .format(top_valid_accur_list))
+print("avg train top : {} , avg vaidation top : {}".format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list)))
 
 """
 

@@ -220,8 +220,8 @@ for i in range(len(train_result)):
     print("<< fold {} result>>".format(i))
     print("CNN lh and rh model")
     print("masking : {}".format(args.mask))
-    print("train : {}".format(train_result))
-    print("valid : {}".format(valid_result))
+    print("train : {}".format(train_result[i]))
+    print("valid : {}".format(valid_result[i]))
 
 """
 

@@ -2,6 +2,7 @@ import tensorflow as tf
 import os
 import sys
 import argparse
+import numpy as np
 from sklearn.model_selection import KFold
 
 # from NeuralNet.CNN_data import *
@@ -53,6 +54,7 @@ sv_set = sv_set_dict[args.setting]
 # %%
 
 def read_cnn_data(sv_set = 0):
+
     if sv_set == 186:
         base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy'
         excel_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
@@ -91,26 +93,35 @@ images = tf.placeholder(tf.float32, (None, s1 * 2, s2, s3, 1), name='inputs')
 lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
+
 with tf.variable_scope("Model"):
     with tf.variable_scope("Left"):
         lh = batch_norm(lh)
         lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
+        lh = tf.layers.conv3d(inputs=lh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.conv3d(inputs=lh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
         lh = tf.layers.conv3d(inputs=lh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        lh = tf.layers.conv3d(inputs=lh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
+        lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.flatten(lh)
 
     with tf.variable_scope("Right", reuse=False):
         rh = batch_norm(rh)
         rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+        rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
         rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+        rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.flatten(rh)
 
@@ -143,6 +154,8 @@ tf.summary.scalar("accuracy", accuracy)
 merged_summary = tf.summary.merge_all()
 
 whole_set = read_cnn_data(sv_set)
+top_train_accur_list = []
+top_valid_accur_list = []
 train_result = []
 valid_result = []
 train_accur = []
@@ -216,6 +229,10 @@ for fold in whole_set:
 
     train_result.append(train_accur)
     valid_result.append(valid_accur)
+    top_valid_accur = np.max(train_accur, 0)
+    top_train_accur = np.max(valid_accur, 0)
+    top_train_accur_list.append(top_train_accur)
+    top_valid_accur_list.append(top_valid_accur)
 
 for i in range(len(train_result)):
     print("<< fold {} result>>".format(i))
@@ -223,6 +240,9 @@ for i in range(len(train_result)):
     print("masking : {}".format(args.mask))
     print("train : {}".format(train_result[i]))
     print("valid : {}".format(valid_result[i]))
+    print("top train : {}" .format(top_train_accur_list))
+    print("top valid : {}" .format(top_valid_accur_list))
+    print("avg train top : {} , avg vaidation top : {}".format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list)))
 
 """
 

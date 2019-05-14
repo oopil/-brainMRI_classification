@@ -49,7 +49,7 @@ class NeuralNet(object):
         self.class_option_index = args.class_option_index
         class_split = self.class_option.split('vs')
         self.class_num = len(class_split)
-        self.noise_augment = args.noise_augment
+        self.noise_augment_stddev = args.noise_augment
 
         self.result_dir = args.result_dir
         self.log_dir = args.log_dir
@@ -306,7 +306,7 @@ class NeuralNet(object):
         self.input_feature_num = len(self.train_data[0])
 
     def noise_addition(self, data):
-        return gaussian_noise_layer(data, std=0.01)
+        return gaussian_noise_layer(data, std=self.noise_augment_stddev)
 
     ##################################################################################
     # validation
@@ -329,45 +329,43 @@ class NeuralNet(object):
     def BayesOptimize(self, init_lr_log, w_stddev_log):
         _BO.BayesOptimize(init_lr_log, w_stddev_log)
 
-    def BayesOptimize(self):
-        bayes_optimizer = BayesianOptimization(
-            f=self.BO_train_and_validate,
-            pbounds={
-                # 78 <= -1.2892029132535314,-1.2185073691640054
-                # 85 <= -1.2254855784556566, -1.142561108840614}}
-                'init_lr_log': (-2.0,-1.0),
-                'w_stddev_log': (-2.0,-1.0)
-            },
-            random_state=0,
-            # verbose=2
-        )
-        bayes_optimizer.maximize(
-            init_points=5,
-            n_iter=40,
-            acq='ei',
-            xi=0.01
-        )
-        BO_results = []
-        BO_results.append('\n\t\t<<< class option : {} >>>\n' .format(self.class_option))
-        BO_result_file_name = "BO_result/BayesOpt_results"\
-                              + str(time.time()) + '_' + self.class_option
-        fd = open(BO_result_file_name, 'a+t')
-        for i, ressult in enumerate(bayes_optimizer.res):
-            BO_results.append('Iteration {}:{}\n'.format(i, ressult))
-            print('Iteration {}: {}'.format(i, ressult))
-            fd.writelines('Iteration {}:{}\n'.format(i, ressult))
-        BO_results.append('Final result: {}\n'.format(bayes_optimizer.max))
-        fd.writelines('Final result: {}\n'.format(bayes_optimizer.max))
-        print('Final result: {}\n'.format(bayes_optimizer.max))
-        fd.close()
+    # def BayesOptimize(self):
+    #     bayes_optimizer = BayesianOptimization(
+    #         f=self.BO_train_and_validate,
+    #         pbounds={
+    #             # 78 <= -1.2892029132535314,-1.2185073691640054
+    #             # 85 <= -1.2254855784556566, -1.142561108840614}}
+    #             'init_lr_log': (-2.0,-1.0),
+    #             'w_stddev_log': (-2.0,-1.0)
+    #         },
+    #         random_state=0,
+    #         # verbose=2
+    #     )
+    #     bayes_optimizer.maximize(
+    #         init_points=5,
+    #         n_iter=40,
+    #         acq='ei',
+    #         xi=0.01
+    #     )
+    #     BO_results = []
+    #     BO_results.append('\n\t\t<<< class option : {} >>>\n' .format(self.class_option))
+    #     BO_result_file_name = "BO_result/BayesOpt_results"\
+    #                           + str(time.time()) + '_' + self.class_option
+    #     fd = open(BO_result_file_name, 'a+t')
+    #     for i, ressult in enumerate(bayes_optimizer.res):
+    #         BO_results.append('Iteration {}:{}\n'.format(i, ressult))
+    #         print('Iteration {}: {}'.format(i, ressult))
+    #         fd.writelines('Iteration {}:{}\n'.format(i, ressult))
+    #     BO_results.append('Final result: {}\n'.format(bayes_optimizer.max))
+    #     fd.writelines('Final result: {}\n'.format(bayes_optimizer.max))
+    #     print('Final result: {}\n'.format(bayes_optimizer.max))
+    #     fd.close()
     ##################################################################################
     # Model
     ##################################################################################
     def build_model(self):
         """ Graph Input """
         self.input = tf.placeholder(tf.float32, [None, self.input_feature_num], name='inputs')
-        tf.nn.batch_normalization()
-
         # self.label = tf.placeholder(tf.float32, [None, self.class_num], name='targets')
         self.label = tf.placeholder(tf.int32, [None], name='targets')
         self.label_onehot = onehot(self.label, self.class_num)
@@ -398,7 +396,8 @@ class NeuralNet(object):
                                         decay_rate=.96,
                                         staircase=True)
         # self.optim = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
-        self.optim = tf.train.GradientDescentOptimizer(lr).minimize(self.loss)
+        # self.optim = tf.train.GradientDescentOptimizer(lr).minimize(self.loss)
+        self.optim = tf.train.AdamOptimizer(lr).minimize(self.loss)
         # self.optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
         # self.d_optim = tf.train.AdamOptimizer(d_lr, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
         #self.d_optim = tf.train.AdagradOptimizer(d_lr).minimize(self.loss, var_list=d_vars)
@@ -446,7 +445,8 @@ class NeuralNet(object):
             # get batch data
             for idx in range(start_batch_id, self.iteration):
                 #---------------------------------------------------
-                train_data = self.noise_addition(self.train_data)
+                if self.noise_augment_stddev:
+                    train_data = self.noise_addition(self.train_data)
                 train_feed_dict = {
                     self.input: train_data,
                     self.label: self.train_label

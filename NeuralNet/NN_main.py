@@ -19,14 +19,14 @@ def parse_args() -> argparse:
         else:
             raise argparse.ArgumentTypeError('Boolean value expected.')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu',                default=0, type=int)
-    parser.add_argument('--excel_path',         default='/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx', type=str)
-    parser.add_argument('--base_folder_path',   default='/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed', type=str)
+    parser.add_argument('--gpu',                default='0', type=str)
+    parser.add_argument('--task',               default='cv', type=str) # train cv bo
+    parser.add_argument('--setting',            default='desktop', type=str)
     parser.add_argument('--result_file_name',   default='/home/soopil/Desktop/github/brainMRI_classification/nn_result/chosun_MRI_excel_AD_nn_result', type=str)
     # 'None RANDOM SMOTE SMOTEENN SMOTETomek BolderlineSMOTE'
     parser.add_argument('--excel_option',       default='merge', type=str)
-    parser.add_argument('--is_split_by_num',    default=False, type=bool)
-    parser.add_argument('--investigate_validation', default=False, type=bool)
+    parser.add_argument('--is_split_by_num',    default=False, type=str2bool)
+    parser.add_argument('--investigate_validation', default=False, type=str2bool)
     parser.add_argument('--iter',               default=1, type=int)
     parser.add_argument('--summary_freq',       default=100, type=int)
     parser.add_argument('--class_option_index', default=0, type=int)
@@ -35,14 +35,11 @@ def parse_args() -> argparse:
     parser.add_argument('--result_dir',         default='nn_result', type=str)
     parser.add_argument('--log_dir',            default='log', type=str)
     parser.add_argument('--checkpoint_dir',     default='checkpoint', type=str)
-    parser.add_argument('--print_freq',         default=1, type=int)
+
+    parser.add_argument('--epoch',              default=500, type=int)
+    parser.add_argument('--print_freq',         default=20, type=int)
     parser.add_argument('--save_freq',          default=200, type=int)
-
-    parser.add_argument('--diag_type',          default='clinic', type=str)
-    # diag_type = "PET"
-    # diag_type = "new"
-    # diag_type = "clinic"
-
+    # diag_type = PET new clinic
     '''
         from this line, i need to save information after running.
         start with 19 index.
@@ -50,8 +47,7 @@ def parse_args() -> argparse:
     # neural_net ## simple basic attention self_attention attention_often
     # conv_neural_net ## simple, basic attention
     parser.add_argument('--neural_net',         default='simple', type=str)
-    parser.add_argument('--conv_neural_net',    default='simple', type=str)
-    parser.add_argument('--class_option',       default='CN vs AD', type=str)
+    parser.add_argument('--class_option',       default='clinic CN vs AD', type=str)
     #PET    # class_option = 'PET pos vs neg'
     #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
@@ -59,53 +55,77 @@ def parse_args() -> argparse:
     parser.add_argument('--patch_size',         default=48, type=int)
     parser.add_argument('--batch_size',         default=5, type=int)
     parser.add_argument('--weight_stddev',      default=0.05, type=float) #0.05 #0.0721
-    parser.add_argument('--epoch',              default=10, type=int)
     parser.add_argument('--loss_function',      default='normal', type=str) # normal / cross_entropy
     parser.add_argument('--sampling_option',    default='RANDOM', type=str)
-    parser.add_argument('--noise_augment',      default=True, type=bool)
+    parser.add_argument('--noise_augment',      default=0.1, type=float)
     # if i use this nosie augment, the desktop stop
     # None RANDOM ADASYN SMOTE SMOTEENN SMOTETomek BolderlineSMOTE
     # BO result -1.2254855784556566, -1.142561108840614
+    parser.add_argument('--excel_path',         default='None', type=str)
+    parser.add_argument('--base_folder_path',   default='None', type=str)
+    parser.add_argument('--diag_type',          default='None', type=str)
     return parser.parse_args()
+
+def args_set(args):
+    sv_set_dict = {
+        "desktop": 0,
+        "sv186": 186,
+        "sv144": 144,
+        "sv202": 202,
+    }
+    sv_set = sv_set_dict[args.setting]
+    if sv_set == 186:
+        # args.base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy'
+        args.excel_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+    elif sv_set == 0:  # desktop
+        # args.base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+        args.excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+    # elif sv_set == 144:  # desktop
+    #     args.base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+    #     args.excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+    elif sv_set == 202:  # desktop
+        # args.base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+        args.excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+
+    class_option = args.class_option.split(' ')
+    args.diag_type = class_option[0]
+    args.class_option = ' '.join(class_option[1:])
+    return args
 
 def run():
     # parse arguments
     args = parse_args()
+    args = args_set(args)
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
     if args is None:
         exit()
     # open session
-    with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
-        # CNN_simple_train(sess, args)
-        NN_simple_train(sess, args)
-        # NN_cross_validation(sess, args)
-        # NN_BayesOptimize(sess, args)
+    if args.task == 'cv':
+        task = NN_cross_validation
+    elif args.task == 'train':
+        task = NN_simple_train
+    elif args.task == 'bo':
+        task = NN_BayesOptimize
+    # elif args.task == 'test':
+    #     task = NN_test
 
-def CNN_simple_train(sess, args):
-    CNN = ConvNeuralNet(sess, args)
-    CNN.read_cnn_data()
-    # show network architecture
-    # launch the graph in a session
-    # CNN.test_data_read() # test only data reading
-    CNN.set_lr(.001)
-    CNN.set_weight_stddev(.05)
-    CNN.build_model()
-    show_all_variables()
-    CNN.train()
-    # NN.visualize_results(args.epoch - 1)
-    print(" [*] Training finished!")
+    with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
+        task(sess, args)
 
 def NN_simple_train(sess, args):
     NN = NeuralNet(sess, args)
     NN.read_nn_data()
-    NN.build_model()
+
+    # assert False
+
     # show network architecture
     show_all_variables()
 
     # i think we should set this param before build model
-    NN.set_lr(10 ** -1.7965511862094083)
-    NN.set_weight_stddev(10 ** -1.1072880677553867)
+    # NN.set_lr(10 ** -1.7965511862094083)
+    # NN.set_weight_stddev(10 ** -1.1072880677553867)
+    NN.build_model()
 
     # launch the graph in a session
     NN.train()

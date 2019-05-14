@@ -55,7 +55,7 @@ def try_all_fold(self)->list:
                        .format(self.class_option, self.sampling_option))
     result_list.append('model : {}, lr : {}, epoch : {}, noise augment : {},  {} \n' \
                        .format(self.args.neural_net, self.learning_rate, \
-                               self.epoch, self.noise_augment, now.tm_year))
+                               self.epoch, self.noise_augment_stddev, now.tm_year))
     for i, fold in enumerate(whole_set):
         self.train_data, self.train_label, self.test_data, self.test_label = fold
         self.test_data, self.test_label = valence_class(self.test_data, self.test_label, self.class_num)

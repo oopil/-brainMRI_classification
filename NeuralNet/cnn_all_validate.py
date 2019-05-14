@@ -255,6 +255,7 @@ file = open(result_file_name, 'a+t')
 for result in file_contents:
     result += '\n'
     file.writelines(result)
+
 """
 
 with tf.variable_scope("Model"):

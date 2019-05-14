@@ -234,16 +234,27 @@ for fold in whole_set:
     top_train_accur_list.append(top_train_accur)
     top_valid_accur_list.append(top_valid_accur)
 
-for i in range(len(train_result)):
-    print("<< fold {} result>>".format(i))
-    print("CNN lh and rh model")
-    print("masking : {}".format(args.mask))
-    print("train : {}".format(train_result[i]))
-    print("valid : {}".format(valid_result[i]))
-print("top train : {}" .format(top_train_accur_list))
-print("top valid : {}" .format(top_valid_accur_list))
-print("avg train top : {} , avg vaidation top : {}".format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list)))
 
+file_contents = []
+
+for i in range(len(train_result)):
+    file_contents.append("<< fold {} result>>".format(i))
+    file_contents.append("CNN lh and rh model")
+    file_contents.append("masking : {}".format(args.mask))
+    file_contents.append("train : {}".format(train_result[i]))
+    file_contents.append("valid : {}".format(valid_result[i]))
+file_contents.append("top train : {}".format(top_train_accur_list))
+file_contents.append("top valid : {}".format(top_valid_accur_list))
+file_contents.append("avg train top : {} , avg vaidation top : {}".format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list)))
+
+for result in file_contents:
+    print(result)
+
+result_file_name = '../nn_result/cv.txt'
+file = open(result_file_name, 'a+t')
+for result in file_contents:
+    result += '\n'
+    file.writelines(result)
 """
 
 with tf.variable_scope("Model"):

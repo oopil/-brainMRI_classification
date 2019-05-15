@@ -101,14 +101,14 @@ def run():
     if args is None:
         exit()
     # open session
+    task = None
     if args.task == 'cv':
         task = NN_cross_validation
     elif args.task == 'train':
         task = NN_simple_train
     elif args.task == 'bo':
         task = NN_BayesOptimize
-    # elif args.task == 'test':
-    #     task = NN_test
+    assert task != None
 
     with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
         task(sess, args)
@@ -116,17 +116,13 @@ def run():
 def NN_simple_train(sess, args):
     NN = NeuralNet(sess, args)
     NN.read_nn_data()
-
     # assert False
-
     # show network architecture
     show_all_variables()
-
     # i think we should set this param before build model
     # NN.set_lr(10 ** -1.7965511862094083)
     # NN.set_weight_stddev(10 ** -1.1072880677553867)
     NN.build_model()
-
     # launch the graph in a session
     NN.train()
     # NN.visualize_results(args.epoch - 1)

@@ -45,11 +45,16 @@ def label_size_check(label_array, label_num, isp):
     # print(label_array, label_num)
     lh_hippo_pos = np.where(label_array == label_num)
     # print(lh_hippo_pos)
-    # print(np.amax(lh_hippo_pos, axis=1))
     max_pos = np.amax(lh_hippo_pos, axis=1)
     min_pos = np.amin(lh_hippo_pos, axis=1)
-    if isp: print('label square size  {}'.format(max_pos - min_pos))
-    return (max_pos+min_pos)//2
+    median_pos = np.median(lh_hippo_pos, axis=1).astype(np.int32)
+    if isp:
+        print('label square size  {}'.format(max_pos - min_pos))
+        # print(max_pos)
+        # print(min_pos)
+        print('median point : {}'.format(median_pos))
+    # return (max_pos+min_pos)//2
+    return median_pos
 
 def read_MRI(img_path, label):
     print("file path : {}" .format(img_path))
@@ -71,7 +76,7 @@ def count_label_num(label_array):
     print('Total label number : {}'.format(len(label_list)))
     return label_list
 
-def draw_patch_box(space, center, size, label):
+def draw_patch_box(space, center, size, label, thickness = 1):
     x,y,z = center
     hs = size//2
     space[x - hs, y - hs:y + hs, z - hs:z + hs] = label
@@ -80,22 +85,22 @@ def draw_patch_box(space, center, size, label):
     space[x - hs:x + hs, y - hs:y + hs, z + hs] = label
     space[x - hs:x + hs, y - hs, z - hs:z + hs] = label
     space[x - hs:x + hs, y + hs, z - hs:z + hs] = label
-
-    hs -= 1
-    space[x - hs, y - hs:y + hs, z - hs:z + hs] = label
-    space[x + hs, y - hs:y + hs, z - hs:z + hs] = label
-    space[x - hs:x + hs, y - hs:y + hs, z - hs] = label
-    space[x - hs:x + hs, y - hs:y + hs, z + hs] = label
-    space[x - hs:x + hs, y - hs, z - hs:z + hs] = label
-    space[x - hs:x + hs, y + hs, z - hs:z + hs] = label
-
-    hs += 1
-    space[x - hs, y - hs:y + hs, z - hs:z + hs] = label
-    space[x + hs, y - hs:y + hs, z - hs:z + hs] = label
-    space[x - hs:x + hs, y - hs:y + hs, z - hs] = label
-    space[x - hs:x + hs, y - hs:y + hs, z + hs] = label
-    space[x - hs:x + hs, y - hs, z - hs:z + hs] = label
-    space[x - hs:x + hs, y + hs, z - hs:z + hs] = label
+    for i in range(thickness):
+        hs += 1
+        space[x - hs, y - hs:y + hs, z - hs:z + hs] = label
+        space[x + hs, y - hs:y + hs, z - hs:z + hs] = label
+        space[x - hs:x + hs, y - hs:y + hs, z - hs] = label
+        space[x - hs:x + hs, y - hs:y + hs, z + hs] = label
+        space[x - hs:x + hs, y - hs, z - hs:z + hs] = label
+        space[x - hs:x + hs, y + hs, z - hs:z + hs] = label
+    #
+    # hs += 1
+    # space[x - hs, y - hs:y + hs, z - hs:z + hs] = label
+    # space[x + hs, y - hs:y + hs, z - hs:z + hs] = label
+    # space[x - hs:x + hs, y - hs:y + hs, z - hs] = label
+    # space[x - hs:x + hs, y - hs:y + hs, z + hs] = label
+    # space[x - hs:x + hs, y - hs, z - hs:z + hs] = label
+    # space[x - hs:x + hs, y + hs, z - hs:z + hs] = label
     return space
 
 def save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name):
@@ -176,6 +181,7 @@ def check_mri_label():
     orig_file_path = os.path.join(sample_dir_path, orig_file)
     orig_array, itk_file = read_MRI(orig_file_path, label)
     orig_label_list = count_label_num(orig_array)
+
     '''
     for i in range(1,5):
     new_file = file_name[i]
@@ -194,14 +200,55 @@ def check_mri_label():
     new_file = file_name[1]
     new_file_path = os.path.join(sample_dir_path, new_file)
     # new_file_path = file
-    new_array, itk_file = read_MRI(new_file_path, label)
-    new_label_list = count_label_num(new_array)
+    label_array, itk_file = read_MRI(new_file_path, label)
+    new_label_list = count_label_num(label_array)
+    print(new_label_list)
+    lh_cort, rh_cort = [],[]
+    subcort = []
+    for label in sorted(new_label_list):
+        if label // 1000 == 1:
+            lh_cort.append(label)
+        elif label // 1000 == 2:
+            rh_cort.append(label)
+        else:
+            subcort.append(label)
+    # print(lh_cort)
+    # print(rh_cort)
+    # assert False
+
+    empty_space_shape = [256 for i in range(3)]
+    empty_space = np.zeros(empty_space_shape)
+
+    patch_size = 24
+    label_color = 1 # red
+    draw_array = empty_space
+
+    """
+    sub_cortical part box drawing part...
+    """
+    for lh_label in subcort:
+        if lh_label == 91 or (lh_label >= 10 and lh_label <= 30) and (lh_label not in (14, 15, 16,24)):
+            center_pos = label_size_check(label_array, lh_label, isp)
+            draw_array[np.where(label_array == lh_label)] = lh_label
+            draw_array = draw_patch_box(draw_array, center_pos, patch_size, label=label_color, thickness= 0)
+    save_file_name = 'draw_patch_subcort_lh' + '.nii'
+    save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name)
+    assert False
+    """
+    cortical part box drawing part...
+    """
+
+    for lh_label in rh_cort:
+        center_pos = label_size_check(label_array, lh_label, isp)
+        draw_array[np.where(label_array == lh_label)] = lh_label
+        draw_array = draw_patch_box(draw_array, center_pos, patch_size, label=label_color, thickness= 0)
+    draw_array[np.where(label_array == 53)] = 53
+    draw_array[np.where(label_array == 17)] = 17
 
     # for i in range(len(new_label_list)):
     #     if not new_label_list[i] in orig_label_list:
     #         print(new_label_list[i])
-    empty_space_shape = [256 for i in range(3)]
-    empty_space = np.zeros(empty_space_shape)
+    """
     # draw_array = new_array
     draw_array = empty_space
     label_color = 1 # red
@@ -212,16 +259,19 @@ def check_mri_label():
     draw_array = draw_patch_box(draw_array, center_pos, patch_size, label=label_color)
     # label_size_check(new_array, 18)
     # label_size_check(new_array, 54)
+    """
+
+    save_file_name = 'draw_patch_cort_lh'+'.nii'
     save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name)
-    draw_file_path = os.path.join(sample_dir_path, 'draw_patch_only.nii')
-    draw_file = sitk.GetImageFromArray(draw_array)
-    draw_file.CopyInformation(itk_file)
-    sitk.WriteImage(draw_file, draw_file_path)
-    print('saved the file : {}'.format(draw_file_path))
+    # draw_file_path = os.path.join(sample_dir_path, 'draw_patch_only.nii')
+    # draw_file = sitk.GetImageFromArray(draw_array)
+    # draw_file.CopyInformation(itk_file)
+    # sitk.WriteImage(draw_file, draw_file_path)
+    # print('saved the file : {}'.format(draw_file_path))
 
 def main():
-    # check_mri_label()
-    check_mri_masking()
+    check_mri_label()
+    # check_mri_masking()
 
 if __name__ == '__main__':
     main()

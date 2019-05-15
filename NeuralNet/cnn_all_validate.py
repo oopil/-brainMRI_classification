@@ -156,11 +156,14 @@ merged_summary = tf.summary.merge_all()
 whole_set = read_cnn_data(sv_set)
 top_train_accur_list = []
 top_valid_accur_list = []
+last_train_accur_list = []
+last_valid_accur_list = []
 train_result = []
 valid_result = []
 train_accur = []
 valid_accur = []
 for fold in whole_set:
+    acc_scr, val_acc = 0,0
     train_accur = []
     valid_accur = []
     class_num = 2
@@ -233,7 +236,8 @@ for fold in whole_set:
     top_valid_accur = np.max(valid_accur, 0)
     top_train_accur_list.append(top_train_accur)
     top_valid_accur_list.append(top_valid_accur)
-
+    last_train_accur_list.append(acc_scr)
+    last_valid_accur_list.append(val_acc)
 
 file_contents = []
 
@@ -245,6 +249,8 @@ for i in range(len(train_result)):
     file_contents.append("valid : {}".format(valid_result[i]))
 file_contents.append("top train : {}".format(top_train_accur_list))
 file_contents.append("top valid : {}".format(top_valid_accur_list))
+file_contents.append("last train : {}".format(last_train_accur_list))
+file_contents.append("last valid : {}".format(last_valid_accur_list))
 file_contents.append("avg train top : {} , avg vaidation top : {}".format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list)))
 
 for result in file_contents:

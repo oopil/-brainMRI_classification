@@ -229,8 +229,8 @@ for fold in whole_set:
 
     train_result.append(train_accur)
     valid_result.append(valid_accur)
-    top_valid_accur = np.max(train_accur, 0)
-    top_train_accur = np.max(valid_accur, 0)
+    top_train_accur = np.max(train_accur, 0)
+    top_valid_accur = np.max(valid_accur, 0)
     top_train_accur_list.append(top_train_accur)
     top_valid_accur_list.append(top_valid_accur)
 

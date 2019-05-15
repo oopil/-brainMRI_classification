@@ -1,10 +1,10 @@
 import os
 import sys
-sys.path.append('/home/soopil/Desktop/github/brainMRI_classification')
-sys.path.append('/home/soopil/Desktop/github/brainMRI_classification/sample_image')
 import numpy as np
 import SimpleITK as sitk
 from scipy import ndimage
+sys.path.append('/home/soopil/Desktop/github/brainMRI_classification')
+sys.path.append('/home/soopil/Desktop/github/brainMRI_classification/sample_image')
 # /home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed
 
 def _read_py_function_1_patch(path, label):
@@ -42,19 +42,17 @@ def label_size_check(label_array, label_num, isp):
     print the size of label square
     :return: return the center position
     '''
-    # print(label_array, label_num)
     lh_hippo_pos = np.where(label_array == label_num)
-    # print(lh_hippo_pos)
     max_pos = np.amax(lh_hippo_pos, axis=1)
     min_pos = np.amin(lh_hippo_pos, axis=1)
     median_pos = np.median(lh_hippo_pos, axis=1).astype(np.int32)
     if isp:
         print('label square size  {}'.format(max_pos - min_pos))
-        # print(max_pos)
-        # print(min_pos)
         print('median point : {}'.format(median_pos))
-    # return (max_pos+min_pos)//2
     return median_pos
+    # return (max_pos+min_pos)//2
+    # print(max_pos)
+    # print(min_pos)
 
 def read_MRI(img_path, label):
     print("file path : {}" .format(img_path))
@@ -111,6 +109,55 @@ def save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name):
     print('saved the file : {}'.format(draw_file_path))
     pass
 
+def check_mask_area():
+    print('start MRI label check.')
+    sample_dir_path = '/home/soopil/Desktop/github/brainMRI_classification/sample_image/ADDlabel'
+    file_name_str = 'T1Label.nii.gz  aparc.DKTatlas+aseg.nii  aseg.auto.nii aparc+aseg.nii  aparc.a2009s+aseg.nii'
+    file_name = [ e for e in file_name_str.split(' ') if e != '']
+    print('label file : ',file_name)
+    isp = True
+    brain_file = 'brain.nii'
+    label = 0 # ADD
+    brain_file_path = os.path.join(sample_dir_path, brain_file)
+    brain_array, itk_file = read_MRI(brain_file_path, label)
+
+    new_file = file_name[1]
+    new_file_path = os.path.join(sample_dir_path, new_file)
+    # new_file_path = file
+    label_array, itk_file = read_MRI(new_file_path, label)
+    new_label_list = count_label_num(label_array)
+    print(new_label_list)
+    lh_cort, rh_cort = [],[]
+    subcort = []
+    for label in sorted(new_label_list):
+        if label // 1000 == 1:
+            lh_cort.append(label)
+        elif label // 1000 == 2:
+            rh_cort.append(label)
+        else:
+            subcort.append(label)
+    empty_space_shape = [256 for i in range(3)]
+    empty_space = np.zeros(empty_space_shape)
+    draw_array = empty_space
+    dilation_iter = 3
+    for lh_label in subcort:
+        if lh_label == 91 or (lh_label >= 10 and lh_label <= 30) and (lh_label not in (14, 15, 16,24)):
+            label_mask = empty_space
+            label_mask[np.where(label_array == lh_label)] = lh_label
+            dilation_label_mask = ndimage.morphology.binary_dilation(label_mask, iterations=dilation_iter).astype(draw_array.dtype)
+            draw_array = draw_array + dilation_label_mask
+    for lh_label in lh_cort:
+        label_mask = empty_space
+        label_mask[np.where(label_array == lh_label)] = lh_label
+        dilation_label_mask = ndimage.morphology.binary_dilation(label_mask, iterations=dilation_iter).astype(
+            draw_array.dtype)
+        draw_array = draw_array + dilation_label_mask
+
+    # erase non - label pixel intensity
+    brain_array[np.where(draw_array == 0)] = 0
+    save_file_name = 'dilation_maksed_brain' + '.nii'
+    save_nifti_file(brain_array, itk_file, sample_dir_path, save_file_name)
+
 def check_mri_masking():
     print('start MRI label check.')
     sample_dir_path = '/home/soopil/Desktop/github/brainMRI_classification/sample_image/ADDlabel'
@@ -119,17 +166,7 @@ def check_mri_masking():
     print('label file : ',file_name)
     isp = True
 
-    orig_file = file_name[0]
     label = 0 # ADD
-    orig_file_path = os.path.join(sample_dir_path, orig_file)
-    orig_array, itk_file = read_MRI(orig_file_path, label)
-    orig_label_list = count_label_num(orig_array)
-    '''
-    in this case, we use
-    aparc.DKTatlas+aseg.nii
-    17,53 : left and right hippocampus label
-    18,54 : amigdala label
-    '''
     new_file = file_name[1] # aparc.DKTatlas+aseg.nii
     new_file_path = os.path.join(sample_dir_path, new_file)
     new_array, itk_file = read_MRI(new_file_path, label)
@@ -154,17 +191,11 @@ def check_mri_masking():
     lh_amig_label = np.zeros(empty_space_shape)
     lh_amig_label[lh_amig_pos] = amig_color
 
-    label_color = 1
-    patch_size = 48
-
     lh_amig_label = ndimage.morphology.binary_dilation(lh_amig_label, iterations=dilation_iter).astype(
         lh_amig_label.dtype)
     lh_amig_label[np.where(lh_amig_label)] = amig_color
     lh_amig_label[lh_amig_pos] = amig_color + 1
 
-    # bounding box drawing
-    # center_pos = label_size_check(new_array, 17, isp)
-    # draw_array = draw_patch_box(lh_hippo_label, center_pos, patch_size, label=label_color)
     draw_array = lh_amig_label + lh_hippo_label
     save_file_name = 'mask_lh_hippo_amig'+str(dilation_iter)+'.nii'
     save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name)
@@ -212,9 +243,6 @@ def check_mri_label():
             rh_cort.append(label)
         else:
             subcort.append(label)
-    # print(lh_cort)
-    # print(rh_cort)
-    # assert False
 
     empty_space_shape = [256 for i in range(3)]
     empty_space = np.zeros(empty_space_shape)
@@ -263,14 +291,10 @@ def check_mri_label():
 
     save_file_name = 'draw_patch_cort_lh'+'.nii'
     save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name)
-    # draw_file_path = os.path.join(sample_dir_path, 'draw_patch_only.nii')
-    # draw_file = sitk.GetImageFromArray(draw_array)
-    # draw_file.CopyInformation(itk_file)
-    # sitk.WriteImage(draw_file, draw_file_path)
-    # print('saved the file : {}'.format(draw_file_path))
 
 def main():
-    check_mri_label()
+    check_mask_area()
+    # check_mri_label()
     # check_mri_masking()
 
 if __name__ == '__main__':

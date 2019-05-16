@@ -19,7 +19,7 @@ def parse_args() -> argparse:
         else:
             raise argparse.ArgumentTypeError('Boolean value expected.')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu',                default='0', type=str)
+    parser.add_argument('--gpu',                default='186', type=str)
     parser.add_argument('--task',               default='cv', type=str) # train cv bo
     parser.add_argument('--setting',            default='desktop', type=str)
     parser.add_argument('--result_file_name',   default='/home/soopil/Desktop/github/brainMRI_classification/nn_result/chosun_MRI_excel_AD_nn_result', type=str)
@@ -36,8 +36,8 @@ def parse_args() -> argparse:
     parser.add_argument('--log_dir',            default='log', type=str)
     parser.add_argument('--checkpoint_dir',     default='checkpoint', type=str)
 
-    parser.add_argument('--epoch',              default=500, type=int)
-    parser.add_argument('--print_freq',         default=20, type=int)
+    parser.add_argument('--epoch',              default=150, type=int)
+    parser.add_argument('--print_freq',         default=5, type=int)
     parser.add_argument('--save_freq',          default=200, type=int)
     # diag_type = PET new clinic
     '''
@@ -51,9 +51,9 @@ def parse_args() -> argparse:
     #PET    # class_option = 'PET pos vs neg'
     #new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     #clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
-    parser.add_argument('--lr',                 default=0.001, type=float) #0.01 #0.0602
+    parser.add_argument('--lr',                 default=0.0001, type=float) #0.001 #0.0602
     parser.add_argument('--patch_size',         default=48, type=int)
-    parser.add_argument('--batch_size',         default=5, type=int)
+    parser.add_argument('--batch_size',         default=1, type=int)
     parser.add_argument('--weight_stddev',      default=0.05, type=float) #0.05 #0.0721
     parser.add_argument('--loss_function',      default='normal', type=str) # normal / cross_entropy
     parser.add_argument('--sampling_option',    default='RANDOM', type=str)

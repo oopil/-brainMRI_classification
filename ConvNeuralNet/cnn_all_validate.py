@@ -10,12 +10,12 @@ from sklearn.model_selection import KFold
 from sklearn.utils import shuffle
 
 sys.path.append('..')
-sys.path.append('/home/soopil/Desktop/Dataset/github/brainMRI_classification/NeuralNet')
+sys.path.append('/home/soopil/Desktop/Dataset/github/brainMRI_classification/ConvNeuralNet')
 from data_merge import *
 
 # server setting
 from CNN_data import *
-from NN_ops import *
+from CNN_ops import *
 
 # %%
 

@@ -1,6 +1,5 @@
 import argparse
 from NeuralNet.NN_model import NeuralNet
-from NeuralNet.CNN_model import ConvNeuralNet
 from NeuralNet.NN_utils import *
 '''
 sys.path.append('/home/soopil/PycharmProjects/brainMRI_classification')
@@ -36,7 +35,7 @@ def parse_args() -> argparse:
     parser.add_argument('--log_dir',            default='log', type=str)
     parser.add_argument('--checkpoint_dir',     default='checkpoint', type=str)
 
-    parser.add_argument('--epoch',              default=150, type=int)
+    parser.add_argument('--epoch',              default=200, type=int)
     parser.add_argument('--print_freq',         default=5, type=int)
     parser.add_argument('--save_freq',          default=200, type=int)
     # diag_type = PET new clinic
@@ -55,7 +54,7 @@ def parse_args() -> argparse:
     parser.add_argument('--patch_size',         default=48, type=int)
     parser.add_argument('--batch_size',         default=1, type=int)
     parser.add_argument('--weight_stddev',      default=0.05, type=float) #0.05 #0.0721
-    parser.add_argument('--loss_function',      default='normal', type=str) # normal / cross_entropy
+    parser.add_argument('--loss_function',      default='cEntropy', type=str) # L2 / cross
     parser.add_argument('--sampling_option',    default='RANDOM', type=str)
     parser.add_argument('--noise_augment',      default=0.1, type=float)
     # if i use this nosie augment, the desktop stop
@@ -115,6 +114,7 @@ def run():
 
 def NN_simple_train(sess, args):
     NN = NeuralNet(sess, args)
+    NN.print_arg(args)
     NN.read_nn_data()
     # assert False
     # show network architecture
@@ -130,6 +130,7 @@ def NN_simple_train(sess, args):
 
 def NN_cross_validation(sess, args):
     NN = NeuralNet(sess, args)
+    NN.print_arg(args)
     NN.read_nn_data()
     NN.build_model()
     show_all_variables()
@@ -144,6 +145,7 @@ def NN_cross_validation(sess, args):
 
 def NN_BayesOptimize(sess, args):
     NN = NeuralNet(sess, args)
+    NN.print_arg(args)
     # target': 87.0, 'params':
     # {'init_learning_rate_log': -1.4511864960726752,
     # 'weight_stddev_log': -1.2848106336275804}}

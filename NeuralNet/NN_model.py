@@ -7,6 +7,7 @@ sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')
 # from NeuralNet.neuralnet_ops import *
 import NeuralNet.NN_validation as _validation
 import NeuralNet.NN_BO as _BO
+from NeuralNet.NN_net import *
 from NeuralNet.NN_ops import *
 # import NN_validation as _validation
 # import NN_BO as _BO
@@ -23,7 +24,7 @@ class NeuralNet(object):
         self.result_file_name = args.result_file_name
 
         if args.neural_net == 'simple':
-            self.model_name = self.neural_net_simple
+            self.model_name = str('simple.... change it later')
         if args.neural_net == 'basic':
             self.model_name = self.neural_net_basic
         if args.neural_net == 'attention':
@@ -66,6 +67,8 @@ class NeuralNet(object):
         self.is_print = True
 
         self.args = args
+
+    def print_arg(self, args):
         print()
         print("##### Information #####")
         for i, arg in enumerate(vars(args)):
@@ -183,110 +186,6 @@ class NeuralNet(object):
     #     return x
 
     ##################################################################################
-    # Neural Network Model
-    ##################################################################################
-    def neural_net_simple(self, x, is_training=True, reuse=False):
-        layer_num = 3
-        is_print = self.is_print
-        if is_print:
-            print('build neural network')
-            print(x.shape)
-        with tf.variable_scope("neuralnet", reuse=reuse):
-            x = self.fc_layer(x, 512, 'fc_input_1')
-            x = self.fc_layer(x, 1024, 'fc_input_2')
-            for i in range(layer_num):
-                x = self.fc_layer(x, 1024, 'fc'+str(i))
-            x = self.fc_layer(x, 512, 'fc_1')
-            x = self.fc_layer(x, 256, 'fc_fin')
-            # x = self.fc_layer(x, self.class_num, 'fc_last')
-            x = fully_connected(x, self.class_num,\
-                                weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
-            # tf.summary.histogram('last_active', x)
-            return x
-
-    def neural_net_attention(self, x, is_training=True, reuse=False):
-        layer_num = 2
-        is_print = self.is_print
-        if is_print:
-            print('build neural network')
-            print(x.shape)
-        with tf.variable_scope("neuralnet", reuse=reuse):
-            x = self.fc_layer(x, 1024, 'fc_en_1')
-            x = self.fc_layer(x, 512, 'fc_en_2')
-            x = self.fc_layer(x, 256, 'fc_en_3')
-            x = self.fc_layer(x, 256, 'fc_en_4')
-            x = self.attention_nn(x, 256)
-            x = self.fc_layer(x, 256, 'fc_de_1')
-            x = self.fc_layer(x, 512, 'fc_de_2')
-            x = self.fc_layer(x, 512, 'fc_de_3')
-            x = self.fc_layer(x, 256, 'fc_de_4')
-            x = fully_connected(x, self.class_num, \
-                                weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
-            # x = self.fc_layer(x, self.class_num, 'fc_last')
-            # tf.summary.histogram('last_active', x)
-            return x
-
-    def neural_net_attention_often(self, x, is_training=True, reuse=False):
-        layer_num = 2
-        is_print = self.is_print
-        if is_print:
-            print('build neural network')
-            print(x.shape)
-        with tf.variable_scope("neuralnet", reuse=reuse):
-            en_dim = 256
-            de_dim = 256
-            x = self.fc_layer(x, 1024, 'fc_en_1')
-            x = self.fc_layer(x, 512, 'fc_en_2')
-            x = self.fc_layer(x, 256, 'fc_en_3')
-            x = self.attention_nn(x, 256, 'attention_1')
-            x = self.fc_layer(x, 256, 'bridge_1')
-            x = self.attention_nn(x, 256, 'attention_2')
-            x = self.fc_layer(x, 256, 'bridge_2')
-            x = self.attention_nn(x, 256, 'attention_3')
-            x = self.fc_layer(x, 512, 'fc_de_1')
-            x = self.fc_layer(x, 256, 'fc_de_2')
-            x = self.fc_layer(x, 128, 'fc_de_3')
-            x = fully_connected(x, self.class_num, \
-                                weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
-            # x = self.fc_layer(x, self.class_num, 'fc_last')
-            # tf.summary.histogram('last_active', x)
-            return x
-
-    def neural_net_self_attention(self, x, is_training=True, reuse=False):
-        layer_num = 2
-        is_print = self.is_print
-        if is_print:
-            print('build neural network')
-            print(x.shape)
-        with tf.variable_scope("neuralnet", reuse=reuse):
-            x = self.fc_layer(x, 512, 'fc_input_1')
-            x = self.fc_layer(x, 256, 'fc_input_2')
-            x = self.fc_layer(x, 128, 'fc_input_3')
-            x = self.self_attention_nn(x, 128)
-            x = self.fc_layer(x, 256, 'fc_input_4')
-            x = self.fc_layer(x, 256, 'fc_input_5')
-            x = self.fc_layer(x, 256, 'fc_input_6')
-            x = fully_connected(x, self.class_num, \
-                                weight_initializer=self.weight_initializer, use_bias=True, scope='fc_last')
-
-            # x = self.fc_layer(x, self.class_num, 'fc_last')
-            # tf.summary.histogram('last_active', x)
-            return x
-
-    def neural_net_basic(self, x, is_training=True, reuse=False):
-        is_print = self.is_print
-        if is_print:
-            print('build neural network')
-            print(x.shape)
-
-        with tf.variable_scope("neuralnet", reuse=reuse):
-            # x = fully_connected(x, self.class_num, use_bias=True, scope='fc2')
-            # x = lrelu(x, 0.1)
-            x = self.fc_layer(x, 512, 'fc1')
-            x = self.fc_layer(x, self.class_num, 'fc2')
-            return x
-
-    ##################################################################################
     # Dataset
     ##################################################################################
     def read_nn_data(self):
@@ -372,9 +271,11 @@ class NeuralNet(object):
         # output of D for real images
         print(self.input)
 
-        self.logits = self.model_name(self.input, reuse=False)
+        # self.logits = self.model_name(self.input, reuse=False)
+        self.logits = self.NeuralNetSimple(self.input, tf.truncated_normal_initializer, tf.nn.relu, self.class_num)
+         # = self.my_model.model(self.input)
         self.pred = tf.argmax(self.logits,1)
-        self.accur = accuracy(self.logits, self.label_onehot) //1
+        self.accur = accuracy(self.logits, self.label_onehot) // 1
 
         # get loss for discriminator
         """ Loss Function """

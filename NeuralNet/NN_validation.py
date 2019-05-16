@@ -1,6 +1,5 @@
 import time
 import sys
-import tensorflow as tf
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification')
 sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')
 # from NeuralNet.neuralnet_ops import *
@@ -17,6 +16,7 @@ def try_all_fold(self)->list:
     result_list = []
     top_train_accur_list = []
     top_valid_accur_list = []
+
     ##########################################################################
     # No sampling
     ##########################################################################
@@ -49,6 +49,9 @@ def try_all_fold(self)->list:
     ##########################################################################
     top_train_accur_list = []
     top_valid_accur_list = []
+    train_saturation_list = []
+    valid_saturation_list = []
+
     result_list.append('=' * 100)
     self.sampling_option = 'RANDOM'
     result_list.append('\n\t\t<<< class option : {} / oversample : {} >>>\n' \
@@ -70,13 +73,15 @@ def try_all_fold(self)->list:
         top_train_accur_list.append(top_train_accur)
         top_valid_accur_list.append(top_valid_accur)
 
+        saturation_count = 5
+        train_saturation_list.append(np.mean(train_result[-saturation_count:]))
+        valid_saturation_list.append(np.mean(valid_result[-saturation_count:]))
+
     print(top_train_accur_list, np.mean(top_train_accur_list))
     print(top_valid_accur_list, np.mean(top_valid_accur_list))
     # assert False
-    result_list.append('[[ avg top train : {}, avg top test : {} ]]\n{}\n{}\n' \
-                       .format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list), top_train_accur_list,
-                               top_valid_accur_list))
-    result_list.append('=' * 100)
+    result_list.append('[[ avg top train : {}, avg top test : {} ]]\n{}\n{}\n' .format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list), top_train_accur_list, top_valid_accur_list))
+    result_list.append('[[ avg saturaion train : {}, avg saturation test : {} ]]\n{}\n{}\n' .format(np.mean(train_saturation_list), np.mean(valid_saturation_list), train_saturation_list, valid_saturation_list))
 
     for result in result_list:
         print(result)

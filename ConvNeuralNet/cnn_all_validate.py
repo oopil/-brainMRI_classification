@@ -2,6 +2,7 @@ import tensorflow as tf
 import os
 import sys
 import argparse
+import numpy as np
 from sklearn.model_selection import KFold
 
 # from NeuralNet.CNN_data import *
@@ -53,6 +54,7 @@ sv_set = sv_set_dict[args.setting]
 # %%
 
 def read_cnn_data(sv_set = 0):
+
     if sv_set == 186:
         base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy'
         excel_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
@@ -91,26 +93,35 @@ images = tf.placeholder(tf.float32, (None, s1 * 2, s2, s3, 1), name='inputs')
 lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
+
 with tf.variable_scope("Model"):
     with tf.variable_scope("Left"):
         lh = batch_norm(lh)
         lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
+        lh = tf.layers.conv3d(inputs=lh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.conv3d(inputs=lh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
         lh = tf.layers.conv3d(inputs=lh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        lh = tf.layers.conv3d(inputs=lh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
+        lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         lh = tf.layers.flatten(lh)
 
     with tf.variable_scope("Right", reuse=False):
         rh = batch_norm(rh)
         rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+        rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
         rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
+        rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
+        rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
         rh = tf.layers.flatten(rh)
 
@@ -118,9 +129,10 @@ with tf.variable_scope("Model"):
         x = tf.concat([lh, rh], -1)
         x = tf.layers.dense(x, units=2048, activation=tf.nn.relu)
         x = tf.layers.dense(x, units=512, activation=tf.nn.relu)
-        x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
+        x = tf.layers.dense(x, units=class_num, activation=tf.nn.softmax)
+        # x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
         y = x
-# %%
+
 # %%
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)
@@ -142,11 +154,16 @@ tf.summary.scalar("accuracy", accuracy)
 merged_summary = tf.summary.merge_all()
 
 whole_set = read_cnn_data(sv_set)
+top_train_accur_list = []
+top_valid_accur_list = []
+saturation_train_accur_list = []
+saturation_valid_accur_list = []
 train_result = []
 valid_result = []
 train_accur = []
 valid_accur = []
 for fold in whole_set:
+    acc_scr, val_acc = 0,0
     train_accur = []
     valid_accur = []
     class_num = 2
@@ -213,15 +230,39 @@ for fold in whole_set:
                 # save trained model
                 # save_path = saver.save(sess, "../train/cnn_lh")
 
+    saturation_count = 5
     train_result.append(train_accur)
     valid_result.append(valid_accur)
+    top_train_accur = np.max(train_accur, 0)
+    top_valid_accur = np.max(valid_accur, 0)
+    top_train_accur_list.append(top_train_accur)
+    top_valid_accur_list.append(top_valid_accur)
+    saturation_train_accur_list.append(np.mean(train_accur[-saturation_count:]))
+    saturation_valid_accur_list.append(np.mean(valid_accur[-saturation_count:]))
+
+file_contents = []
 
 for i in range(len(train_result)):
-    print("<< fold {} result>>".format(i))
-    print("CNN lh and rh model")
-    print("masking : {}".format(args.mask))
-    print("train : {}".format(train_result[i]))
-    print("valid : {}".format(valid_result[i]))
+    file_contents.append("<< fold {} result>>".format(i))
+    file_contents.append("CNN lh and rh model")
+    file_contents.append("masking : {}".format(args.mask))
+    file_contents.append("train : {}".format(train_result[i]))
+    file_contents.append("valid : {}".format(valid_result[i]))
+file_contents.append("top train : {}".format(top_train_accur_list))
+file_contents.append("top valid : {}".format(top_valid_accur_list))
+file_contents.append("avg train top : {} , avg vaidation top : {}".format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list)))
+file_contents.append("saturation train : {}".format(saturation_train_accur_list))
+file_contents.append("saturation valid : {}".format(saturation_valid_accur_list))
+file_contents.append("avg saturation train : {} , avg saturation vaidation : {}".format(np.mean(saturation_train_accur_list), np.mean(saturation_valid_accur_list)))
+
+for result in file_contents:
+    print(result)
+
+result_file_name = '../nn_result/cv.txt'
+file = open(result_file_name, 'a+t')
+for result in file_contents:
+    result += '\n'
+    file.writelines(result)
 
 """
 

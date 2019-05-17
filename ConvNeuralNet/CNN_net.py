@@ -211,12 +211,14 @@ class Siamese(Network):
             # CNN = self.CNN_deep_layer
             CNN = self.CNN_simple
 
-            lh = CNN(lh, ch = 48, scope= "CNN", reuse=False)
-            rh = CNN(rh, ch = 48, scope= "CNN", reuse=True)
+            channel = 52
+            lh = CNN(lh, ch = channel, scope= "CNN", reuse=False)
+            rh = CNN(rh, ch = channel, scope= "CNN", reuse=True)
             with tf.variable_scope("FCN"):
                 lh = tf.layers.flatten(lh)
                 rh = tf.layers.flatten(rh)
                 x = tf.concat([lh, rh], -1)
+                # x = tf.subtract(lh,rh)
                 x = tf.layers.dense(x, units=2048, activation=self.activ)
                 x = tf.layers.dense(x, units=512, activation=self.activ)
                 x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)

@@ -68,16 +68,16 @@ def args_set(args):
     sv_set = sv_set_dict[args.setting]
     if sv_set == 186: # server186
         args.base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy'
-        args.excel_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+        args.excel_path =       '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
     elif sv_set == 0:  # desktop
         args.base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
-        args.excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+        args.excel_path =       '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
     elif sv_set == 144:  # server144
         args.base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
-        args.excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+        args.excel_path =       '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
     elif sv_set == 202:  # server202
         args.base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
-        args.excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+        args.excel_path =       '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
 
     class_option = args.class_option.split(' ')
     args.diag_type = class_option[0]

@@ -86,45 +86,87 @@ class Network:
         self.ps = patch_size
         self.pn = patch_num
 
-    def CNN_layer(self, x, scope = "CNN", reuse = False):
+    def CNN_simple(self, x, ch = 32, scope = "CNN", reuse = False):
+        with tf.variable_scope(scope, reuse=reuse):
+            with tf.variable_scope(scope, reuse=reuse):
+                x = batch_norm(x)
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
+
+                ch *= 2
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
+
+                ch *= 2
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
+
+                ch *= 2
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                return x
+
+    def CNN_deep_layer(self, x, scope = "CNN", reuse = False):
+        ch = 32
         with tf.variable_scope(scope, reuse=reuse):
             x = batch_norm(x)
-            x = tf.layers.conv3d(inputs=x, filters=32, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.conv3d(inputs=x, filters=32, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
             x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
-            x = tf.layers.conv3d(inputs=x, filters=64, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.conv3d(inputs=x, filters=64, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+
+            ch *= 2
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
             x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
-            x = tf.layers.conv3d(inputs=x, filters=128, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.conv3d(inputs=x, filters=128, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+
+            ch *= 2
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
             x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
-            x = tf.layers.conv3d(inputs=x, filters=256, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.conv3d(inputs=x, filters=256, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+
+            ch *= 2
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
             return x
 
-    def CNN_siam_layer(self, x, scope = "CNN", reuse = False):
-        ch = 64
+    def resblock(self, x):
+        pass
+
+    def CNN_res(self, x, scope = "CNN", reuse = False):
+
         with tf.variable_scope(scope, reuse=reuse):
-            x = batch_norm(x)
-            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
+            ch = 32
+            with tf.variable_scope(scope, reuse=reuse):
+                x = batch_norm(x)
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
 
-            ch *= 2
-            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
+                ch *= 2
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
 
-            ch *= 2
-            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
+                ch *= 2
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
 
-            ch *= 2
-            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
-            return x
-
+                ch *= 2
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+                return x
 
 class SimpleNet(Network):
     def model(self, images):
@@ -137,8 +179,8 @@ class SimpleNet(Network):
         with tf.variable_scope("Model"):
             # images = tf.placeholder(tf.float32, (None, self.ps * 2, self.ps, self.ps, 1), name='inputs')
             lh, rh = tf.split(images, [self.ps, self.ps], 1)
-            lh = self.CNN_layer(lh, "Left", reuse=False)
-            rh = self.CNN_layer(rh, "Right", reuse=False)
+            lh = self.CNN_simple(lh, ch = 32, scope= "Left", reuse=False)
+            rh = self.CNN_simple(rh, ch = 32, scope= "Right", reuse=False)
             with tf.variable_scope("FCN"):
                 lh = tf.layers.flatten(lh)
                 rh = tf.layers.flatten(rh)
@@ -166,11 +208,11 @@ class Siamese(Network):
             axis[flip_axis] = True
             rh = tf.reverse(rh, axis=[3])
 
-            lh = self.CNN_siam_layer(lh, "CNN", reuse=False)
-            rh = self.CNN_siam_layer(rh, "CNN", reuse=True)
-            # lh = self.CNN_layer(lh, "CNN", reuse=False)
-            # rh = self.CNN_layer(rh, "CNN", reuse=True)
+            # CNN = self.CNN_deep_layer
+            CNN = self.CNN_simple
 
+            lh = CNN(lh, ch = 48, scope= "CNN", reuse=False)
+            rh = CNN(rh, ch = 48, scope= "CNN", reuse=True)
             with tf.variable_scope("FCN"):
                 lh = tf.layers.flatten(lh)
                 rh = tf.layers.flatten(rh)

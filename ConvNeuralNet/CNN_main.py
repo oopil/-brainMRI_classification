@@ -22,7 +22,7 @@ def parse_args() -> argparse:
     parser.add_argument('--gpu',                default='0', type=str)
     parser.add_argument('--task',               default='train', type=str) # train cv bo
     parser.add_argument('--setting',            default='desktop', type=str)
-    parser.add_argument('--mask',               default=False, type=str2bool)
+    parser.add_argument('--mask',               default=True, type=str2bool)
     parser.add_argument('--buffer_scale',       default=10, type=int)
 
     parser.add_argument('--investigate_validation', default=False, type=str2bool)
@@ -33,19 +33,19 @@ def parse_args() -> argparse:
     parser.add_argument('--class_option_index', default=0, type=int)
     parser.add_argument('--fold_num',           default=5, type=int)
 
-    parser.add_argument('--print_freq',         default=1, type=int)
+    parser.add_argument('--epoch',              default=700, type=int)
+    parser.add_argument('--print_freq',         default=5, type=int)
     parser.add_argument('--summary_freq',       default=100, type=int)
     parser.add_argument('--save_freq',          default=200, type=int)
-    parser.add_argument('--epoch',              default=100, type=int)
 
     parser.add_argument('--network',    default='siam', type=str) # simple attention siam
     parser.add_argument('--class_option',       default='clinic CN vs AD', type=str)
     # PET    # class_option = 'PET pos vs neg'
     # new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     # clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
-    parser.add_argument('--lr',                 default=0.00001, type=float)  # 0.001 #0.0602
+    parser.add_argument('--lr',                 default=0.00001, type=float)  # 0.0001 #0.0602
     parser.add_argument('--patch_size',         default=48, type=int)
-    parser.add_argument('--batch_size',         default=30, type=int)
+    parser.add_argument('--batch_size',         default=10, type=int)
     parser.add_argument('--weight_stddev',      default=0.05, type=float)  # 0.05 #0.0721
     parser.add_argument('--loss_function',      default='cEntropy', type=str)  # L2 / cross
     parser.add_argument('--sampling_option',    default='RANDOM', type=str)

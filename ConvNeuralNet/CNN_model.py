@@ -137,12 +137,7 @@ class ConvNeuralNet:
                                   class_num=self.class_num,
                                   patch_size=s1,
                                   patch_num=2)
-        # self.my_model = SimpleNet(weight_initializer=tf.truncated_normal_initializer,
-        #                           activation=tf.nn.relu,
-        #                           class_num=self.class_num,
-        #                           patch_size=s1,
-        #                           patch_num=2)
-        # self.logits = self.model_name(self.input, reuse=False) # tf.AUTO_REUSE
+
         self.logits = self.my_model.model(self.input)
         self.pred = tf.argmax(self.logits,1)
         self.accur = accuracy(self.logits, self.label_onehot) // 1
@@ -161,7 +156,8 @@ class ConvNeuralNet:
             start_lr = self.learning_rate
             global_step = tf.Variable(0, trainable=False)
             total_learning = self.epoch
-            lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
+            # lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
+            lr = tf.train.exponential_decay(start_lr, global_step, decay_steps=self.epoch//100, decay_rate=.96, staircase=True)
 
         with tf.variable_scope('optimizer'):
             self.optim = tf.train.AdamOptimizer(lr).minimize(self.loss)

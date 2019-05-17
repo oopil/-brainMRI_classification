@@ -284,27 +284,16 @@ def l2_norm(v, eps=1e-12):
 ##################################################################################
 
 def classifier_loss(loss_func, predictions, targets):
-    real_loss = 0
-    fake_loss = 0
     if loss_func =='L2':
         loss = tf.reduce_mean(tf.squared_difference(targets, predictions))
     elif loss_func == 'cEntropy':
-        # loss = tf.losses.softmax_cross_entropy(targets, predictions)
         cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=targets, logits=predictions)
         loss = tf.reduce_mean(cross_entropy)
-
     return loss
 
 def accuracy(predictions, labels):
-    '''
-    we should check whether label is already one hot vectors.
-    :return:
-    '''
-    # print(type(tf.argmax(predictions, 1)), type(labels))
-    # print(predictions.shape, labels.shape)
-    # correct_pred = tf.equal(tf.argmax(predictions, 1),tf.cast(labels, dtype=tf.int64))
     correct_pred = tf.equal(tf.argmax(predictions, 1),tf.argmax(labels, 1))
-    return tf.reduce_mean(tf.cast(correct_pred, "float")) * 100
+    return tf.reduce_mean(tf.cast(correct_pred, tf.float32)) * 100
 '''
 def accuracy(predictions, labels):
     return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) / predictions.shape[0])

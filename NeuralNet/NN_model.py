@@ -8,6 +8,7 @@ sys.path.append('/home/sp/PycharmProjects/brainMRI_classification/NeuralNet')
 import NeuralNet.NN_validation as _validation
 import NeuralNet.NN_BO as _BO
 from NeuralNet.NN_net import *
+# import NeuralNet.NN_net as Net
 from NeuralNet.NN_ops import *
 # import NN_validation as _validation
 # import NN_BO as _BO
@@ -88,103 +89,6 @@ class NeuralNet(object):
 
     def set_model(self, model):
         pass
-    ##################################################################################
-    # Custom Operation
-    ##################################################################################
-    def sample_save(self, x, is_training=True, reuse=False):
-        is_print = self.is_print
-        if is_print:
-            print('build neural network')
-            print(x.shape)
-        with tf.variable_scope("neuralnet", reuse=reuse):
-            ch = 64
-            x = conv(x, channels=ch, kernel=4, stride=2, pad=1, sn=self.sn, use_bias=False, scope='conv')
-            x = lrelu(x, 0.2)
-            if is_print:
-                print(x.shape)
-                print('repeat layer : {}'.format(self.layer_num))
-            for i in range(self.layer_num // 2):
-                x = conv(x, channels=ch * 2, kernel=4, stride=2, pad=1, sn=self.sn, use_bias=False, scope='conv_' + str(i))
-                x = batch_norm(x, is_training, scope='batch_norm' + str(i))
-                x = lrelu(x, 0.2)
-                ch = ch * 2
-            # Self Attention
-            x = self.attention(x, ch, sn=self.sn, scope="attention", reuse=reuse)
-            if is_print:
-                print('attention !')
-                print(x.shape)
-            if is_print:print('repeat layer : {}'.format(self.layer_num))
-            # for i in range(self.layer_num // 2, self.layer_num):
-            for i in range(12):
-                x = resblock(x, ch, use_bias=True,sn=False, scope='resblock'+str(i))
-            if is_print:print(x.shape)
-            x = conv(x, channels=4, stride=1, sn=self.sn, use_bias=False, scope='D_logit')
-            if is_print:print(x.shape)
-            # assert False
-            return x
-
-    def self_attention_nn(self, x, ch, scope='attention', reuse=False):
-        assert ch//8 >= 1
-        with tf.variable_scope(scope, reuse=reuse):
-            ch_ = ch // 8
-            if ch_ == 0: ch_ = 1
-            f = self.fc_layer(x, ch_, 'f_nn') # [bs, h, w, c']
-            g = self.fc_layer(x, ch_, 'g_nn') # [bs, h, w, c']
-            h = self.fc_layer(x, ch, 'h_nn') # [bs, h, w, c]
-            # N = h * w
-            s = tf.matmul(g, f, transpose_b=True) # # [bs, N, N]
-            beta = tf.nn.softmax(s, axis=-1)  # attention map
-            o = tf.matmul(beta, h) # [bs, N, C]
-            gamma = tf.get_variable("gamma", [1], initializer=tf.constant_initializer(0.0))
-            print(o.shape, s.shape, f.shape, g.shape, h.shape)
-            # o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
-            x = gamma * o + x
-        return x
-
-    def attention_nn(self, x, ch, scope='attention', reuse=False):
-        assert ch//8 >= 1
-        with tf.variable_scope(scope, reuse=reuse):
-            i = self.fc_layer(x, ch, 'fc_1')
-            i = self.fc_layer(i, ch//4, 'fc_2')
-            i = self.fc_layer(i, ch//8, 'fc_3')
-            i = self.fc_layer(i, ch//4, 'fc_4')
-            i = self.fc_layer(i, ch, 'fc_5')
-            o = tf.nn.softmax(i, axis=-1)  # attention map
-            gamma = tf.get_variable("gamma", [1], initializer=tf.constant_initializer(0.0))
-            print(i.shape, o.shape)
-            # o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
-            x = gamma * o + x
-        return x
-
-    def fc_layer(self, x, ch, scope):
-        with tf.name_scope(scope):
-            x = fully_connected(x, ch, weight_initializer=self.weight_initializer, \
-                                use_bias=True, scope=scope)
-            # tf.summary.histogram('active', x)
-            # x = lrelu(x, 0.1)
-            x = relu(x, scope=scope)
-        return x
-    # def attention(self, x, ch, sn=False, scope='attention', reuse=False):
-    #     with tf.variable_scope(scope, reuse=reuse):
-    #         ch_ = ch // 8
-    #         if ch_ == 0: ch_ = 1
-    #         f = conv(x, ch_, kernel=1, stride=1, sn=sn, scope='f_conv') # [bs, h, w, c']
-    #         g = conv(x, ch_, kernel=1, stride=1, sn=sn, scope='g_conv') # [bs, h, w, c']
-    #         h = conv(x, ch, kernel=1, stride=1, sn=sn, scope='h_conv') # [bs, h, w, c]
-    #
-    #         # N = h * w
-    #         s = tf.matmul(hw_flatten(g), hw_flatten(f), transpose_b=True) # # [bs, N, N]
-    #
-    #         beta = tf.nn.softmax(s, axis=-1)  # attention map
-    #
-    #         o = tf.matmul(beta, hw_flatten(h)) # [bs, N, C]
-    #         gamma = tf.get_variable("gamma", [1], initializer=tf.constant_initializer(0.0))
-    #         print(o.shape, s.shape, f.shape, g.shape, h.shape)
-    #
-    #         o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
-    #         x = gamma * o + x
-    #     return x
-
     ##################################################################################
     # Dataset
     ##################################################################################
@@ -268,12 +172,13 @@ class NeuralNet(object):
         # self.label = tf.placeholder(tf.float32, [None, self.class_num], name='targets')
         self.label = tf.placeholder(tf.int32, [None], name='targets')
         self.label_onehot = onehot(self.label, self.class_num)
-        # output of D for real images
         print(self.input)
 
         # self.logits = self.model_name(self.input, reuse=False)
-        self.logits = self.NeuralNetSimple(self.input, tf.truncated_normal_initializer, tf.nn.relu, self.class_num)
-         # = self.my_model.model(self.input)
+        self.my_model = SimpleNet(tf.truncated_normal_initializer, tf.nn.relu, self.class_num)
+        # self.my_model = ResNet(tf.truncated_normal_initializer, tf.nn.relu, self.class_num)
+        # self.logits = Net.NeuralNetSimple(self.input, tf.truncated_normal_initializer, tf.nn.relu, self.class_num)
+        self.logits = self.my_model.model(self.input)
         self.pred = tf.argmax(self.logits,1)
         self.accur = accuracy(self.logits, self.label_onehot) // 1
 
@@ -288,18 +193,12 @@ class NeuralNet(object):
         vars = [var for var in t_vars if 'neuralnet' in var.name]
 
         # optimizers
-        # should apply learning rate decay
         start_lr = self.learning_rate
         global_step = tf.Variable(0, trainable=False)
         total_learning = self.epoch
-        lr = tf.train.exponential_decay(start_lr, global_step,
-                                        decay_steps=self.epoch//100,
-                                        decay_rate=.96,
-                                        staircase=True)
-        # self.optim = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
-        # self.optim = tf.train.GradientDescentOptimizer(lr).minimize(self.loss)
+        lr = tf.train.exponential_decay(start_lr, global_step, decay_steps=self.epoch//100, decay_rate=.96, staircase=True)
+
         self.optim = tf.train.AdamOptimizer(lr).minimize(self.loss)
-        # self.optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
         # self.d_optim = tf.train.AdamOptimizer(d_lr, beta1=self.beta1, beta2=self.beta2).minimize(self.loss, var_list=d_vars)
         #self.d_optim = tf.train.AdagradOptimizer(d_lr).minimize(self.loss, var_list=d_vars)
 

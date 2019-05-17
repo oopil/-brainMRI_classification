@@ -3,7 +3,6 @@ import os
 import sys
 import argparse
 import numpy as np
-from sklearn.model_selection import KFold
 
 # from NeuralNet.CNN_data import *
 # from NeuralNet.NN_ops import *
@@ -18,8 +17,6 @@ from CNN_data import *
 from CNN_ops import *
 
 # %%
-
-
 def parse_args() -> argparse:
     def str2bool(v):
         if v.lower() in ('yes', 'true', 't', 'y', '1'):

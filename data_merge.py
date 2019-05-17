@@ -480,8 +480,7 @@ def column(matrix, i, num):
             assert False
     return col
 
-def CNN_dataloader(base_folder_path ,diag_type, class_option, \
-                  excel_path, test_num, fold_num, is_split_by_num):
+def CNN_dataloader(base_folder_path ,diag_type, class_option, excel_path, fold_num):
     '''
     1. read excel data
     2. read input file path from dataset folder path
@@ -506,6 +505,8 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, \
     data, label = loader.define_label_cnn(label_info, class_option)
     split_func = loader.split_data_by_fold
     shuffle_data, shuffle_label = loader.shuffle_data(data, label)
+    # print(shuffle_data)
+    # assert False
     '''
         return all train and test sets devided by fold.
     '''

@@ -72,7 +72,7 @@ def maxpool(self, x, ks, s, scope):
 ##################################################################################
 # Convolutional Neural Network Model
 ##################################################################################
-class SimpleNet:
+class Network:
     def __init__(self,
                  weight_initializer,
                  activation,
@@ -102,6 +102,31 @@ class SimpleNet:
             x = tf.layers.conv3d(inputs=x, filters=256, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
             return x
 
+    def CNN_siam_layer(self, x, scope = "CNN", reuse = False):
+        ch = 64
+        with tf.variable_scope(scope, reuse=reuse):
+            x = batch_norm(x)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
+
+            ch *= 2
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
+
+            ch *= 2
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.max_pooling3d(inputs=x, pool_size=[2, 2, 2], strides=2)
+
+            ch *= 2
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
+            return x
+
+
+class SimpleNet(Network):
     def model(self, images):
         is_print = False
         # is_print = self.is_print
@@ -125,6 +150,37 @@ class SimpleNet:
                 y = x
         return y
 
+class Siamese(Network):
+    def model(self, images):
+        is_print = False
+        # is_print = self.is_print
+        if is_print:
+            print('build neural network')
+            print(images.shape)
+
+        with tf.variable_scope("Model"):
+            # images = tf.placeholder(tf.float32, (None, self.ps * 2, self.ps, self.ps, 1), name='inputs')
+            lh, rh = tf.split(images, [self.ps, self.ps], 1)
+            flip_axis = 3
+            axis = [False for i in range(5)]
+            axis[flip_axis] = True
+            rh = tf.reverse(rh, axis=[3])
+
+            lh = self.CNN_siam_layer(lh, "CNN", reuse=False)
+            rh = self.CNN_siam_layer(rh, "CNN", reuse=True)
+            # lh = self.CNN_layer(lh, "CNN", reuse=False)
+            # rh = self.CNN_layer(rh, "CNN", reuse=True)
+
+            with tf.variable_scope("FCN"):
+                lh = tf.layers.flatten(lh)
+                rh = tf.layers.flatten(rh)
+                x = tf.concat([lh, rh], -1)
+                x = tf.layers.dense(x, units=2048, activation=self.activ)
+                x = tf.layers.dense(x, units=512, activation=self.activ)
+                x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
+                # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)
+                y = x
+        return y
 # %%
 
 def cnn_simple_patch(self, x, is_training=True, reuse=False):

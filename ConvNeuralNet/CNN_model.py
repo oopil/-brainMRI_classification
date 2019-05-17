@@ -11,21 +11,11 @@ from data_merge import *
 
 class ConvNeuralNet:
     def __init__(self, sess, args):
-        self.model_name = "CNN"  # name for checkpoint
+        self.model_name = args.network  # name for checkpoint
         self.sess = sess
         self.excel_path = args.excel_path
         self.base_folder_path = args.base_folder_path
         self.result_file_name = args.result_file_name
-
-        if args.network == 'simple':
-            self.model_name = 'simple'
-            # self.model_name = self.cnn_simple_patch
-        # if args.neural_net == 'basic':
-        #     self.model_name = self.neural_net_basic
-        # if args.neural_net == 'simple':
-        #     self.model_name = self.neural_net_simple
-        else:
-            self.model_name = 'None'
 
         self.diag_type = args.diag_type
         self.excel_option = args.excel_option
@@ -119,8 +109,20 @@ class ConvNeuralNet:
     ##################################################################################
     # Model
     ##################################################################################
+    def select_network(self):
+        if self.model_name == 'simple':
+            self.network = SimpleNet
+        if self.model_name == 'siam':
+            self.network = Siamese
+            # self.model_name = self.cnn_simple_patch
+        # if args.neural_net == 'basic':
+        #     self.model_name = self.neural_net_basic
+        # if args.neural_net == 'simple':
+        #     self.model_name = self.neural_net_simple
+        else:
+            self.network = None
+
     def build_model(self):
-        """ Graph Input """
         s1,s2,s3 = self.input_image_shape
         self.input = tf.placeholder(tf.float32, [None, s1*2 ,s2, s3, 1], name='inputs')
         print(self.input.shape)
@@ -128,11 +130,18 @@ class ConvNeuralNet:
         self.label = tf.placeholder(tf.int32, [None], name='targets')
         # self.label_onehot = tf.stop_gradient(onehot(self.label, self.class_num))
         self.label_onehot = onehot(self.label, self.class_num)
-        self.my_model = SimpleNet(weight_initializer=tf.truncated_normal_initializer,
+
+        self.select_network()
+        self.my_model = self.network(weight_initializer=tf.truncated_normal_initializer,
                                   activation=tf.nn.relu,
                                   class_num=self.class_num,
                                   patch_size=s1,
                                   patch_num=2)
+        # self.my_model = SimpleNet(weight_initializer=tf.truncated_normal_initializer,
+        #                           activation=tf.nn.relu,
+        #                           class_num=self.class_num,
+        #                           patch_size=s1,
+        #                           patch_num=2)
         # self.logits = self.model_name(self.input, reuse=False) # tf.AUTO_REUSE
         self.logits = self.my_model.model(self.input)
         self.pred = tf.argmax(self.logits,1)
@@ -208,11 +217,27 @@ class ConvNeuralNet:
         self.train_accur = []
         # set training data
         print("set training and testing dataset ... ")
-        self.next_element, self.iterator = get_patch_dataset(self.train_data, self.train_label, self.args.buffer_scale, self.args.mask, self.batch_size)
+        self.next_element, self.iterator = get_patch_dataset(
+            self.train_data,
+            self.train_label,
+            self.args.buffer_scale,
+            self.args.mask,
+            self.batch_size)
+
+        self.test_element, self.test_iterator = get_patch_dataset(
+            self.test_data,
+            self.test_label,
+            self.args.buffer_scale,
+            self.args.mask,
+            len(self.test_label))
+
         self.sess.run(self.iterator.initializer)
-        # self.test_element, self.test_iterator = get_patch_dataset(self.test_data, self.test_label, len(self.test_label))
-        # self.sess.run(self.test_iterator.initializer)
-        # self.test_data_ts, self.test_label_ts = self.sess.run(self.test_element)
+        self.sess.run(self.test_iterator.initializer)
+        test_data_ts, test_label_ts = self.sess.run(self.test_element)
+        test_feed_dict = {
+            self.input: test_data_ts,
+            self.label: test_label_ts
+        }
         '''
         next_element, iterator = get_patch_dataset(train_data, train_label, args.buffer_scale, is_mask, batch)
         sess.run(iterator.initializer)
@@ -225,31 +250,40 @@ class ConvNeuralNet:
         for epoch in range(start_epoch, self.epoch):
             # get batch data
             for idx in range(start_batch_id, self.iteration):
-                train_data, train_label = self.sess.run(self.next_element)
 
+                train_data, train_label = self.sess.run(self.next_element)
                 train_feed_dict = {
                     self.input : train_data,
                     self.label : train_label
                 }
-                _, merged_summary_str, loss, logits, pred, accur = self.sess.run( \
-                    [self.optim, self.merged_summary, self.loss, self.logits, self.pred, self.accur], feed_dict=train_feed_dict)
 
-                # one_hot_label = self.sess.run([self.label_onehot],feed_dict=train_feed_dict)
-                # print(one_hot_label)
+                _, train_merged_summary, loss, logits, pred, accur = self.sess.run(
+                    [self.optim, self.merged_summary, self.loss, self.logits, self.pred, self.accur],
+                    feed_dict=train_feed_dict)
 
-                self.train_writer.add_summary(merged_summary_str, global_step=counter)
+                self.train_writer.add_summary(train_merged_summary, global_step=counter)
+                # self.train_writer.add_summary(train_merged_summary, global_step=counter)
+
                 if epoch % self.print_freq == 0:
+
+                    test_merged_summary, test_accur = self.sess.run(
+                        [self.merged_summary, self.accur],
+                        feed_dict=test_feed_dict)
+
                     print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}" \
                           .format(epoch, self.epoch, idx, self.iteration,loss, accur))
-                    print("label : {}".format(train_label))
-                    print("pred  : {}".format(logits))
+                    label_sample = train_label[:5]
+                    train_sample = logits[:5] // 0.01
+                    for i,j in zip(label_sample,train_sample):
+                        print("label : {} , pred : {}".format(i,j))
+                    print('test accur : {}'.format(test_accur))
 
                     # test_accur, test_summary = self.test(counter)
-                    # self.valid_accur.append(test_accur)
-                    # self.train_accur.append(accur)
+                    self.valid_accur.append(test_accur)
+                    self.train_accur.append(accur)
                     print('=' * 100)
                 # if epoch % self.summary_freq == 0:
-                #     self.train_writer.add_summary(merged_summary_str, global_step=counter)
+                #     self.train_writer.add_summary(merged_summary, global_step=counter)
                 #     if self.investigate_validation:
                 #         self.test(counter)
             counter+=1

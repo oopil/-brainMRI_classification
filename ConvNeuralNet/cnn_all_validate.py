@@ -210,14 +210,19 @@ for fold in whole_set:
             }
             accum_loss = 0
             accum_acc = 0
-            _, loss_scr, acc_scr, logit, train_summary = sess.run((train_step, loss, accuracy, y, merged_summary),
-                                                                  feed_dict=train_feed_dict)
+
+            _, loss_scr, acc_scr, logit, train_summary = \
+                sess.run((train_step, loss, accuracy, y, merged_summary), feed_dict=train_feed_dict)
+
             train_writer.add_summary(train_summary)
             if epoch % print_freq == 0:
                 print("Epoch: {}".format(epoch))
                 print("Train loss = {}".format(loss_scr))
                 print("Train accuracy = {:03.4f}".format(acc_scr // 0.01))
-                val_acc, val_logit, test_summary = sess.run((accuracy, y, merged_summary), feed_dict=test_feed_dict)
+
+                val_acc, val_logit, test_summary = \
+                    sess.run((accuracy, y, merged_summary), feed_dict=test_feed_dict)
+
                 print("Validation accuracy = {:03.4f}".format(val_acc // 0.01))
                 print(logit[:5])
                 # print(val_logit[:5])

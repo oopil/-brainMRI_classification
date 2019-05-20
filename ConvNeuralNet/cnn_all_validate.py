@@ -25,8 +25,8 @@ def parse_args() -> argparse:
         else:
             raise argparse.ArgumentTypeError('Boolean value expected.')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu',                default='202', type=str) # 0 186 202 144
-    parser.add_argument('--setting',            default='desktop', type=str)
+    parser.add_argument('--gpu',                default='0', type=str)
+    parser.add_argument('--setting',            default='desktop', type=str) # desktop sv186 sv202 sv144
     parser.add_argument('--mask',               default=True, type=str2bool)
     parser.add_argument('--buffer_scale',       default=30, type=int)
     parser.add_argument('--epoch',              default=400, type=int)

@@ -182,7 +182,7 @@ class Simple(Network):
             # CNN = self.CNN_deep_layer
             CNN = self.CNN_simple
 
-            channel = 52
+            channel = 32
             lh = CNN(lh, ch = channel, scope= "CNN", reuse=False)
             rh = CNN(rh, ch = channel, scope= "CNN", reuse=True)
             with tf.variable_scope("FCN"):
@@ -215,7 +215,7 @@ class Siamese(Network):
             # CNN = self.CNN_deep_layer
             CNN = self.CNN_simple
 
-            channel = 52
+            channel = 32
             lh = CNN(lh, ch = channel, scope= "CNN", reuse=False)
             rh = CNN(rh, ch = channel, scope= "CNN", reuse=True)
             with tf.variable_scope("FCN"):

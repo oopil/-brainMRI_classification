@@ -116,11 +116,17 @@ y = my_model.model(images)
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)
 
+# with tf.name_scope('learning_rate_decay'):
+#     start_lr = learning_rate
+#     global_step = tf.Variable(0, trainable=False)
+#     total_learning = epochs
+#     lr = tf.train.exponential_decay(start_lr, global_step, total_learning, 0.99999, staircase=True)
 with tf.name_scope('learning_rate_decay'):
     start_lr = learning_rate
     global_step = tf.Variable(0, trainable=False)
     total_learning = epochs
-    lr = tf.train.exponential_decay(start_lr, global_step, total_learning, 0.99999, staircase=True)
+    # lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
+    lr = tf.train.exponential_decay(start_lr, global_step, decay_steps=epochs // 100, decay_rate=.96, staircase=True)
 
 with tf.variable_scope('optimizer'):
     optimizer = tf.train.AdamOptimizer(lr)

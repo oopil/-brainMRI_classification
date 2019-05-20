@@ -103,7 +103,7 @@ def get_patch_dataset(img_l, label_l, buffer_scale = 3, is_masking=False, batch_
     dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l, mask_l))
     dataset = dataset.map(lambda img_l, label_l, mask_l:
                           tuple(tf.py_func(_read_py_function_1_patch, [img_l, label_l, mask_l], [tf.float32, tf.int32])),
-                          num_parallel_calls=8)
+                          num_parallel_calls=5)
     # dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + buffer_scale * batch_size)).batch(batch_size)
     dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + buffer_scale * batch_size)).repeat().batch(batch_size)
     # dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + 3 * batch_size))

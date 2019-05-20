@@ -168,7 +168,7 @@ class Network:
                 x = tf.layers.conv3d(inputs=x, filters=ch, kernel_size=[3, 3, 3], padding='same', activation=self.activ)
                 return x
 
-class SimpleNet(Network):
+class Simple(Network):
     def model(self, images):
         is_print = False
         # is_print = self.is_print
@@ -179,8 +179,12 @@ class SimpleNet(Network):
         with tf.variable_scope("Model"):
             # images = tf.placeholder(tf.float32, (None, self.ps * 2, self.ps, self.ps, 1), name='inputs')
             lh, rh = tf.split(images, [self.ps, self.ps], 1)
-            lh = self.CNN_simple(lh, ch = 32, scope= "Left", reuse=False)
-            rh = self.CNN_simple(rh, ch = 32, scope= "Right", reuse=False)
+            # CNN = self.CNN_deep_layer
+            CNN = self.CNN_simple
+
+            channel = 52
+            lh = CNN(lh, ch = channel, scope= "CNN", reuse=False)
+            rh = CNN(rh, ch = channel, scope= "CNN", reuse=True)
             with tf.variable_scope("FCN"):
                 lh = tf.layers.flatten(lh)
                 rh = tf.layers.flatten(rh)

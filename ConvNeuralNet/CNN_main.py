@@ -19,10 +19,11 @@ def parse_args() -> argparse:
             raise argparse.ArgumentTypeError('Boolean value expected.')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu',                default='0', type=str)
+    parser.add_argument('--gpu',                default='202', type=str)
     parser.add_argument('--task',               default='train', type=str) # train cv bo
     parser.add_argument('--setting',            default='desktop', type=str)
-    parser.add_argument('--mask',               default=True, type=str2bool)
+    parser.add_argument('--network',            default='simple', type=str) # simple attention siam
+    parser.add_argument('--mask',               default=False, type=str2bool)
     parser.add_argument('--buffer_scale',       default=10, type=int)
 
     parser.add_argument('--investigate_validation', default=False, type=str2bool)
@@ -33,12 +34,11 @@ def parse_args() -> argparse:
     parser.add_argument('--class_option_index', default=0, type=int)
     parser.add_argument('--fold_num',           default=5, type=int)
 
-    parser.add_argument('--epoch',              default=700, type=int)
+    parser.add_argument('--epoch',              default=300, type=int)
     parser.add_argument('--print_freq',         default=5, type=int)
     parser.add_argument('--summary_freq',       default=100, type=int)
     parser.add_argument('--save_freq',          default=200, type=int)
 
-    parser.add_argument('--network',    default='siam', type=str) # simple attention siam
     parser.add_argument('--class_option',       default='clinic CN vs AD', type=str)
     # PET    # class_option = 'PET pos vs neg'
     # new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
@@ -73,11 +73,11 @@ def args_set(args):
         args.base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
         args.excel_path =       '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
     elif sv_set == 144:  # server144
-        args.base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
-        args.excel_path =       '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+        args.base_folder_path = '/user/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+        args.excel_path =       '/user/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
     elif sv_set == 202:  # server202
-        args.base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
-        args.excel_path =       '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+        args.base_folder_path = '/home/soopil/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+        args.excel_path = '/home/soopil/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
 
     class_option = args.class_option.split(' ')
     args.diag_type = class_option[0]

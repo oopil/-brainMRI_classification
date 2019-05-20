@@ -1,12 +1,10 @@
-import tensorflow as tf
 import os
 import sys
 import argparse
 import numpy as np
-
-# from NeuralNet.CNN_data import *
-# from NeuralNet.NN_ops import *
+import tensorflow as tf
 from sklearn.utils import shuffle
+from ConvNeuralNet.CNN_net import *
 
 sys.path.append('..')
 sys.path.append('/home/soopil/Desktop/Dataset/github/brainMRI_classification/ConvNeuralNet')
@@ -15,6 +13,7 @@ from data_merge import *
 # server setting
 from CNN_data import *
 from CNN_ops import *
+from CNN_net import *
 
 # %%
 def parse_args() -> argparse:
@@ -26,11 +25,12 @@ def parse_args() -> argparse:
         else:
             raise argparse.ArgumentTypeError('Boolean value expected.')
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu',        default='0', type=str)
-    parser.add_argument('--setting',    default='desktop', type=str)
-    parser.add_argument('--mask',       default=True, type=str2bool)
-    parser.add_argument('--buffer_scale', default=3, type=int)
-    parser.add_argument('--epoch',      default=100, type=int)
+    parser.add_argument('--gpu',                default='202', type=str) # 0 186 202 144
+    parser.add_argument('--setting',            default='desktop', type=str)
+    parser.add_argument('--mask',               default=True, type=str2bool)
+    parser.add_argument('--buffer_scale',       default=30, type=int)
+    parser.add_argument('--epoch',              default=400, type=int)
+    parser.add_argument('--network',            default='simple', type=str) # simple attention siam
     return parser.parse_args()
 
 # %%
@@ -51,13 +51,19 @@ sv_set = sv_set_dict[args.setting]
 # %%
 
 def read_cnn_data(sv_set = 0):
-
+    base_folder_path = ''
+    excel_path = ''
     if sv_set == 186:
         base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy'
         excel_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
     elif sv_set == 0: # desktop
         base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
         excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+    elif sv_set == 202:
+        base_folder_path = '/home/soopil/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+        excel_path = '/home/soopil/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
+    else:
+        assert False
 
     diag_type = 'clinic'
     class_option = 'CN vs AD'
@@ -66,7 +72,7 @@ def read_cnn_data(sv_set = 0):
     fold_num = 5
     is_split_by_num = False
     sampling_option = "RANDOM"
-    whole_set = CNN_dataloader(base_folder_path, diag_type, class_option, excel_path, test_num, fold_num, is_split_by_num)
+    whole_set = CNN_dataloader(base_folder_path, diag_type, class_option, excel_path, fold_num)
     return whole_set
     # print(train_data)
     # print(type(train_data))
@@ -91,45 +97,21 @@ lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
 
-with tf.variable_scope("Model"):
-    with tf.variable_scope("Left"):
-        lh = batch_norm(lh)
-        lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
-        lh = tf.layers.conv3d(inputs=lh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.conv3d(inputs=lh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
-        lh = tf.layers.conv3d(inputs=lh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.conv3d(inputs=lh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
-        lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.flatten(lh)
+network = None
+if args.network == 'simple':
+    network = Simple
+elif args.network == 'siam':
+    network = Siamese
+else:
+    assert False
+assert network != None
 
-    with tf.variable_scope("Right", reuse=False):
-        rh = batch_norm(rh)
-        rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-        rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-        rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-        rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.flatten(rh)
-
-    with tf.variable_scope("FCN"):
-        x = tf.concat([lh, rh], -1)
-        x = tf.layers.dense(x, units=2048, activation=tf.nn.relu)
-        x = tf.layers.dense(x, units=512, activation=tf.nn.relu)
-        x = tf.layers.dense(x, units=class_num, activation=tf.nn.softmax)
-        # x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
-        y = x
-
+my_model = network(weight_initializer=tf.truncated_normal_initializer,
+                                  activation=tf.nn.relu,
+                                  class_num=class_num,
+                                  patch_size=s1,
+                                  patch_num=2)
+y = my_model.model(images)
 # %%
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)

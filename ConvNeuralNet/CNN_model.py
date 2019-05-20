@@ -3,7 +3,7 @@ import tensorflow as tf
 sys.path.append('..')
 sys.path.append('/home/soopil/Desktop/github/brainMRI_classification')
 sys.path.append('/home/soopil/Desktop/github/brainMRI_classification/NeuralNet')
-# import ConvNeuralNet.CNN_validation as _validation
+import ConvNeuralNet.CNN_validation as _validation
 # import ConvNeuralNet.CNN_BO as _BO
 from ConvNeuralNet.CNN_data import *
 from ConvNeuralNet.CNN_net import *
@@ -100,10 +100,10 @@ class ConvNeuralNet:
     ##################################################################################
     # validation
     ##################################################################################
-    # def try_all_fold(self):
-    #     result_list = _validation.try_all_fold(self)
-    #     _validation.save_results(self, result_list)
-    #
+    def try_all_fold(self):
+        result_list = _validation.try_all_fold(self)
+        _validation.save_results(self, result_list)
+
     # def BayesOptimize(self, init_lr_log, w_stddev_log):
     #     _BO.BayesOptimize(init_lr_log, w_stddev_log)
     ##################################################################################
@@ -111,16 +111,17 @@ class ConvNeuralNet:
     ##################################################################################
     def select_network(self):
         if self.model_name == 'simple':
-            self.network = SimpleNet
+            return Simple
         if self.model_name == 'siam':
-            self.network = Siamese
+            return Siamese
             # self.model_name = self.cnn_simple_patch
         # if args.neural_net == 'basic':
         #     self.model_name = self.neural_net_basic
         # if args.neural_net == 'simple':
         #     self.model_name = self.neural_net_simple
         else:
-            self.network = None
+            assert False
+            return None
 
     def build_model(self):
         s1,s2,s3 = self.input_image_shape
@@ -131,13 +132,13 @@ class ConvNeuralNet:
         # self.label_onehot = tf.stop_gradient(onehot(self.label, self.class_num))
         self.label_onehot = onehot(self.label, self.class_num)
 
-        self.select_network()
+        self.network = self.select_network()
         self.my_model = self.network(weight_initializer=tf.truncated_normal_initializer,
                                   activation=tf.nn.relu,
                                   class_num=self.class_num,
                                   patch_size=s1,
                                   patch_num=2)
-
+        print(self.my_model)
         self.logits = self.my_model.model(self.input)
         self.pred = tf.argmax(self.logits,1)
         self.accur = accuracy(self.logits, self.label_onehot) // 1

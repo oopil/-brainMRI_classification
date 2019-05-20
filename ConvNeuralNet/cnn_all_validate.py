@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 import tensorflow as tf
 from sklearn.utils import shuffle
-from ConvNeuralNet.CNN_net import *
+# from ConvNeuralNet.CNN_net import *
 
 sys.path.append('..')
 sys.path.append('/home/soopil/Desktop/Dataset/github/brainMRI_classification/ConvNeuralNet')

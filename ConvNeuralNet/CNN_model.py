@@ -112,16 +112,14 @@ class ConvNeuralNet:
     def select_network(self):
         if self.model_name == 'simple':
             return Simple
-        if self.model_name == 'siam':
+        elif self.model_name == 'siam':
             return Siamese
-            # self.model_name = self.cnn_simple_patch
-        # if args.neural_net == 'basic':
-        #     self.model_name = self.neural_net_basic
-        # if args.neural_net == 'simple':
-        #     self.model_name = self.neural_net_simple
+        elif self.model_name == 'attention':
+            return Attention
+        elif self.model_name == 'res':
+            return Residual
         else:
             assert False
-            return None
 
     def build_model(self):
         s1,s2,s3 = self.input_image_shape
@@ -138,6 +136,7 @@ class ConvNeuralNet:
                                   class_num=self.class_num,
                                   patch_size=s1,
                                   patch_num=2)
+
         print(self.my_model)
         self.logits = self.my_model.model(self.input)
         self.pred = tf.argmax(self.logits,1)
@@ -148,10 +147,13 @@ class ConvNeuralNet:
         t_vars = tf.trainable_variables()
         # if i need to access specific variables, use below line
         # vars = [var for var in t_vars if 'cnn' in var.name]
+
         # for var in t_vars:
+        #     if "kernel" in var.name:
+        #         tf.summary.histogram(var.name, var)
+
         #     tf.summary.image(var.name, var.)
         #     print(var)
-        #     tf.summary.histogram(var.name, var)
         # should apply learning rate decay
         with tf.name_scope('learning_rate_decay'):
             start_lr = self.learning_rate
@@ -186,8 +188,9 @@ class ConvNeuralNet:
         tf.global_variables_initializer().run()
         # graph inputs for visualize training results
         # saver to save model
+        start_time = time.time()
         self.saver = tf.train.Saver()
-        self.train_writer = tf.summary.FileWriter('../' + self.log_dir + '/' + self.model_dir +'_train', self.sess.graph)
+        self.train_writer = tf.summary.FileWriter('../' + self.log_dir + '/' + self.model_dir +'_train/' +str(start_time), self.sess.graph)
         self.train_writer.add_graph(self.sess.graph)
 
         if self.investigate_validation:
@@ -207,11 +210,10 @@ class ConvNeuralNet:
             counter = 1
             print(" [!] Load failed...")
         # loop for epoch
-        start_time = time.time()
         past_loss = -1.
 
-        self.valid_accur = []
-        self.train_accur = []
+        self.valid_accur, self.train_accur = [], []
+        max_tr, max_test = 0,0
         # set training data
         print("set training and testing dataset ... ")
         self.next_element, self.iterator = get_patch_dataset(
@@ -224,7 +226,7 @@ class ConvNeuralNet:
         self.test_element, self.test_iterator = get_patch_dataset(
             self.test_data,
             self.test_label,
-            self.args.buffer_scale,
+            1,
             self.args.mask,
             len(self.test_label))
 
@@ -235,14 +237,7 @@ class ConvNeuralNet:
             self.input: test_data_ts,
             self.label: test_label_ts
         }
-        '''
-        next_element, iterator = get_patch_dataset(train_data, train_label, args.buffer_scale, is_mask, batch)
-        sess.run(iterator.initializer)
-        test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
-        sess.run(test_iterator.initializer)
-        val_data_ts, test_label_ts = sess.run(test_element)
 
-        '''
         print("start training ... ")
         for epoch in range(start_epoch, self.epoch):
             # get batch data
@@ -262,7 +257,6 @@ class ConvNeuralNet:
                 # self.train_writer.add_summary(train_merged_summary, global_step=counter)
 
                 if epoch % self.print_freq == 0:
-
                     test_merged_summary, test_accur = self.sess.run(
                         [self.merged_summary, self.accur],
                         feed_dict=test_feed_dict)
@@ -270,10 +264,17 @@ class ConvNeuralNet:
                     print("Epoch: [{}/{}] [{}/{}], loss: {}, accur: {}" \
                           .format(epoch, self.epoch, idx, self.iteration,loss, accur))
                     label_sample = train_label[:5]
-                    train_sample = logits[:5] // 0.01
+                    train_sample = logits[:5]//0.01
+
                     for i,j in zip(label_sample,train_sample):
                         print("label : {} , pred : {}".format(i,j))
                     print('test accur : {}'.format(test_accur))
+
+                    if (max_tr < accur):
+                        max_tr = accur
+                    if (max_test < test_accur):
+                        max_test = test_accur
+                    print(max_tr, max_test)
 
                     # test_accur, test_summary = self.test(counter)
                     self.valid_accur.append(test_accur)
@@ -287,6 +288,8 @@ class ConvNeuralNet:
 
         print(self.train_accur)
         print(self.valid_accur)
+        print(np.max(self.train_accur), np.max(self.valid_accur))
+        print(np.mean(self.train_accur[-5:]),np.mean(self.valid_accur[-5:]))
         return np.max(self.valid_accur)
 
     def test(self, counter):

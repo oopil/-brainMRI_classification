@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import SimpleITK as sitk
 from scipy.ndimage.morphology import binary_dilation
+from scipy.ndimage.morphology import binary_erosion
 
 #######################################################################
 ### for reading patched mri data
@@ -35,7 +36,7 @@ def _read_py_function_1_patch(path, label):
     return patch_array.astype(np.float32), label.astype(np.int32)
 """
 def mask_dilation(image_patch, label_patch, label_num, patch_size):
-    dilation_iter = 2
+    dilation_iter = 3
     empty_space_shape = [patch_size for i in range(3)]
     label_pos = np.where(label_patch == label_num)
     mask_label = np.zeros(empty_space_shape)

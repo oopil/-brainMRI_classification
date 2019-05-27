@@ -1,7 +1,6 @@
 from sklearn.utils import shuffle
 from pandas import get_dummies
 from chosun_ad_bot import *
-from random import shuffle
 import openpyxl
 import numpy as np
 
@@ -487,8 +486,11 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, excel_path, fold_n
     3. merge excel and path information
     4. make label list
     5. split train and test dataset
+
+    # not here
     6. oversampling
     7. balance test data
+
     # handle with tensorflow dataset api
     1. shuffle
     2. normalization
@@ -504,9 +506,8 @@ def CNN_dataloader(base_folder_path ,diag_type, class_option, excel_path, fold_n
     data, label_info = loader.merge_info() # here is a problem!
     data, label = loader.define_label_cnn(label_info, class_option)
     split_func = loader.split_data_by_fold
-    shuffle_data, shuffle_label = loader.shuffle_data(data, label)
-    # print(shuffle_data)
-    # assert False
+    # shuffle_data, shuffle_label = loader.shuffle_data(data, label)
+    shuffle_data, shuffle_label = shuffle_static(data, label) # fix the data
     '''
         return all train and test sets devided by fold.
     '''

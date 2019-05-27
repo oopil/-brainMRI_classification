@@ -31,6 +31,8 @@ def parse_args() -> argparse:
     parser.add_argument('--buffer_scale',       default=30, type=int)
     parser.add_argument('--epoch',              default=400, type=int)
     parser.add_argument('--network',            default='simple', type=str) # simple attention siam
+    parser.add_argument('--lr',                 default=1e-5, type=float) # simple attention siam
+    parser.add_argument('--ch',                 default=32, type=int) # simple attention siam
     return parser.parse_args()
 
 # %%
@@ -78,13 +80,13 @@ def read_cnn_data(sv_set = 0):
     # print(type(train_data))
 
 
-
+ch = args.ch
 batch = 30
 dropout_prob = 0.5
 epochs = args.epoch
 is_mask = args.mask
 print_freq = 5
-learning_rate = 1e-4
+learning_rate = args.lr
 '''
     model building parts
 '''
@@ -107,10 +109,10 @@ else:
 assert network != None
 
 my_model = network(weight_initializer=tf.truncated_normal_initializer,
-                                  activation=tf.nn.relu,
-                                  class_num=class_num,
-                                  patch_size=s1,
-                                  patch_num=2)
+                  activation=tf.nn.relu,
+                  class_num=class_num,
+                  patch_size=s1,
+                  patch_num=2)
 y = my_model.model(images)
 # %%
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
@@ -248,7 +250,7 @@ file_contents.append("avg saturation train : {} , avg saturation vaidation : {}"
 for result in file_contents:
     print(result)
 
-result_file_name = '../nn_result/cv.txt'
+result_file_name = '../nn_result_'+args.network+'/cv.txt'
 file = open(result_file_name, 'a+t')
 for result in file_contents:
     result += '\n'

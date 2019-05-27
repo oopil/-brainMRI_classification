@@ -1,3 +1,4 @@
+import sys
 import argparse
 from ConvNeuralNet.CNN_model import ConvNeuralNet
 from ConvNeuralNet.CNN_utils import *
@@ -19,10 +20,10 @@ def parse_args() -> argparse:
             raise argparse.ArgumentTypeError('Boolean value expected.')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu',                default='202', type=str)
+    parser.add_argument('--gpu',                default='0', type=str)
     parser.add_argument('--task',               default='train', type=str) # train cv bo
-    parser.add_argument('--setting',            default='desktop', type=str)
-    parser.add_argument('--network',            default='simple', type=str) # simple attention siam
+    parser.add_argument('--setting',            default='desktop', type=str) # desktop sv186 sv202 sv144
+    parser.add_argument('--network',            default='siam', type=str) # simple attention siam res
     parser.add_argument('--mask',               default=False, type=str2bool)
     parser.add_argument('--buffer_scale',       default=10, type=int)
 
@@ -34,8 +35,8 @@ def parse_args() -> argparse:
     parser.add_argument('--class_option_index', default=0, type=int)
     parser.add_argument('--fold_num',           default=5, type=int)
 
-    parser.add_argument('--epoch',              default=300, type=int)
-    parser.add_argument('--print_freq',         default=5, type=int)
+    parser.add_argument('--epoch',              default=30, type=int) # 300
+    parser.add_argument('--print_freq',         default=5, type=int) # 5
     parser.add_argument('--summary_freq',       default=100, type=int)
     parser.add_argument('--save_freq',          default=200, type=int)
 
@@ -43,15 +44,15 @@ def parse_args() -> argparse:
     # PET    # class_option = 'PET pos vs neg'
     # new    # class_option = 'NC vs ADD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     # clinic # class_option = 'MCI vs AD'#'MCI vs AD'#'CN vs MCI'#'CN vs AD' #'CN vs MCI vs AD'
-    parser.add_argument('--lr',                 default=0.00001, type=float)  # 0.0001 #0.0602
+    parser.add_argument('--lr',                 default=0.0001, type=float)  # 0.0001 #0.0602
     parser.add_argument('--patch_size',         default=48, type=int)
-    parser.add_argument('--batch_size',         default=10, type=int)
-    parser.add_argument('--weight_stddev',      default=0.05, type=float)  # 0.05 #0.0721
+    parser.add_argument('--batch_size',         default=30, type=int)
+    parser.add_argument('--weight_stddev',      default=0.05, type=float)  # 0.05 # 0.0721
     parser.add_argument('--loss_function',      default='cEntropy', type=str)  # L2 / cross
     parser.add_argument('--sampling_option',    default='RANDOM', type=str)
     parser.add_argument('--noise_augment',      default=0.1, type=float)
 
-    parser.add_argument('--result_file_name',default='/home/soopil/Desktop/github/brainMRI_classification/nn_result/chosun_MRI_excel_AD_nn_result', type=str)
+    parser.add_argument('--result_file_name',   default='/home/soopil/Desktop/github/brainMRI_classification/nn_result/chosun_MRI_excel_AD_nn_result', type=str)
     parser.add_argument('--excel_path',         default='None', type=str)
     parser.add_argument('--base_folder_path',   default='None', type=str)
     parser.add_argument('--diag_type',          default='None', type=str)

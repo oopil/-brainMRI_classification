@@ -159,6 +159,12 @@ def check_mask_area():
     save_nifti_file(brain_array, itk_file, sample_dir_path, save_file_name)
 
 def check_mri_masking():
+    """
+    left part : 6 ~ 30 / 1000 ~
+    right part : 43 ~ 62 / 2000 ~
+
+    :return:
+    """
     print('start MRI label check.')
     sample_dir_path = '/home/soopil/Desktop/github/brainMRI_classification/sample_image/ADDlabel'
     file_name_str = 'T1Label.nii.gz  aparc.DKTatlas+aseg.nii  aseg.auto.nii aparc+aseg.nii  aparc.a2009s+aseg.nii'
@@ -202,7 +208,7 @@ def check_mri_masking():
 
 def check_mri_label():
     print('start MRI label check.')
-    sample_dir_path = '/home/soopil/Desktop/github/brainMRI_classification/sample_image/ADDlabel'
+    sample_dir_path = '/home/soopil/Desktop/github/sampleData/brainMRI_classification/ADDlabel'
     file_name_str = 'T1Label.nii.gz  aparc.DKTatlas+aseg.nii  aseg.auto.nii aparc+aseg.nii  aparc.a2009s+aseg.nii'
     file_name = [ e for e in file_name_str.split(' ') if e != '']
     print('label file : ',file_name)
@@ -224,6 +230,9 @@ def check_mri_label():
     '''
 
     '''
+    left part : 6 ~ 30 / 1000 ~ 
+    right part : 43 ~ 62 / 2000 ~
+    
     in this case, we use
     aparc.DKTatlas+aseg.nii
     17,53 : left and right hippocampus label
@@ -244,35 +253,53 @@ def check_mri_label():
         else:
             subcort.append(label)
 
+    print(lh_cort)
+    print(rh_cort)
+    print(subcort)
+
     empty_space_shape = [256 for i in range(3)]
     empty_space = np.zeros(empty_space_shape)
 
-    patch_size = 24
+    patch_size = 16
     label_color = 1 # red
     draw_array = empty_space
 
     """
+    
     sub_cortical part box drawing part...
+    left_subcort=[4,5,6,7,10,11,12,13,17,18,25,26,28,30]
+    right_subcort=[43,44,45,46,49,50,51,52,53,54,57,58,60,62]
+    [4,5,6,7,10,11,12,13,43,44,45,46,49,50,51,52]
     """
-    for lh_label in subcort:
-        if lh_label == 91 or (lh_label >= 10 and lh_label <= 30) and (lh_label not in (14, 15, 16,24)):
-            center_pos = label_size_check(label_array, lh_label, isp)
-            draw_array[np.where(label_array == lh_label)] = lh_label
+    left_subcort=[4,5,6,7,10,11,12,13,17,18,25,26,28,30] # 14
+    right_subcort=[43,44,45,46,49,50,51,52,53,54,57,58,60,62] # 14
+    left_cort=[1000.0, 1002.0, 1003.0, 1005.0, 1006.0, 1007.0, 1008.0, 1009.0, 1010.0, 1011.0,
+     1012.0, 1013.0, 1014.0, 1015.0, 1016.0, 1017.0, 1018.0, 1019.0, 1020.0, 1021.0,
+     1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0] # 35
+    subcort_list = left_subcort + right_subcort
+    print(len(left_subcort), len(left_cort))
+    assert False
+    for label in subcort:
+        # if label == 91 or (label >= 10 and label <= 30) and (label not in (14, 15, 16,24)):
+        if label in subcort_list:
+            center_pos = label_size_check(label_array, label, isp)
+            draw_array[np.where(label_array == label)] = label
             draw_array = draw_patch_box(draw_array, center_pos, patch_size, label=label_color, thickness= 0)
     save_file_name = 'draw_patch_subcort_lh' + '.nii'
     save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name)
-    assert False
+    # assert False
     """
     cortical part box drawing part...
     """
-
-    for lh_label in rh_cort:
-        center_pos = label_size_check(label_array, lh_label, isp)
-        draw_array[np.where(label_array == lh_label)] = lh_label
+    draw_array = empty_space
+    for label in rh_cort:
+        center_pos = label_size_check(label_array, label, isp)
+        draw_array[np.where(label_array == label)] = label
         draw_array = draw_patch_box(draw_array, center_pos, patch_size, label=label_color, thickness= 0)
     draw_array[np.where(label_array == 53)] = 53
     draw_array[np.where(label_array == 17)] = 17
-
+    save_file_name = 'draw_patch_cort_lh' + '.nii'
+    save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name)
     # for i in range(len(new_label_list)):
     #     if not new_label_list[i] in orig_label_list:
     #         print(new_label_list[i])
@@ -289,12 +316,11 @@ def check_mri_label():
     # label_size_check(new_array, 54)
     """
 
-    save_file_name = 'draw_patch_cort_lh'+'.nii'
-    save_nifti_file(draw_array, itk_file, sample_dir_path, save_file_name)
+
 
 def main():
-    check_mask_area()
-    # check_mri_label()
+    # check_mask_area()
+    check_mri_label()
     # check_mri_masking()
 
 if __name__ == '__main__':

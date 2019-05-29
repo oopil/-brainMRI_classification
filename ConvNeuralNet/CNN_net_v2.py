@@ -43,7 +43,6 @@ class Network:
             ch *= 2
             x = self.conv_3d(x, ch, [3, 3, 3], 'same', self.activ)
             x = self.conv_3d(x, ch, [3, 3, 3], 'same', self.activ)
-            x = self.maxpool_3d(x, [2, 2, 2], st=2)
             return x
 
     def CNN_deep_layer(self, x, scope = "CNN", reuse = False):
@@ -186,23 +185,20 @@ class Simple(Network):
             print('build neural network')
             print(images.shape)
 
-        CNN = self.CNN_simple
-        split_form = [self.ps for _ in range(self.pn)]
         with tf.variable_scope("Model"):
-            # lh, rh = tf.split(images, split_form, 1)
-            split_array = tf.split(images, split_form, 1)
-
+            lh, rh = tf.split(images, [self.ps, self.ps], 1)
             # CNN = self.CNN_deep_layer
+            CNN = self.CNN_simple
 
-            channel = 32
-            # channel = 40
+            # channel = 32
+            channel = 40
             lh = CNN(lh, ch = channel, scope= "LCNN", reuse=False)
             rh = CNN(rh, ch = channel, scope= "RCNN", reuse=False)
             with tf.variable_scope("FCN"):
                 lh = tf.layers.flatten(lh)
                 rh = tf.layers.flatten(rh)
                 x = tf.concat([lh, rh], -1)
-                x = tf.layers.dense(x, units=1024, activation=self.activ)
+                x = tf.layers.dense(x, units=2048, activation=self.activ)
                 x = tf.layers.dense(x, units=512, activation=self.activ)
                 x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
                 # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)

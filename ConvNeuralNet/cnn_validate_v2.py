@@ -27,9 +27,9 @@ def parse_args() -> argparse:
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu',                default='0', type=str)
     parser.add_argument('--setting',            default='desktop', type=str) # desktop sv186 sv202 sv144
-    parser.add_argument('--mask',               default=True, type=str2bool)
+    parser.add_argument('--mask',               default=False, type=str2bool)
     parser.add_argument('--buffer_scale',       default=30, type=int)
-    parser.add_argument('--epoch',              default=400, type=int)
+    parser.add_argument('--epoch',              default=100, type=int)
     parser.add_argument('--network',            default='simple', type=str) # simple attention siam
     parser.add_argument('--lr',                 default=1e-5, type=float) # simple attention siam
     parser.add_argument('--ch',                 default=32, type=int) # simple attention siam
@@ -47,11 +47,6 @@ sv_set_dict = {
     "sv202":202,
 }
 sv_set = sv_set_dict[args.setting]
-# is_mask = args.mask
-# print(is_mask)
-# print(type(is_mask))
-# assert False
-# %%
 
 def read_cnn_data(sv_set = 0):
     base_folder_path = ''
@@ -82,7 +77,7 @@ def read_cnn_data(sv_set = 0):
 
 
 ch = args.ch
-batch = 10
+batch = 30
 dropout_prob = 0.5
 epochs = args.epoch
 is_mask = args.mask
@@ -100,22 +95,84 @@ lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
 
-network = None
-if args.network == 'simple':
-    network = Simple
-elif args.network == 'siam':
-    network = Siamese
-else:
-    assert False
-assert network != None
+# network = None
+# if args.network == 'simple':
+#     network = Simple
+# elif args.network == 'siam':
+#     network = Siamese
+# else:
+#     assert False
+# assert network != None
+#
+# my_model = network(weight_initializer=tf.truncated_normal_initializer,
+#                   activation=tf.nn.relu,
+#                   class_num=class_num,
+#                   patch_size=s1,
+#                   patch_num=2)
+def model(images):
+    def CNN_simple( x, ch = 32, scope = "CNN", reuse = False):
+        activ = tf.nn.relu
+        ps = 48
+        cn = 2
 
-# patch_num = 2
-patch_num = 28
-my_model = network(weight_initializer=tf.truncated_normal_initializer,
-                  activation=tf.nn.relu,
-                  class_num=class_num,
-                  patch_size=s1,
-                  patch_num=patch_num)
+        with tf.variable_scope(scope, reuse=reuse):
+            x = batch_norm(x)
+            x = conv_3d(x, ch, [3, 3, 3], 'same', activ)
+            x = conv_3d(x, ch, [3, 3, 3], 'same', activ)
+            x = maxpool_3d(x, [2, 2, 2], st=2)
+
+            ch *= 2
+            x = conv_3d(x, ch, [3, 3, 3], 'same', activ)
+            x = conv_3d(x, ch, [3, 3, 3], 'same', activ)
+            x = maxpool_3d(x, [2, 2, 2], st=2)
+
+            ch *= 2
+            x = conv_3d(x, ch, [3, 3, 3], 'same', activ)
+            x = conv_3d(x, ch, [3, 3, 3], 'same', activ)
+            x = maxpool_3d(x, [2, 2, 2], st=2)
+
+            ch *= 2
+            x = conv_3d(x, ch, [3, 3, 3], 'same', activ)
+            x = conv_3d(x, ch, [3, 3, 3], 'same', activ)
+            return x
+    is_print = False
+    # is_print = is_print
+    if is_print:
+        print('build neural network')
+        print(images.shape)
+
+    with tf.variable_scope("Model"):
+        # images = tf.placeholder(tf.float32, (None, ps * 2, ps, ps, 1), name='inputs')
+        lh, rh = tf.split(images, [ps, ps], 1)
+        # output_num = 3
+        # tf.summary.image('lh_orig_1',lh[0],max_outputs=output_num)
+        # tf.summary.image('lh_orig_2',lh[0],max_outputs=output_num)
+        # tf.summary.image('rh_orig',rh[0],max_outputs=output_num)
+        flip_axis = 3  # 3
+        # axis = [False for i in range(5)]
+        # axis[flip_axis] = True
+        rh = tf.reverse(rh, axis=[flip_axis])
+        # tf.summary.image('rh',rh[0],max_outputs=output_num)
+        # CNN = CNN_deep_layer
+        CNN = CNN_simple
+
+        # channel = 32
+        channel = 40
+        lh = CNN(lh, ch=channel, scope="CNN", reuse=False)
+        rh = CNN(rh, ch=channel, scope="CNN", reuse=True)
+
+        with tf.variable_scope("FCN"):
+            lh = tf.layers.flatten(lh)
+            rh = tf.layers.flatten(rh)
+            x = tf.concat([lh, rh], -1)
+            # x = tf.subtract(lh,rh)
+            x = tf.layers.dense(x, units=2048, activation=activ)
+            x = tf.layers.dense(x, units=512, activation=activ)
+            x = tf.layers.dense(x, units=cn, activation=tf.nn.softmax)
+            # x = tf.layers.dense(x, units=cn, activation=tf.nn.sigmoid)
+            y = x
+    return y
+
 y = my_model.model(images)
 # %%
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
@@ -225,6 +282,9 @@ for fold in whole_set:
                 valid_accur.append(val_acc)
                 # save trained model
                 # save_path = saver.save(sess, "../train/cnn_lh")
+    count += 1
+    if count >= args.fold_try:
+        break
 
     saturation_count = 5
     train_result.append(train_accur)
@@ -235,9 +295,7 @@ for fold in whole_set:
     top_valid_accur_list.append(top_valid_accur)
     saturation_train_accur_list.append(np.mean(train_accur[-saturation_count:]))
     saturation_valid_accur_list.append(np.mean(valid_accur[-saturation_count:]))
-    count += 1
-    if count >= args.fold_try:
-        break
+
 file_contents = []
 
 for i in range(len(train_result)):

@@ -277,11 +277,13 @@ def check_mri_label():
      1012.0, 1013.0, 1014.0, 1015.0, 1016.0, 1017.0, 1018.0, 1019.0, 1020.0, 1021.0,
      1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0] # 35
     subcort_list = left_subcort + right_subcort
+    actual_subcort_list = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26] + [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]
     print(len(left_subcort), len(left_cort))
-    assert False
+    # assert False
     for label in subcort:
         # if label == 91 or (label >= 10 and label <= 30) and (label not in (14, 15, 16,24)):
-        if label in subcort_list:
+        # if label in subcort_list:
+        if label in actual_subcort_list:
             center_pos = label_size_check(label_array, label, isp)
             draw_array[np.where(label_array == label)] = label
             draw_array = draw_patch_box(draw_array, center_pos, patch_size, label=label_color, thickness= 0)
@@ -291,7 +293,7 @@ def check_mri_label():
     """
     cortical part box drawing part...
     """
-    draw_array = empty_space
+    draw_array = np.zeros(empty_space_shape)
     for label in rh_cort:
         center_pos = label_size_check(label_array, label, isp)
         draw_array[np.where(label_array == label)] = label

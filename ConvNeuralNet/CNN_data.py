@@ -64,8 +64,10 @@ def _read_py_function_1_patch(path, label, is_masking=False):
     24.0, 26.0, 28.0, 30.0, 31.0, 41.0, 42.0, 43.0, 44.0, 46.0, 47.0, 49.0, 50.0,
     51.0, 52.0, 53.0, 54.0, 58.0, 60.0, 62.0, 63.0, 77.0, 85.0, 251.0, 252.0, 253.0, 254.0, 255.0]
     '''
-    left_subcort = [4, 5, 6, 7, 10, 11, 12, 13, 17, 18, 25, 26, 28, 30]  # 14
-    right_subcort = [43, 44, 45, 46, 49, 50, 51, 52, 53, 54, 57, 58, 60, 62]  # 14
+
+    # 46 is the label of cerebellum
+    left_subcort = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26]  # 14 -(6,25,30,28)
+    right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
     left_cort = [1000.0, 1002.0, 1003.0, 1005.0, 1006.0, 1007.0, 1008.0, 1009.0, 1010.0, 1011.0,
                  1012.0, 1013.0, 1014.0, 1015.0, 1016.0, 1017.0, 1018.0, 1019.0, 1020.0, 1021.0,
                  1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0]  # 35
@@ -115,6 +117,7 @@ def label_size_check(label_array, label_num, isp):
     '''
     # print(label_array, label_num)
     position_array = np.where(label_array == label_num)
+    # print(position_array[0], label_num)
     # print(position_array)
     # print(np.amax(position_array, axis=1))
     max_pos = np.amax(position_array, axis=1)

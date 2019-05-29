@@ -186,22 +186,27 @@ class Simple(Network):
             print('build neural network')
             print(images.shape)
 
+        channel = 32
         CNN = self.CNN_simple
         split_form = [self.ps for _ in range(self.pn)]
         with tf.variable_scope("Model"):
             # lh, rh = tf.split(images, split_form, 1)
             split_array = tf.split(images, split_form, 1)
-
+            cnn_features = []
+            for i, array in enumerate(split_array):
+                array = CNN(array, ch=channel, scope="CNN"+str(i), reuse=False)
+                array = tf.layers.flatten(array)
+                cnn_features.append(array)
             # CNN = self.CNN_deep_layer
 
-            channel = 32
             # channel = 40
-            lh = CNN(lh, ch = channel, scope= "LCNN", reuse=False)
-            rh = CNN(rh, ch = channel, scope= "RCNN", reuse=False)
+            # lh = CNN(lh, ch = channel, scope= "LCNN", reuse=False)
+            # rh = CNN(rh, ch = channel, scope= "RCNN", reuse=False)
             with tf.variable_scope("FCN"):
-                lh = tf.layers.flatten(lh)
-                rh = tf.layers.flatten(rh)
-                x = tf.concat([lh, rh], -1)
+                # lh = tf.layers.flatten(lh)
+                # rh = tf.layers.flatten(rh)
+                # x = tf.concat([lh, rh], -1)
+                x = tf.concat(cnn_features, -1)
                 x = tf.layers.dense(x, units=1024, activation=self.activ)
                 x = tf.layers.dense(x, units=512, activation=self.activ)
                 x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)

@@ -27,7 +27,7 @@ def parse_args() -> argparse:
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu',                default='0', type=str)
     parser.add_argument('--setting',            default='desktop', type=str) # desktop sv186 sv202 sv144
-    parser.add_argument('--mask',               default=True, type=str2bool)
+    parser.add_argument('--mask',               default=False, type=str2bool)
     parser.add_argument('--buffer_scale',       default=30, type=int)
     parser.add_argument('--epoch',              default=400, type=int)
     parser.add_argument('--network',            default='simple', type=str) # simple attention siam
@@ -92,11 +92,12 @@ learning_rate = args.lr
     model building parts
 '''
 class_num = 2
-patch_size = 48
+# patch_size = 48
+patch_size = 16
+patch_num = 28 - 2 - 2 - 2 - 2
 s1, s2, s3 = patch_size, patch_size, patch_size
-images = tf.placeholder(tf.float32, (None, s1 * 2, s2, s3, 1), name='inputs')
-
-lh, rh = tf.split(images, [patch_size, patch_size], 1)
+images = tf.placeholder(tf.float32, (None, s1 * patch_num, s2, s3, 1), name='inputs')
+# lh, rh = tf.split(images, [patch_size, patch_size], 1)
 y_gt = tf.placeholder(tf.float32, (None, 2))
 keep_prob = tf.placeholder(tf.float32)
 
@@ -110,7 +111,7 @@ else:
 assert network != None
 
 # patch_num = 2
-patch_num = 28
+
 my_model = network(weight_initializer=tf.truncated_normal_initializer,
                   activation=tf.nn.relu,
                   class_num=class_num,
@@ -142,6 +143,9 @@ with tf.variable_scope('optimizer'):
 tf.summary.scalar("loss", loss)
 tf.summary.scalar("accuracy", accuracy)
 merged_summary = tf.summary.merge_all()
+
+model_vars = tf.trainable_variables()
+tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
 
 whole_set = read_cnn_data(sv_set)
 top_train_accur_list = []

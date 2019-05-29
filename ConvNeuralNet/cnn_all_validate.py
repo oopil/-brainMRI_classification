@@ -94,7 +94,10 @@ learning_rate = args.lr
 class_num = 2
 # patch_size = 48
 patch_size = 16
-patch_num = 28 - 2 - 2 - 2 - 2
+# patch_num = 2 # hippocampus labels
+# patch_num = 70 # cortical labels
+# patch_num = 72 # hippo + cortical labels
+patch_num = 20 # subcortical labels
 s1, s2, s3 = patch_size, patch_size, patch_size
 images = tf.placeholder(tf.float32, (None, s1 * patch_num, s2, s3, 1), name='inputs')
 # lh, rh = tf.split(images, [patch_size, patch_size], 1)

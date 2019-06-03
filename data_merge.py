@@ -591,6 +591,8 @@ def over_sampling(X_imb, Y_imb, sampling_option):
     elif sampling_option == 'SMOTETomek':
         X_samp, Y_samp = SMOTETomek(random_state=4).fit_sample(X_imb, Y_imb)
     elif sampling_option == 'RANDOM':
+
+
         X_samp, Y_samp = RandomOverSampler(random_state=0).fit_sample(X_imb, Y_imb)
     elif sampling_option == 'BolderlineSMOTE':
         X_samp, Y_samp = BorderlineSMOTE().fit_sample(X_imb, Y_imb)

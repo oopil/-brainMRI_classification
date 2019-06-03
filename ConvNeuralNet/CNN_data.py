@@ -7,34 +7,6 @@ from scipy.ndimage.morphology import binary_erosion
 #######################################################################
 ### for reading patched mri data
 #######################################################################
-"""
-def _read_py_function_1_patch(path, label):
-    '''
-    use only when we need to extract some patches.
-    '''
-    isp = False
-    if isp:print("file path : {}" .format(path))
-    path_decoded = path.decode()
-    img_path_decoded, label_path_decoded = path_decoded.split(',')
-    itk_file = sitk.ReadImage(img_path_decoded)
-    array = sitk.GetArrayFromImage(itk_file)
-
-    label_itk_file = sitk.ReadImage(label_path_decoded)
-    label_array = sitk.GetArrayFromImage(label_itk_file)
-
-    # find the patch position
-    patch_size = 48
-    hs = patch_size // 2
-    x1,y1,z1 = label_size_check(label_array, 17, isp)
-    x2,y2,z2 = label_size_check(label_array, 53, isp)
-    # extract patch and concatenate
-    patch_array = np.concatenate((array[x1-hs:x1+hs,y1-hs:y1+hs,z1-hs:z1+hs],\
-                                  array[x2-hs:x2+hs,y2-hs:y2+hs,z2-hs:z2+hs]),axis=0)
-    #normalize
-    if isp: print(patch_array.shape, type(patch_array))
-    patch_array = np.expand_dims(patch_array, 3)
-    return patch_array.astype(np.float32), label.astype(np.int32)
-"""
 def mask_dilation(image_patch, label_patch, label_num, patch_size):
     dilation_iter = 3
     empty_space_shape = [patch_size for i in range(3)]
@@ -45,7 +17,7 @@ def mask_dilation(image_patch, label_patch, label_num, patch_size):
     image_patch[np.where(mask_label == 0)] = 0
     return image_patch
 
-def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 16):
+def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48):
     isp = False
     if isp:print("file path : {}" .format(path))
     path_decoded = path.decode()
@@ -54,7 +26,6 @@ def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 16
     array = sitk.GetArrayFromImage(itk_file)
     label_itk_file = sitk.ReadImage(label_path_decoded)
     label_array = sitk.GetArrayFromImage(label_itk_file)
-    patch_size = 48
     hs = patch_size // 2
     lh_hippo = 17
     rh_hippo = 53
@@ -76,13 +47,6 @@ def _read_py_function_subcort_patch(path, label, is_masking=False, patch_size = 
     # 46 is the label of cerebellum
     left_subcort = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26]  # 14 -(6,25,30,28)
     right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
-    left_cort = [1000.0, 1002.0, 1003.0, 1005.0, 1006.0, 1007.0, 1008.0, 1009.0, 1010.0, 1011.0,
-                 1012.0, 1013.0, 1014.0, 1015.0, 1016.0, 1017.0, 1018.0, 1019.0, 1020.0, 1021.0,
-                 1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0]  # 35
-    right_cort = [2000.0, 2002.0, 2003.0, 2005.0, 2006.0, 2007.0, 2008.0, 2009.0, 2010.0, 2011.0,
-                  2012.0, 2013.0, 2014.0, 2015.0, 2016.0, 2017.0, 2018.0, 2019.0, 2020.0, 2021.0,
-                  2022.0, 2023.0, 2024.0, 2025.0, 2026.0, 2027.0, 2028.0, 2029.0, 2030.0, 2031.0, 2034.0, 2035.0] # 35
-    cort = left_cort + right_cort
     subcort = left_subcort + right_subcort
 
     isp = False
@@ -114,12 +78,13 @@ def _read_py_function_hippo_cort_patch(path, label, is_masking=False, patch_size
     right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
     left_cort = [1000.0, 1002.0, 1003.0, 1005.0, 1006.0, 1007.0, 1008.0, 1009.0, 1010.0, 1011.0,
                  1012.0, 1013.0, 1014.0, 1015.0, 1016.0, 1017.0, 1018.0, 1019.0, 1020.0, 1021.0,
-                 1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0]  # 35
+                 1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0]  # 32
     right_cort = [2000.0, 2002.0, 2003.0, 2005.0, 2006.0, 2007.0, 2008.0, 2009.0, 2010.0, 2011.0,
                   2012.0, 2013.0, 2014.0, 2015.0, 2016.0, 2017.0, 2018.0, 2019.0, 2020.0, 2021.0,
-                  2022.0, 2023.0, 2024.0, 2025.0, 2026.0, 2027.0, 2028.0, 2029.0, 2030.0, 2031.0, 2034.0, 2035.0] # 35
-    cort = left_cort + right_cort
-    subcort = left_subcort + right_subcort
+                  2022.0, 2023.0, 2024.0, 2025.0, 2026.0, 2027.0, 2028.0, 2029.0, 2030.0, 2031.0, 2034.0, 2035.0] # 32
+    cort = left_cort + right_cort # too big ...
+    # cort = [e for i, e in enumerate(cort) if i % 2 == 0] # half
+    # subcort = left_subcort + right_subcort
 
     isp = False
     if isp:print("file path : {}" .format(path))
@@ -169,10 +134,10 @@ def _read_py_function_1_patch(path, label, is_masking=False):
     right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
     left_cort = [1000.0, 1002.0, 1003.0, 1005.0, 1006.0, 1007.0, 1008.0, 1009.0, 1010.0, 1011.0,
                  1012.0, 1013.0, 1014.0, 1015.0, 1016.0, 1017.0, 1018.0, 1019.0, 1020.0, 1021.0,
-                 1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0]  # 35
+                 1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0]  # 32
     right_cort = [2000.0, 2002.0, 2003.0, 2005.0, 2006.0, 2007.0, 2008.0, 2009.0, 2010.0, 2011.0,
                   2012.0, 2013.0, 2014.0, 2015.0, 2016.0, 2017.0, 2018.0, 2019.0, 2020.0, 2021.0,
-                  2022.0, 2023.0, 2024.0, 2025.0, 2026.0, 2027.0, 2028.0, 2029.0, 2030.0, 2031.0, 2034.0, 2035.0] # 35
+                  2022.0, 2023.0, 2024.0, 2025.0, 2026.0, 2027.0, 2028.0, 2029.0, 2030.0, 2031.0, 2034.0, 2035.0] # 32
     cort = left_cort + right_cort
     subcort = left_subcort + right_subcort
 
@@ -225,10 +190,10 @@ def label_size_check(label_array, label_num, isp):
     return (max_pos+min_pos)//2
 
 def get_patch_dataset(img_l, label_l, buffer_scale = 3, is_masking=False, batch_size = 1):
-    # patch_read_func = _read_py_function_hippo_patch
+    patch_read_func = _read_py_function_hippo_patch
     # patch_read_func = _read_py_function_subcort_patch
     # patch_read_func = _read_py_function_hippo_cort_patch
-    patch_read_func = _read_py_function_1_patch
+    # patch_read_func = _read_py_function_1_patch
 
     print(type(img_l), np.shape(img_l))
     mask_l = [False for _ in range(len(label_l))]

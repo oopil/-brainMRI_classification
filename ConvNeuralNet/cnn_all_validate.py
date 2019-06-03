@@ -34,6 +34,7 @@ def parse_args() -> argparse:
     parser.add_argument('--lr',                 default=1e-5, type=float) # simple attention siam
     parser.add_argument('--ch',                 default=32, type=int) # simple attention siam
     parser.add_argument('--fold_try',           default=2, type=int)
+    parser.add_argument('--batch_size',         default=10, type=int)
     return parser.parse_args()
 
 # %%
@@ -82,7 +83,7 @@ def read_cnn_data(sv_set = 0):
 
 
 ch = args.ch
-batch = 10
+batch = args.batch_size # 10
 dropout_prob = 0.5
 epochs = args.epoch
 is_mask = args.mask
@@ -92,12 +93,13 @@ learning_rate = args.lr
     model building parts
 '''
 class_num = 2
-# patch_size = 48
-patch_size = 16
-# patch_num = 2 # hippocampus labels
+patch_size = 48
+# patch_size = 16
+patch_num = 2 # hippocampus labels
 # patch_num = 70 # cortical labels
-# patch_num = 72 # hippo + cortical labels
-patch_num = 20 # subcortical labels
+# patch_num = 2 + 32 + 32 # hippo + cortical labels
+# patch_num = 34 #2 + 32 + 32 # hippo + cortical labels
+# patch_num = 20 # subcortical labels
 s1, s2, s3 = patch_size, patch_size, patch_size
 images = tf.placeholder(tf.float32, (None, s1 * patch_num, s2, s3, 1), name='inputs')
 # lh, rh = tf.split(images, [patch_size, patch_size], 1)
@@ -165,6 +167,7 @@ for fold in whole_set:
     train_accur = []
     valid_accur = []
     class_num = 2
+    sampling_option = "None"
     sampling_option = "RANDOM"
     train_data, train_label, val_data, val_label = fold
     val_data, val_label = valence_class(val_data, val_label, class_num)
@@ -201,6 +204,11 @@ for fold in whole_set:
 
         for epoch in range(epochs):
             train_data, train_label = sess.run(next_element)
+            # print(train_data.shape, train_label.shape)
+            # train_data, train_label = over_sampling(train_data, train_label, "RANDOM")
+            # print(train_data.shape, train_label.shape)
+            # assert False
+
             train_feed_dict = {
                 images: train_data,
                 y_gt: train_label
@@ -217,7 +225,7 @@ for fold in whole_set:
 
             train_writer.add_summary(train_summary)
             if epoch % print_freq == 0:
-                print("Epoch: {}".format(epoch))
+                print("Epoch: {}/{}".format(epoch, epochs))
                 print("Train loss = {}".format(loss_scr))
                 print("Train accuracy = {:03.4f}".format(acc_scr // 0.01))
 

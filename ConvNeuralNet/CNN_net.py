@@ -24,27 +24,30 @@ class Network:
         return tf.layers.max_pooling3d(inputs=x, pool_size=ps, strides=st)
 
     def CNN_simple(self, x, ch = 32, scope = "CNN", reuse = False):
-        kernel = [3,3,3]
+        k3 = [3,3,3]
+        k4 = [4,4,4]
+        k5 = [5,5,5]
+        k7 = [7,7,7]
         kernel_pool = [2,2,2]
         with tf.variable_scope(scope, reuse=reuse):
             x = batch_norm(x)
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
+            x = self.conv_3d(x, ch, k7, 'same', self.activ)
+            x = self.conv_3d(x, ch, k7, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
+            x = self.conv_3d(x, ch, k3, 'same', self.activ)
+            x = self.conv_3d(x, ch, k3, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
+            x = self.conv_3d(x, ch, k3, 'same', self.activ)
+            x = self.conv_3d(x, ch, k3, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
             return x
 

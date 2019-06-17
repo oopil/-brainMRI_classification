@@ -17,10 +17,13 @@ def mask_dilation(image_patch, label_patch, label_num, patch_size):
     image_patch[np.where(mask_label == 0)] = 0
     return image_patch
 
-def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48):
+def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48, is_decode=True, is_aug = True):
     isp = False
     if isp:print("file path : {}" .format(path))
-    path_decoded = path.decode()
+    if is_decode:
+        path_decoded = path.decode()
+    else:
+        path_decoded = path
     img_path_decoded, label_path_decoded = path_decoded.split(',')
     itk_file = sitk.ReadImage(img_path_decoded)
     array = sitk.GetArrayFromImage(itk_file)
@@ -33,6 +36,12 @@ def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48
     patch_list = []
     for label_num in label_list:
         x,y,z = label_size_check(label_array, label_num, isp)
+        if is_aug:
+            ran = np.random.randint(6, size=(3))
+            x += ran[0]
+            y += ran[1]
+            z += ran[2]
+
         image_patch = array[x - hs:x + hs, y - hs:y + hs, z - hs:z + hs]
         if is_masking:
             label_patch = label_array[x - hs:x + hs, y - hs:y + hs, z - hs:z + hs]
@@ -41,7 +50,10 @@ def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48
     patch_array = np.concatenate(patch_list, axis=0)
     if isp: print(patch_array.shape, type(patch_array))
     patch_array = np.expand_dims(patch_array, 3)
-    return patch_array.astype(np.float32), label.astype(np.int32)
+    if is_decode:
+        return patch_array.astype(np.float32), label.astype(np.int32)
+    else:
+        return patch_array.astype(np.float32), label
 
 def _read_py_function_subcort_patch(path, label, is_masking=False, patch_size = 16):
     # 46 is the label of cerebellum
@@ -279,6 +291,24 @@ def get_dataset(img_l, label_l, batch_size=1):
     # # print(img_stacked, label_stacked)
     # return next_element, iterator, handle
 
+def read_test_data(img_l, label_l, is_masking=False):
+    patch_read_func = _read_py_function_hippo_patch
+    # patch_read_func = _read_py_function_subcort_patch
+    # patch_read_func = _read_py_function_hippo_cort_patch
+    # patch_read_func = _read_py_function_1_patch
+
+    assert len(img_l) == len(label_l)
+    length = len(label_l)
+
+    test_data, test_label = [], []
+    for i in range(length):
+        d, c = patch_read_func(img_l[i], label_l[i], is_masking=False, patch_size = 48, is_decode=False, is_aug=False)
+        test_data.append(d)
+        test_label.append(c)
+        # print(i, img_l[i], label_l[i])
+    # print(length, np.shape(test_data), np.shape(test_label))
+    # assert False
+    return np.array(test_data), np.array(test_label)
 #######################################################################
 ### Rest of them
 #######################################################################

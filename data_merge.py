@@ -577,7 +577,7 @@ def over_sampling(X_imb, Y_imb, sampling_option):
     print('starts over sampling ...', sampling_option)
     is_reshape = False
     shape = X_imb.shape
-    if np.ndim(X_imb) == 1:
+    if np.ndim(X_imb) == 1 and sampling_option != 'SIMPLE':
         is_reshape = True
         X_imb = X_imb.reshape(-1,1)
         print(X_imb.shape)
@@ -591,11 +591,44 @@ def over_sampling(X_imb, Y_imb, sampling_option):
     elif sampling_option == 'SMOTETomek':
         X_samp, Y_samp = SMOTETomek(random_state=4).fit_sample(X_imb, Y_imb)
     elif sampling_option == 'RANDOM':
-
-
         X_samp, Y_samp = RandomOverSampler(random_state=0).fit_sample(X_imb, Y_imb)
     elif sampling_option == 'BolderlineSMOTE':
         X_samp, Y_samp = BorderlineSMOTE().fit_sample(X_imb, Y_imb)
+
+    elif sampling_option == 'SIMPLE':
+        label_set = list(set(Y_imb))
+        separate_data = [[] for _ in range(len(label_set))]
+        separate_label = [[] for _ in range(len(label_set))]
+        separate_length = []
+        # separate the data into different label list
+        for i, l in enumerate(Y_imb):
+            # print(i,l,label_count)
+            separate_data[l].append(X_imb[i])
+            separate_label[l].append(Y_imb[i])
+
+        print('sampling option is just scaling the number.')
+        for l in separate_label:
+            print(len(l), end=' / ')
+            separate_length.append(len(l))
+        print()
+        mini = np.min(separate_length)
+        maxi = np.max(separate_length)
+        max_index = separate_length.index(maxi)
+        scale = np.round(maxi/mini)
+        print(mini, maxi,' => ' , scale)
+        print('max index : ',separate_length.index(maxi))
+
+        X_samp = separate_data[max_index]
+        Y_samp = separate_label[max_index]
+        print(np.shape(X_samp), np.shape(Y_samp))
+        for c in range(len(separate_label)):
+            if c != max_index:
+                scale = int(np.round(maxi/len(separate_label[c])))
+                X_samp = X_samp + separate_data[c]*scale
+                Y_samp = Y_samp + separate_label[c]*scale
+        X_samp =np.array(X_samp)
+        Y_samp = np.array(Y_samp)
+
     elif sampling_option == 'None':
         X_samp, Y_samp = X_imb, Y_imb
     else:

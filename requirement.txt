@@ -5,3 +5,4 @@ imblearn
 openpyxl
 pandas
 scipy
+keras

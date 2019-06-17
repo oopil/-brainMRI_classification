@@ -31,9 +31,10 @@ def parse_args() -> argparse:
     parser.add_argument('--buffer_scale',       default=30, type=int)
     parser.add_argument('--epoch',              default=400, type=int)
     parser.add_argument('--network',            default='simple', type=str) # simple attention siam
-    parser.add_argument('--lr',                 default=1e-5, type=float) # simple attention siam
-    parser.add_argument('--ch',                 default=32, type=int) # simple attention siam
-    parser.add_argument('--fold_try',           default=2, type=int)
+    parser.add_argument('--lr',                 default=1e-5, type=float)
+    parser.add_argument('--ch',                 default=32, type=int)
+    parser.add_argument('--fold_try',           default=1, type=int)
+    parser.add_argument('--fold_start',           default=1, type=int)
     parser.add_argument('--batch_size',         default=10, type=int)
     return parser.parse_args()
 
@@ -111,6 +112,8 @@ if args.network == 'simple':
     network = Simple
 elif args.network == 'siam':
     network = Siamese
+elif args.network == 'attention':
+    network = Attention
 else:
     assert False
 assert network != None
@@ -161,19 +164,20 @@ train_result = []
 valid_result = []
 train_accur = []
 valid_accur = []
-count = 0
+count = args.fold_start
 for fold in whole_set:
     acc_scr, val_acc = 0,0
     train_accur = []
     valid_accur = []
     class_num = 2
-    sampling_option = "None"
-    sampling_option = "RANDOM"
+    # sampling_option = "None"
+    # sampling_option = "RANDOM"
+    sampling_option = "SIMPLE"
     train_data, train_label, val_data, val_label = fold
     val_data, val_label = valence_class(val_data, val_label, class_num)
     if sampling_option != "None":
         train_data, train_label = over_sampling(train_data, train_label, sampling_option)
-        train_label, val_label = one_hot_pd(train_label), one_hot_pd(val_label)
+        train_label = one_hot_pd(train_label)
 
     print()
     print("Loading data...")
@@ -195,9 +199,14 @@ for fold in whole_set:
         # tensorflow dataset setting
         next_element, iterator = get_patch_dataset(train_data, train_label, args.buffer_scale, is_mask, batch)
         sess.run(iterator.initializer)
-        test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
-        sess.run(test_iterator.initializer)
-        val_data_ts, test_label_ts = sess.run(test_element)
+
+        # test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
+        # sess.run(test_iterator.initializer)
+        # val_data_ts, test_label_ts = sess.run(test_element)
+        val_data_ts, test_label_ts = read_test_data(val_data, val_label, is_masking=is_mask)
+        test_label_ts = one_hot_pd(val_label)
+        # print(test_label_ts)
+        print(test_label_ts.shape)
 
         train_writer = tf.summary.FileWriter('../log/train', sess.graph)
         test_writer = tf.summary.FileWriter('../log/test')
@@ -233,7 +242,7 @@ for fold in whole_set:
                     sess.run((accuracy, y, merged_summary), feed_dict=test_feed_dict)
 
                 print("Validation accuracy = {:03.4f}".format(val_acc // 0.01))
-                print(logit[:5])
+                print(logit[:5]//0.01)
                 # print(val_logit[:5])
                 train_writer.add_summary(test_summary)
                 train_accur.append(acc_scr)

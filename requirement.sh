@@ -8,3 +8,4 @@ pip install imblearn
 pip install openpyxl
 pip install pandas
 pip install scipy
+pip install keras

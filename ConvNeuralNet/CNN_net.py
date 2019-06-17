@@ -1,4 +1,6 @@
 import tensorflow as tf
+from keras.layers.convolutional import UpSampling3D
+# import keras.layers.convolutional as UpSampling3D
 from ConvNeuralNet.CNN_ops import *
 ##################################################################################
 # Custom Operation
@@ -20,6 +22,9 @@ class Network:
     def conv_3d(self, x, ch, ks, padding, activ, st = (1,1,1)):
         return tf.layers.conv3d(inputs=x, filters=ch, kernel_size=ks, padding=padding, activation=activ, strides=st)
 
+    def deconv_3d(self, x, ch, ks, padding, activ, st = (1,1,1)):
+        return tf.layers.conv3d_transpose(inputs=x, filters=ch, kernel_size=ks, padding=padding, activation=activ, strides=st)
+
     def maxpool_3d(self, x, ps, st):
         return tf.layers.max_pooling3d(inputs=x, pool_size=ps, strides=st)
 
@@ -31,8 +36,8 @@ class Network:
         kernel_pool = [2,2,2]
         with tf.variable_scope(scope, reuse=reuse):
             x = batch_norm(x)
-            x = self.conv_3d(x, ch, k7, 'same', self.activ)
-            x = self.conv_3d(x, ch, k7, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
@@ -41,15 +46,95 @@ class Network:
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
-            x = self.conv_3d(x, ch, k3, 'same', self.activ)
-            x = self.conv_3d(x, ch, k3, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
-            x = self.conv_3d(x, ch, k3, 'same', self.activ)
-            x = self.conv_3d(x, ch, k3, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
             return x
+
+    def resblock(self, input, ch_in, ch_out, ks):
+        x = self.conv_3d(input, ch_out, 1, 'same', self.activ)
+        x = self.conv_3d(x, ch_out, ks, 'same', self.activ)
+        if ch_in != ch_out:
+            input = self.conv_3d(input, ch_out, ks, 'same', self.activ)
+        return self.conv_3d(x, ch_out, ks, 'same', self.activ) + input
+
+    def CNN_attention(self, input, ch = 16, scope = "resAttention", reuse = False):
+        k3 = [3, 3, 3]
+        k4 = [4, 4, 4]
+        k5 = [5, 5, 5]
+        k7 = [7, 7, 7]
+        t = 1
+        p = 1
+        r = 1
+        with tf.variable_scope(scope):
+            # residual blocks(TODO: change this function)
+            with tf.variable_scope("first_residual_blocks"):
+                for i in range(t):
+                    x = self.resblock(input, 1, ch, ks=3)
+
+            with tf.variable_scope("trunk_branch"):
+                output_trunk = x
+                for i in range(t):
+                    output_trunk = self.resblock(x, ch, ch, ks=3)
+
+            with tf.variable_scope("soft_mask_branch"):
+                with tf.variable_scope("down_sampling_1"):
+                    # max pooling
+                    filter_ = 3
+                    output_soft_mask = self.maxpool_3d(input, ps=2, st=2)
+                    for i in range(r):
+                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+                with tf.variable_scope("skip_connection"):
+                    output_skip_connection = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+                with tf.variable_scope("down_sampling_2"):
+                    # max pooling
+                    filter_pool = [2,2,2]
+                    output_soft_mask = self.maxpool_3d(output_soft_mask, ps=2, st=2)
+                    for i in range(r):
+                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+                with tf.variable_scope("up_sampling_1"):
+                    for i in range(r):
+                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+                    # interpolation
+                    output_soft_mask = self.deconv_3d(output_soft_mask, ch, k3, 'same', self.activ, st=2)
+
+                    # output_soft_mask = UpSampling3D(size=(2,2,2))(output_soft_mask)
+                    # output_soft_mask = UpSampling2D([2, 2])(output_soft_mask)
+
+                # add skip connection
+                output_soft_mask += output_skip_connection
+
+                with tf.variable_scope("up_sampling_2"):
+                    for i in range(r):
+                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+                    # interpolation
+                    output_soft_mask = self.deconv_3d(output_soft_mask, ch, k3, 'same', self.activ, st=2)
+                    # output_soft_mask = UpSampling3D(size=(2,2,2))(output_soft_mask)
+
+                with tf.variable_scope("output"):
+                    output_soft_mask = self.conv_3d(output_soft_mask, ch, k3, 'same', self.activ)
+                    output_soft_mask = self.conv_3d(output_soft_mask, ch, k3, 'same', self.activ)
+                    # sigmoid
+                    output_soft_mask = tf.nn.sigmoid(output_soft_mask)
+
+            with tf.variable_scope("attention"):
+                output = (1 + output_soft_mask) * output_trunk
+
+            with tf.variable_scope("last_residual_blocks"):
+                for i in range(t):
+                    output = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+            return output
+
 
     def CNN_nopool(self, x, ch = 32, scope = "CNN", reuse = False):
         with tf.variable_scope(scope, reuse=reuse):
@@ -101,10 +186,6 @@ class Network:
             x = self.conv_3d(x, ch, [3, 3, 3], 'same', self.activ)
             x = self.conv_3d(x, ch, [3, 3, 3], 'same', self.activ)
             return x
-
-    def resblock(self, x, ch, ks):
-        i = self.conv_3d(x, ch, ks, 'same', self.activ)
-        return self.conv_3d(i, ch, ks, 'same', self.activ) + x
 
     def attention(self, x):
         pass
@@ -262,8 +343,8 @@ class Siamese(Network):
             # CNN = self.CNN_deep_layer
             CNN = self.CNN_simple
 
-            # channel = 32
-            channel = 40
+            channel = 32
+            # channel = 40
             lh = CNN(lh, ch = channel, scope= "CNN", reuse=False)
             rh = CNN(rh, ch = channel, scope= "CNN", reuse=True)
 
@@ -311,25 +392,33 @@ class Residual(Network):
 class Attention(Network):
     def model(self, images):
         is_print = False
-        # is_print = self.is_print
         if is_print:
             print('build neural network')
             print(images.shape)
 
-        with tf.variable_scope("Model"):
-            # images = tf.placeholder(tf.float32, (None, self.ps * 2, self.ps, self.ps, 1), name='inputs')
-            lh, rh = tf.split(images, [self.ps, self.ps], 1)
-            # CNN = self.CNN_deep_layer
-            CNN = self.CNN_simple
+        channel = 32
+        CNN = self.CNN_attention
 
-            channel = 32
-            lh = CNN(lh, ch = channel, scope= "CNN", reuse=False)
-            rh = CNN(rh, ch = channel, scope= "CNN", reuse=True)
+        split_form = [self.ps for _ in range(self.pn)]
+        with tf.variable_scope("Model"):
+            # lh, rh = tf.split(images, split_form, 1)
+            split_array = tf.split(images, split_form, 1)
+            cnn_features = []
+            for i, array in enumerate(split_array):
+                array = CNN(array, ch=channel, scope="CNN"+str(i), reuse=False)
+                array = tf.layers.flatten(array)
+                cnn_features.append(array)
+            # CNN = self.CNN_deep_layer
+
+            # channel = 40
+            # lh = CNN(lh, ch = channel, scope= "LCNN", reuse=False)
+            # rh = CNN(rh, ch = channel, scope= "RCNN", reuse=False)
             with tf.variable_scope("FCN"):
-                lh = tf.layers.flatten(lh)
-                rh = tf.layers.flatten(rh)
-                x = tf.concat([lh, rh], -1)
-                x = tf.layers.dense(x, units=2048, activation=self.activ)
+                # lh = tf.layers.flatten(lh)
+                # rh = tf.layers.flatten(rh)
+                # x = tf.concat([lh, rh], -1)
+                x = tf.concat(cnn_features, -1)
+                x = tf.layers.dense(x, units=1024, activation=self.activ)
                 x = tf.layers.dense(x, units=512, activation=self.activ)
                 x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
                 # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)

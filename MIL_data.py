@@ -83,6 +83,39 @@ def _read_py_function_hippo_patch(path, label, is_masking=False):
     # patch_array = np.expand_dims(patch_array, 3)
     return patch_array.astype(np.float32), label.astype(np.int32)
 
+def read_patch(path, label, brain_part):
+    def label_size_check(label_array, label_num, isp):
+        '''
+        print the size of label square
+        :return: return the center position
+        '''
+        position_array = np.where(label_array == label_num)
+        max_pos = np.amax(position_array, axis=1)
+        min_pos = np.amin(position_array, axis=1)
+        if isp: print('label square size  {}'.format(max_pos - min_pos))
+        return (max_pos + min_pos) // 2
+
+    isp = False
+    if isp:print("file path : {}" .format(path))
+    img_path_decoded, label_path_decoded = path.split(',')
+    itk_file = sitk.ReadImage(img_path_decoded)
+    array = sitk.GetArrayFromImage(itk_file)
+    label_itk_file = sitk.ReadImage(label_path_decoded)
+    label_array = sitk.GetArrayFromImage(label_itk_file)
+
+    # find the patch position
+    patch_size = 32
+    hs = patch_size // 2
+    x, y, z = label_size_check(label_array, brain_part, isp)
+    image_patch = array[x - hs:x + hs, y - hs:y + hs, z - hs:z + hs]
+    return image_patch.astype(np.float32), label.astype(np.int32)
+
+def try_mkdir(path):
+    try:
+        os.mkdir(path)
+    except:
+        pass
+
 def hippo_bag(base_folder_path, excel_path, base_path):
     diag_type = "clinic"
     class_option = 'CN vs AD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
@@ -105,11 +138,15 @@ def hippo_bag(base_folder_path, excel_path, base_path):
         sub_patch_size = 16
         # print('instance size is : {}'.format(sub_patch_size))
         instance_list = []
+        position_list = []
         for i in range(0, s0, sub_patch_size):
             for j in range(0, s1, sub_patch_size):
                 for k in range(0, s2, sub_patch_size):
                     instance_list.append(array[i:i + sub_patch_size, j:j + sub_patch_size, k:k + sub_patch_size])
                     # print(i, j, k)
+                    position_list.append([i,j,k])
+        print(position_list)
+        assert False
         return instance_list
 
     def bag_gen(input_data,input_label, path, type = 'train'):
@@ -134,12 +171,6 @@ def hippo_bag(base_folder_path, excel_path, base_path):
             print(np.shape(array))
             np.save(file_path, instance_list)
         pass
-
-    def try_mkdir(path):
-        try:
-            os.mkdir(path)
-        except:
-            pass
 
     base_path = os.path.join(base_path, 'MIL_bag/instance_size_16')
     try_mkdir(base_path)
@@ -200,7 +231,7 @@ def hippo_bag(base_folder_path, excel_path, base_path):
     print(np.shape(instances))
     print(np.shape(instances[0]))
 
-def brain_bag(base_folder_path, excel_path, base_path):
+def brain_bag(base_folder_path, excel_path, base_path, instance_list):
     diag_type = "clinic"
     class_option = 'CN vs AD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     sampling_option = "None"
@@ -217,92 +248,57 @@ def brain_bag(base_folder_path, excel_path, base_path):
     # if sampling_option != "None":
     #     train_data, train_label = over_sampling(train_data, train_label, sampling_option)
 
-
-    left_cort = [1000.0, 1002.0, 1003.0, 1005.0, 1006.0, 1007.0, 1008.0, 1009.0, 1010.0, 1011.0,
-                 1012.0, 1013.0, 1014.0, 1015.0, 1016.0, 1017.0, 1018.0, 1019.0, 1020.0, 1021.0,
-                 1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0]  # 35
-    right_cort = [2000.0, 2002.0, 2003.0, 2005.0, 2006.0, 2007.0, 2008.0, 2009.0, 2010.0, 2011.0,
-                  2012.0, 2013.0, 2014.0, 2015.0, 2016.0, 2017.0, 2018.0, 2019.0, 2020.0, 2021.0,
-                  2022.0, 2023.0, 2024.0, 2025.0, 2026.0, 2027.0, 2028.0, 2029.0, 2030.0, 2031.0, 2034.0, 2035.0]  # 35
-    cort = left_cort + right_cort  # too big ...
-
-    left_subcort = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26]  # 14 -(6,25,30,28)
-    right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
-    subcort = left_subcort + right_subcort
-    print(cort)
-    print(len(cort))
-    cort = [e for i, e in enumerate(cort) if i % 2 == 0]  # half
-    print(cort)
-    print(len(cort))
-
+    print(instance_list)
+    print('number of instances : ',len(instance_list))
     # assert False
 
-    def instance_gen(array):
-        s0, s1, s2 = array.shape
-        sub_patch_size = 16
-        # print('instance size is : {}'.format(sub_patch_size))
-        instance_list = []
-        for i in range(0, s0, sub_patch_size):
-            for j in range(0, s1, sub_patch_size):
-                for k in range(0, s2, sub_patch_size):
-                    instance_list.append(array[i:i + sub_patch_size, j:j + sub_patch_size, k:k + sub_patch_size])
-                    # print(i, j, k)
-        return instance_list
-
-    def bag_gen(input_data,input_label, path, type = 'train'):
+    def bag_gen(input_data, input_label, path, brain_part_list ,type = 'train'):
+        sub_patch_size = 32
         base_path = path + '/'+ type
         for path, label in zip(input_data, input_label):
             img_path_decoded, label_path_decoded = path.split(',')
             dir_split = img_path_decoded.split('/')
-            # print(dir_split)
             subj_name = dir_split[-3]
             dir_name = 'None'
+
             if label == 0:
                 dir_name = 'NC'
             elif label == 1:
                 dir_name = 'AD'
+
             file_path = os.path.join(base_path, dir_name, subj_name)
 
             print(subj_name, label)
             print(file_path)
 
-            array, label = _read_py_function_hippo_patch(path, label)
-            instance_list = instance_gen(array)
-            print(np.shape(array))
-            np.save(file_path, instance_list)
-        pass
+            bag = []
+            for brain_part in brain_part_list:
+                array, label = read_patch(path, label, brain_part)
+                bag.append(array)
 
-    def try_mkdir(path):
-        try:
-            os.mkdir(path)
-        except:
-            pass
+            bag = np.array(bag)
+            print(np.shape(bag))
+            # assert False
+            np.save(file_path, bag)
 
-    base_path = os.path.join(base_path, 'MIL_bag/instance_size_16')
+    base_path = os.path.join(base_path, 'MIL_bag/instance_size_32')
     try_mkdir(base_path)
 
     test_dir = os.path.join(base_path, 'test')
     train_dir = os.path.join(base_path, 'train')
+
     try_mkdir(test_dir)
     try_mkdir(train_dir)
     try_mkdir(os.path.join(train_dir, 'AD'))
     try_mkdir(os.path.join(train_dir, 'NC'))
     try_mkdir(os.path.join(test_dir, 'AD'))
     try_mkdir(os.path.join(test_dir, 'NC'))
-    # try_mkdir(os.path.join(train_dir, 'NC'))
-    # os.mkdir(test_dir)
-    # os.mkdir(train_dir)
-    # os.mkdir(os.path.join(train_dir, 'AD'))
-    # os.mkdir(os.path.join(train_dir, 'NC'))
-    # os.mkdir(os.path.join(test_dir, 'AD'))
-    # os.mkdir(os.path.join(test_dir, 'NC'))
     '''
     MIL test data bag generation &&
     MIL train data bag generation
     '''
-    bag_gen(train_data, train_label, path=base_path, type='train')
-    bag_gen(test_data, test_label, path=base_path, type='test')
-
+    bag_gen(train_data, train_label, path=base_path, brain_part_list=instance_list, type='train')
+    bag_gen(test_data, test_label, path=base_path, brain_part_list=instance_list, type='test')
 
 if __name__ == '__main__':
     args = parse_args()
@@ -314,4 +310,18 @@ if __name__ == '__main__':
     }
     sv_set = sv_set_dict[args.setting]
     base_folder_path, excel_path, base_path = setting(sv_set)
+
+    left_cort = [1000.0, 1002.0, 1003.0, 1005.0, 1006.0, 1007.0, 1008.0, 1009.0, 1010.0, 1011.0,
+                 1012.0, 1013.0, 1014.0, 1015.0, 1016.0, 1017.0, 1018.0, 1019.0, 1020.0, 1021.0,
+                 1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0]  # 35
+    right_cort = [2000.0, 2002.0, 2003.0, 2005.0, 2006.0, 2007.0, 2008.0, 2009.0, 2010.0, 2011.0,
+                  2012.0, 2013.0, 2014.0, 2015.0, 2016.0, 2017.0, 2018.0, 2019.0, 2020.0, 2021.0,
+                  2022.0, 2023.0, 2024.0, 2025.0, 2026.0, 2027.0, 2028.0, 2029.0, 2030.0, 2031.0, 2034.0, 2035.0]  # 35
+    left_subcort = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26]  # 14 -(6,25,30,28)
+    right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
+    cort = left_cort + right_cort  # too big ...
+    subcort = left_subcort + right_subcort
+    instance_list = subcort + cort
+
+    # brain_bag(base_folder_path, excel_path, base_path, instance_list)
     hippo_bag(base_folder_path, excel_path, base_path)

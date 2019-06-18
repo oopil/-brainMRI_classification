@@ -18,7 +18,26 @@ def parse_args() -> argparse:
     parser.add_argument('--setting',            default='desktop', type=str) # desktop sv186 sv202 sv144
     return parser.parse_args()
 
-def _read_py_function_1_patch(path, label, is_masking=False):
+def setting(sv_set):
+    base_folder_path = ''
+    excel_path = ''
+    base_path = ''
+    if sv_set == 186:
+        base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy'
+        excel_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+    elif sv_set == 0:  # desktop
+        base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+        excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
+        base_path = '/home/soopil/Desktop/Dataset/MRI_chosun'
+    elif sv_set == 202:
+        base_folder_path = '/home/soopil/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+        excel_path = '/home/soopil/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
+        base_path = '/home/soopil/Datasets/MRI_chosun'
+    else:
+        assert False
+    return base_folder_path, excel_path, base_path
+
+def _read_py_function_hippo_patch(path, label, is_masking=False):
     def label_size_check(label_array, label_num, isp):
         '''
         print the size of label square
@@ -64,24 +83,7 @@ def _read_py_function_1_patch(path, label, is_masking=False):
     # patch_array = np.expand_dims(patch_array, 3)
     return patch_array.astype(np.float32), label.astype(np.int32)
 
-def main(sv_set):
-    base_folder_path = ''
-    excel_path = ''
-    base_path = ''
-    if sv_set == 186:
-        base_folder_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_empty_copy'
-        excel_path = '/home/public/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
-    elif sv_set == 0:  # desktop
-        base_folder_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
-        excel_path = '/home/soopil/Desktop/Dataset/MRI_chosun/ADAI_MRI_test.xlsx'
-        base_path = '/home/soopil/Desktop/Dataset/MRI_chosun'
-    elif sv_set == 202:
-        base_folder_path = '/home/soopil/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
-        excel_path = '/home/soopil/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
-        base_path = '/home/soopil/Datasets/MRI_chosun'
-    else:
-        assert False
-
+def hippo_bag(base_folder_path, excel_path, base_path):
     diag_type = "clinic"
     class_option = 'CN vs AD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
     sampling_option = "None"
@@ -100,7 +102,8 @@ def main(sv_set):
 
     def instance_gen(array):
         s0, s1, s2 = array.shape
-        sub_patch_size = 8
+        sub_patch_size = 16
+        # print('instance size is : {}'.format(sub_patch_size))
         instance_list = []
         for i in range(0, s0, sub_patch_size):
             for j in range(0, s1, sub_patch_size):
@@ -110,7 +113,7 @@ def main(sv_set):
         return instance_list
 
     def bag_gen(input_data,input_label, path, type = 'train'):
-        base_path = path + '/MIL_bag_'+ type
+        base_path = path + '/'+ type
         for path, label in zip(input_data, input_label):
             img_path_decoded, label_path_decoded = path.split(',')
             dir_split = img_path_decoded.split('/')
@@ -126,8 +129,9 @@ def main(sv_set):
             print(subj_name, label)
             print(file_path)
 
-            array, label = _read_py_function_1_patch(path, label)
+            array, label = _read_py_function_hippo_patch(path, label)
             instance_list = instance_gen(array)
+            print(np.shape(array))
             np.save(file_path, instance_list)
         pass
 
@@ -137,8 +141,11 @@ def main(sv_set):
         except:
             pass
 
-    test_dir = os.path.join(base_path, 'MIL_bag_test')
-    train_dir = os.path.join(base_path, 'MIL_bag_train')
+    base_path = os.path.join(base_path, 'MIL_bag/instance_size_16')
+    try_mkdir(base_path)
+
+    test_dir = os.path.join(base_path, 'test')
+    train_dir = os.path.join(base_path, 'train')
     try_mkdir(test_dir)
     try_mkdir(train_dir)
     try_mkdir(os.path.join(train_dir, 'AD'))
@@ -160,7 +167,7 @@ def main(sv_set):
     bag_gen(test_data, test_label, path=base_path, type='test')
 
     assert False
-    array, label = _read_py_function_1_patch(train_data[0], train_label[0])
+    array, label = _read_py_function_hippo_patch(train_data[0], train_label[0])
     print(array.shape)
     s0,s1,s2 = array.shape
     sub_patch_size = 8
@@ -193,7 +200,24 @@ def main(sv_set):
     print(np.shape(instances))
     print(np.shape(instances[0]))
 
-if __name__ == '__main__':
+def brain_bag(base_folder_path, excel_path, base_path):
+    diag_type = "clinic"
+    class_option = 'CN vs AD'  # 'aAD vs ADD'#'NC vs ADD'#'NC vs mAD vs aAD vs ADD'
+    sampling_option = "None"
+    class_num = 2
+    patch_size = 48
+    excel_option = 'merge'
+    test_num = 10
+    fold_num = 5
+    is_split_by_num = False
+    whole_set = CNN_dataloader(base_folder_path, diag_type, class_option, excel_path, fold_num)
+    # whole_set = np.array(whole_set)
+    train_data, train_label, test_data, test_label = whole_set[1]
+    test_data, test_label = valence_class(test_data, test_label, class_num)
+    # if sampling_option != "None":
+    #     train_data, train_label = over_sampling(train_data, train_label, sampling_option)
+
+
     left_cort = [1000.0, 1002.0, 1003.0, 1005.0, 1006.0, 1007.0, 1008.0, 1009.0, 1010.0, 1011.0,
                  1012.0, 1013.0, 1014.0, 1015.0, 1016.0, 1017.0, 1018.0, 1019.0, 1020.0, 1021.0,
                  1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0]  # 35
@@ -201,15 +225,86 @@ if __name__ == '__main__':
                   2012.0, 2013.0, 2014.0, 2015.0, 2016.0, 2017.0, 2018.0, 2019.0, 2020.0, 2021.0,
                   2022.0, 2023.0, 2024.0, 2025.0, 2026.0, 2027.0, 2028.0, 2029.0, 2030.0, 2031.0, 2034.0, 2035.0]  # 35
     cort = left_cort + right_cort  # too big ...
+
+    left_subcort = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26]  # 14 -(6,25,30,28)
+    right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
+    subcort = left_subcort + right_subcort
     print(cort)
     print(len(cort))
-
     cort = [e for i, e in enumerate(cort) if i % 2 == 0]  # half
     print(cort)
     print(len(cort))
-    assert False
 
-    # %%
+    # assert False
+
+    def instance_gen(array):
+        s0, s1, s2 = array.shape
+        sub_patch_size = 16
+        # print('instance size is : {}'.format(sub_patch_size))
+        instance_list = []
+        for i in range(0, s0, sub_patch_size):
+            for j in range(0, s1, sub_patch_size):
+                for k in range(0, s2, sub_patch_size):
+                    instance_list.append(array[i:i + sub_patch_size, j:j + sub_patch_size, k:k + sub_patch_size])
+                    # print(i, j, k)
+        return instance_list
+
+    def bag_gen(input_data,input_label, path, type = 'train'):
+        base_path = path + '/'+ type
+        for path, label in zip(input_data, input_label):
+            img_path_decoded, label_path_decoded = path.split(',')
+            dir_split = img_path_decoded.split('/')
+            # print(dir_split)
+            subj_name = dir_split[-3]
+            dir_name = 'None'
+            if label == 0:
+                dir_name = 'NC'
+            elif label == 1:
+                dir_name = 'AD'
+            file_path = os.path.join(base_path, dir_name, subj_name)
+
+            print(subj_name, label)
+            print(file_path)
+
+            array, label = _read_py_function_hippo_patch(path, label)
+            instance_list = instance_gen(array)
+            print(np.shape(array))
+            np.save(file_path, instance_list)
+        pass
+
+    def try_mkdir(path):
+        try:
+            os.mkdir(path)
+        except:
+            pass
+
+    base_path = os.path.join(base_path, 'MIL_bag/instance_size_16')
+    try_mkdir(base_path)
+
+    test_dir = os.path.join(base_path, 'test')
+    train_dir = os.path.join(base_path, 'train')
+    try_mkdir(test_dir)
+    try_mkdir(train_dir)
+    try_mkdir(os.path.join(train_dir, 'AD'))
+    try_mkdir(os.path.join(train_dir, 'NC'))
+    try_mkdir(os.path.join(test_dir, 'AD'))
+    try_mkdir(os.path.join(test_dir, 'NC'))
+    # try_mkdir(os.path.join(train_dir, 'NC'))
+    # os.mkdir(test_dir)
+    # os.mkdir(train_dir)
+    # os.mkdir(os.path.join(train_dir, 'AD'))
+    # os.mkdir(os.path.join(train_dir, 'NC'))
+    # os.mkdir(os.path.join(test_dir, 'AD'))
+    # os.mkdir(os.path.join(test_dir, 'NC'))
+    '''
+    MIL test data bag generation &&
+    MIL train data bag generation
+    '''
+    bag_gen(train_data, train_label, path=base_path, type='train')
+    bag_gen(test_data, test_label, path=base_path, type='test')
+
+
+if __name__ == '__main__':
     args = parse_args()
     sv_set_dict = {
         "desktop": 0,
@@ -218,4 +313,5 @@ if __name__ == '__main__':
         "sv202": 202,
     }
     sv_set = sv_set_dict[args.setting]
-    main(sv_set)
+    base_folder_path, excel_path, base_path = setting(sv_set)
+    hippo_bag(base_folder_path, excel_path, base_path)

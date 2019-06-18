@@ -497,7 +497,7 @@ class Attention(Network):
             print(images.shape)
 
         channel = 32
-        CNN = self.CNN_attention
+        CNN = self.CNN_attention_res
 
         split_form = [self.ps for _ in range(self.pn)]
         with tf.variable_scope("Model"):
@@ -509,13 +509,14 @@ class Attention(Network):
                 array = self.maxpool_3d(array, ps=2, st=2)
                 array = CNN(array, ch=channel*2, scope="CNN2"+str(i), reuse=False)
                 array = self.maxpool_3d(array, ps=2, st=2)
-                array = CNN(array, ch=channel*4, scope="CNN3"+str(i), reuse=False)
-                array = self.maxpool_3d(array, ps=2, st=2)
+                # array = CNN(array, ch=channel*4, scope="CNN3"+str(i), reuse=False)
+                # array = self.maxpool_3d(array, ps=2, st=2)
 
                 # we need to reduce the image size..
                 # if i use residual attention module only one block, i can't reduce the image
                 # for i in range(2):
-                #     array = self.conv_3d(array, channel, 3, 'same', self.activ)
+                #     array = self.resblock(array, channel, channel*2, ks=3)
+                #     # array = self.conv_3d(array, channel, 3, 'same', self.activ)
                 #     array = self.maxpool_3d(array, ps=2, st=2)
 
                 print(np.shape(array))
@@ -534,7 +535,7 @@ class Attention(Network):
                 x = tf.concat(cnn_features, -1)
                 x = tf.layers.dense(x, units=1024, activation=self.activ)
                 x = tf.layers.dense(x, units=512, activation=self.activ)
-                x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
-                # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)
+                # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
+                x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)
                 y = x
         return y

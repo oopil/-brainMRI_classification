@@ -36,6 +36,7 @@ def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48
     patch_list = []
     for label_num in label_list:
         x,y,z = label_size_check(label_array, label_num, isp)
+        # transition augmentation
         if is_aug:
             ran = np.random.randint(6, size=(3))
             x += ran[0]

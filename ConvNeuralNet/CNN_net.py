@@ -33,7 +33,8 @@ class Network:
         k4 = [4,4,4]
         k5 = [5,5,5]
         k7 = [7,7,7]
-        kernel_pool = [2,2,2]
+        # kernel_pool = [2,2,2]
+        kernel_pool = [3,3,3]
         with tf.variable_scope(scope, reuse=reuse):
             x = batch_norm(x)
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
@@ -62,79 +63,6 @@ class Network:
         if ch_in != ch_out:
             input = self.conv_3d(input, ch_out, ks, 'same', self.activ)
         return self.conv_3d(x, ch_out, ks, 'same', self.activ) + input
-
-    def CNN_attention(self, input, ch = 16, scope = "resAttention", reuse = False):
-        k3 = [3, 3, 3]
-        k4 = [4, 4, 4]
-        k5 = [5, 5, 5]
-        k7 = [7, 7, 7]
-        t = 1
-        p = 1
-        r = 1
-        with tf.variable_scope(scope):
-            # residual blocks(TODO: change this function)
-            with tf.variable_scope("first_residual_blocks"):
-                for i in range(t):
-                    x = self.resblock(input, 1, ch, ks=3)
-
-            with tf.variable_scope("trunk_branch"):
-                output_trunk = x
-                for i in range(t):
-                    output_trunk = self.resblock(x, ch, ch, ks=3)
-
-            with tf.variable_scope("soft_mask_branch"):
-                with tf.variable_scope("down_sampling_1"):
-                    # max pooling
-                    filter_ = 3
-                    output_soft_mask = self.maxpool_3d(input, ps=2, st=2)
-                    for i in range(r):
-                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
-
-                with tf.variable_scope("skip_connection"):
-                    output_skip_connection = self.resblock(output_soft_mask, ch, ch, ks=3)
-
-                with tf.variable_scope("down_sampling_2"):
-                    # max pooling
-                    filter_pool = [2,2,2]
-                    output_soft_mask = self.maxpool_3d(output_soft_mask, ps=2, st=2)
-                    for i in range(r):
-                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
-
-                with tf.variable_scope("up_sampling_1"):
-                    for i in range(r):
-                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
-
-                    # interpolation
-                    output_soft_mask = self.deconv_3d(output_soft_mask, ch, k3, 'same', self.activ, st=2)
-
-                    # output_soft_mask = UpSampling3D(size=(2,2,2))(output_soft_mask)
-                    # output_soft_mask = UpSampling2D([2, 2])(output_soft_mask)
-
-                # add skip connection
-                output_soft_mask += output_skip_connection
-
-                with tf.variable_scope("up_sampling_2"):
-                    for i in range(r):
-                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
-                    # interpolation
-                    output_soft_mask = self.deconv_3d(output_soft_mask, ch, k3, 'same', self.activ, st=2)
-                    # output_soft_mask = UpSampling3D(size=(2,2,2))(output_soft_mask)
-
-                with tf.variable_scope("output"):
-                    output_soft_mask = self.conv_3d(output_soft_mask, ch, k3, 'same', self.activ)
-                    output_soft_mask = self.conv_3d(output_soft_mask, ch, k3, 'same', self.activ)
-                    # sigmoid
-                    output_soft_mask = tf.nn.sigmoid(output_soft_mask)
-
-            with tf.variable_scope("attention"):
-                output = (1 + output_soft_mask) * output_trunk
-
-            with tf.variable_scope("last_residual_blocks"):
-                for i in range(t):
-                    output = self.resblock(output_soft_mask, ch, ch, ks=3)
-
-            return output
-
 
     def CNN_nopool(self, x, ch = 32, scope = "CNN", reuse = False):
         with tf.variable_scope(scope, reuse=reuse):
@@ -390,6 +318,178 @@ class Residual(Network):
         return y
 
 class Attention(Network):
+    def CNN_attention(self, input, ch = 16, scope = "resAttention", reuse = False):
+        t = 1
+        p = 1
+        r = 1
+        with tf.variable_scope(scope):
+            with tf.variable_scope("first_residual_blocks"):
+                for i in range(p):
+                    input = self.conv_3d(input, ch, 3, 'same', self.activ)
+                    # input = self.resblock(input, 1, ch, ks=3)
+
+            with tf.variable_scope("trunk_branch"):
+                output_trunk = input
+                for i in range(t):
+                    output_trunk = self.conv_3d(output_trunk, ch, 3, 'same', self.activ)
+
+            with tf.variable_scope("soft_mask_branch"):
+                with tf.variable_scope("down_sampling_1"):
+                    output_soft_mask = self.maxpool_3d(input, ps=2, st=2)
+                    for i in range(r):
+                        output_soft_mask = self.conv_3d(output_soft_mask, ch, 3,'same',  self.activ)
+                        # output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+                with tf.variable_scope("skip_connection"):
+                    output_skip_connection = self.conv_3d(input, ch, 3, 'same', self.activ)
+
+                with tf.variable_scope("up_sampling_1"):
+                    for i in range(r):
+                        output_soft_mask = self.conv_3d(output_soft_mask, ch, 3, 'same', self.activ)
+                        # output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+                    output_soft_mask = self.deconv_3d(output_soft_mask, ch, 3, 'same', self.activ, st=2)
+
+                # add skip connection
+                output_soft_mask += output_skip_connection
+
+                with tf.variable_scope("output"):
+                    output_soft_mask = self.conv_3d(output_soft_mask, ch, 3, 'same', self.activ)
+                    # output_soft_mask = self.conv_3d(output_soft_mask, ch, k3, 'same', self.activ)
+                    # sigmoid
+                    output_soft_mask = tf.nn.sigmoid(output_soft_mask)
+
+            with tf.variable_scope("attention"):
+                output = (1 + output_soft_mask) * output_trunk
+
+            with tf.variable_scope("last_residual_blocks"):
+                for i in range(t):
+                    output = self.conv_3d(output, ch, 3,'same',  self.activ)
+                    # output = self.resblock(output, ch, ch, ks=3)
+            return output
+
+    def CNN_attention_res(self, input, ch = 16, scope = "resAttention", reuse = False):
+        k3 = [3, 3, 3]
+        k4 = [4, 4, 4]
+        k5 = [5, 5, 5]
+        k7 = [7, 7, 7]
+        t = 1
+        p = 1
+        r = 1
+        with tf.variable_scope(scope):
+            # residual blocks(TODO: change this function)
+            with tf.variable_scope("first_residual_blocks"):
+                for i in range(p):
+                    input = self.resblock(input, 1, ch, ks=3)
+
+            with tf.variable_scope("trunk_branch"):
+                output_trunk = input
+                for i in range(t):
+                    output_trunk = self.resblock(output_trunk, ch, ch, ks=3)
+
+            with tf.variable_scope("soft_mask_branch"):
+                with tf.variable_scope("down_sampling_1"):
+                    output_soft_mask = self.maxpool_3d(input, ps=2, st=2)
+                    for i in range(r):
+                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+                with tf.variable_scope("skip_connection"):
+                    output_skip_connection = self.resblock(input, ch, ch, ks=3)
+
+                with tf.variable_scope("up_sampling_1"):
+                    for i in range(r):
+                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+                    output_soft_mask = self.deconv_3d(output_soft_mask, ch, k3, 'same', self.activ, st=2)
+
+                # add skip connection
+                output_soft_mask += output_skip_connection
+
+                with tf.variable_scope("output"):
+                    output_soft_mask = self.conv_3d(output_soft_mask, ch, k3, 'same', self.activ)
+                    # output_soft_mask = self.conv_3d(output_soft_mask, ch, k3, 'same', self.activ)
+                    # sigmoid
+                    output_soft_mask = tf.nn.sigmoid(output_soft_mask)
+
+            with tf.variable_scope("attention"):
+                output = (1 + output_soft_mask) * output_trunk
+
+            with tf.variable_scope("last_residual_blocks"):
+                for i in range(t):
+                    output = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+            return output
+
+    def CNN_attention_default(self, input, ch = 16, scope = "resAttention", reuse = False):
+        k3 = [3, 3, 3]
+        k4 = [4, 4, 4]
+        k5 = [5, 5, 5]
+        k7 = [7, 7, 7]
+        t = 1
+        p = 1
+        r = 1
+        with tf.variable_scope(scope):
+            # residual blocks(TODO: change this function)
+            with tf.variable_scope("first_residual_blocks"):
+                for i in range(t):
+                    x = self.resblock(input, 1, ch, ks=3)
+
+            with tf.variable_scope("trunk_branch"):
+                output_trunk = x
+                for i in range(t):
+                    output_trunk = self.resblock(x, ch, ch, ks=3)
+
+            with tf.variable_scope("soft_mask_branch"):
+                with tf.variable_scope("down_sampling_1"):
+                    # max pooling
+                    filter_ = 3
+                    output_soft_mask = self.maxpool_3d(input, ps=2, st=2)
+                    for i in range(r):
+                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+                with tf.variable_scope("skip_connection"):
+                    output_skip_connection = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+                with tf.variable_scope("down_sampling_2"):
+                    # max pooling
+                    filter_pool = [2,2,2]
+                    output_soft_mask = self.maxpool_3d(output_soft_mask, ps=2, st=2)
+                    for i in range(r):
+                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+                with tf.variable_scope("up_sampling_1"):
+                    for i in range(r):
+                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+                    # interpolation
+                    output_soft_mask = self.deconv_3d(output_soft_mask, ch, k3, 'same', self.activ, st=2)
+
+                    # output_soft_mask = UpSampling3D(size=(2,2,2))(output_soft_mask)
+                    # output_soft_mask = UpSampling2D([2, 2])(output_soft_mask)
+
+                # add skip connection
+                output_soft_mask += output_skip_connection
+
+                with tf.variable_scope("up_sampling_2"):
+                    for i in range(r):
+                        output_soft_mask = self.resblock(output_soft_mask, ch, ch, ks=3)
+                    # interpolation
+                    output_soft_mask = self.deconv_3d(output_soft_mask, ch, k3, 'same', self.activ, st=2)
+                    # output_soft_mask = UpSampling3D(size=(2,2,2))(output_soft_mask)
+
+                with tf.variable_scope("output"):
+                    output_soft_mask = self.conv_3d(output_soft_mask, ch, k3, 'same', self.activ)
+                    output_soft_mask = self.conv_3d(output_soft_mask, ch, k3, 'same', self.activ)
+                    # sigmoid
+                    output_soft_mask = tf.nn.sigmoid(output_soft_mask)
+
+            with tf.variable_scope("attention"):
+                output = (1 + output_soft_mask) * output_trunk
+
+            with tf.variable_scope("last_residual_blocks"):
+                for i in range(t):
+                    output = self.resblock(output_soft_mask, ch, ch, ks=3)
+
+            return output
+
     def model(self, images):
         is_print = False
         if is_print:
@@ -406,6 +506,19 @@ class Attention(Network):
             cnn_features = []
             for i, array in enumerate(split_array):
                 array = CNN(array, ch=channel, scope="CNN"+str(i), reuse=False)
+                array = self.maxpool_3d(array, ps=2, st=2)
+                array = CNN(array, ch=channel*2, scope="CNN2"+str(i), reuse=False)
+                array = self.maxpool_3d(array, ps=2, st=2)
+                array = CNN(array, ch=channel*4, scope="CNN3"+str(i), reuse=False)
+                array = self.maxpool_3d(array, ps=2, st=2)
+
+                # we need to reduce the image size..
+                # if i use residual attention module only one block, i can't reduce the image
+                # for i in range(2):
+                #     array = self.conv_3d(array, channel, 3, 'same', self.activ)
+                #     array = self.maxpool_3d(array, ps=2, st=2)
+
+                print(np.shape(array))
                 array = tf.layers.flatten(array)
                 cnn_features.append(array)
             # CNN = self.CNN_deep_layer
@@ -413,6 +526,7 @@ class Attention(Network):
             # channel = 40
             # lh = CNN(lh, ch = channel, scope= "LCNN", reuse=False)
             # rh = CNN(rh, ch = channel, scope= "RCNN", reuse=False)
+            # print(np.shape(cnn_features))
             with tf.variable_scope("FCN"):
                 # lh = tf.layers.flatten(lh)
                 # rh = tf.layers.flatten(rh)

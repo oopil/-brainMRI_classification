@@ -119,8 +119,10 @@ else:
 assert network != None
 
 # patch_num = 2
+initializer = tf.contrib.layers.xavier_initializer
+# initializer = tf.truncated_normal_initializer
 
-my_model = network(weight_initializer=tf.truncated_normal_initializer,
+my_model = network(weight_initializer=initializer,
                   activation=tf.nn.relu,
                   class_num=class_num,
                   patch_size=s1,
@@ -152,8 +154,8 @@ tf.summary.scalar("loss", loss)
 tf.summary.scalar("accuracy", accuracy)
 merged_summary = tf.summary.merge_all()
 
-model_vars = tf.trainable_variables()
-tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
+# model_vars = tf.trainable_variables()
+# tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
 
 whole_set = read_cnn_data(sv_set)
 top_train_accur_list = []
@@ -164,8 +166,11 @@ train_result = []
 valid_result = []
 train_accur = []
 valid_accur = []
-count = args.fold_start
+count = 0
 for fold in whole_set:
+    if count < args.fold_start:
+        count += 1
+        continue
     acc_scr, val_acc = 0,0
     train_accur = []
     valid_accur = []
@@ -189,12 +194,17 @@ for fold in whole_set:
     print("validation data: {}".format(val_data.shape))
     print("validation label: {}".format(val_label.shape))
     print()
+
+    model_vars = tf.trainable_variables()
+    tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
+
     # saver = tf.train.Saver(max_to_keep=0)
     init = tf.global_variables_initializer()
     with tf.Session() as sess:
         sess.run(init)
         print()
         print('Cross Validation Step ... ')
+        print('<< Try fold {} .. >>'.format(count))
         print()
         # tensorflow dataset setting
         next_element, iterator = get_patch_dataset(train_data, train_label, args.buffer_scale, is_mask, batch)
@@ -242,8 +252,9 @@ for fold in whole_set:
                     sess.run((accuracy, y, merged_summary), feed_dict=test_feed_dict)
 
                 print("Validation accuracy = {:03.4f}".format(val_acc // 0.01))
-                print(logit[:5]//0.01)
-                # print(val_logit[:5])
+                pn = 2
+                print(logit[:pn]//0.01)
+                print(val_logit[:pn]//0.01)
                 train_writer.add_summary(test_summary)
                 train_accur.append(acc_scr)
                 valid_accur.append(val_acc)

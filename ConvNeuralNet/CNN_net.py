@@ -470,24 +470,24 @@ class Attention(Network):
                     x = self.maxpool_3d(x, ps=2, st=2)
 
                     x = self.attention(x, channel, channel*2, depth = 1, scope='attent2')
-                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
-                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, channel*2, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, channel*2, 3, 'same', self.activ, st=1)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
                     x = self.attention(x, channel*2, channel*4, depth = 1, scope='attent3')
-                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
-                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, channel*4, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, channel*4, 3, 'same', self.activ, st=1)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
-                    x = self.attention(x, channel*4, channel*8, depth = 1, scope='attent4')
-                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
-                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
-                    x = self.maxpool_3d(x, ps=2, st=2)
-
-                    x = self.attention(x, channel*4, channel*8, depth = 1, scope='attent5')
-                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
-                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
-                    x = self.maxpool_3d(x, ps=2, st=2)
+                    # x = self.attention(x, channel*4, channel*8, depth = 1, scope='attent4')
+                    # x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    # x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    # x = self.maxpool_3d(x, ps=2, st=2)
+                    #
+                    # x = self.attention(x, channel*4, channel*8, depth = 1, scope='attent5')
+                    # x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    # x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    # x = self.maxpool_3d(x, ps=2, st=2)
 
                     # x = CNN(x, ch=channel, scope="CNN"+str(i), reuse=False)
                     # x = self.maxpool_3d(x, ps=2, st=2)

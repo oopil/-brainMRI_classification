@@ -295,6 +295,19 @@ file_contents.append("avg saturation train : {} , avg saturation vaidation : {}"
 for result in file_contents:
     print(result)
 
+def int_list_to_str(int_list:list)->str:
+    for i in range(len(int_list)):
+        int_list[i] = str(int_list[i])
+    my_str = ','.join(int_list)
+    return my_str
+
+for i in range(len(train_result)):
+    print('<train>\n{}'.format(int_list_to_str(train_result)))
+    print('<valid>\n{}'.format(int_list_to_str(valid_result)))
+    print('<index>\n{}'.format(int_list_to_str(top_valid_index_list)))
+print('<train top> {} <valid top> {}'.format(int_list_to_str(top_train_accur_list), int_list_to_str(top_valid_accur_list)))
+print('<train satur> {} <valid satur> {}'.format(int_list_to_str(saturation_train_accur_list), int_list_to_str(saturation_valid_accur_list)))
+
 assert False
 result_file_name = '../nn_result_'+args.network+'/cv.txt'
 file = open(result_file_name, 'a+t')

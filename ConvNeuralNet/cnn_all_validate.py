@@ -119,7 +119,7 @@ else:
 assert network != None
 
 # patch_num = 2
-initializer = tf.contrib.layers.xavier_initializer
+initializer = tf.contrib.layers.xavier_initializer()
 # initializer = tf.truncated_normal_initializer
 
 my_model = network(weight_initializer=initializer,
@@ -160,6 +160,7 @@ merged_summary = tf.summary.merge_all()
 whole_set = read_cnn_data(sv_set)
 top_train_accur_list = []
 top_valid_accur_list = []
+top_valid_index_list = []
 saturation_train_accur_list = []
 saturation_valid_accur_list = []
 train_result = []
@@ -252,9 +253,9 @@ for fold in whole_set:
                     sess.run((accuracy, y, merged_summary), feed_dict=test_feed_dict)
 
                 print("Validation accuracy = {:03.4f}".format(val_acc // 0.01))
-                pn = 2
+                pn = 4
                 print(logit[:pn]//0.01)
-                print(val_logit[:pn]//0.01)
+                # print(val_logit[:pn]//0.01)
                 train_writer.add_summary(test_summary)
                 train_accur.append(acc_scr)
                 valid_accur.append(val_acc)
@@ -266,8 +267,10 @@ for fold in whole_set:
     valid_result.append(valid_accur)
     top_train_accur = np.max(train_accur, 0)
     top_valid_accur = np.max(valid_accur, 0)
+    top_valid_index = np.where(valid_accur == top_valid_accur)
     top_train_accur_list.append(top_train_accur)
     top_valid_accur_list.append(top_valid_accur)
+    top_valid_index_list.append(top_valid_index)
     saturation_train_accur_list.append(np.mean(train_accur[-saturation_count:]))
     saturation_valid_accur_list.append(np.mean(valid_accur[-saturation_count:]))
     count += 1
@@ -283,6 +286,7 @@ for i in range(len(train_result)):
     file_contents.append("valid : {}".format(valid_result[i]))
 file_contents.append("top train : {}".format(top_train_accur_list))
 file_contents.append("top valid : {}".format(top_valid_accur_list))
+file_contents.append("top valid index : {}".format(top_valid_index_list))
 file_contents.append("avg train top : {} , avg vaidation top : {}".format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list)))
 file_contents.append("saturation train : {}".format(saturation_train_accur_list))
 file_contents.append("saturation valid : {}".format(saturation_valid_accur_list))
@@ -291,6 +295,7 @@ file_contents.append("avg saturation train : {} , avg saturation vaidation : {}"
 for result in file_contents:
     print(result)
 
+assert False
 result_file_name = '../nn_result_'+args.network+'/cv.txt'
 file = open(result_file_name, 'a+t')
 for result in file_contents:

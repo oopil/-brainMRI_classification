@@ -20,10 +20,24 @@ class Network:
         self.pn = patch_num
 
     def conv_3d(self, x, ch, ks, padding, activ, st = (1,1,1)):
-        return tf.layers.conv3d(inputs=x, filters=ch, kernel_size=ks, padding=padding, activation=activ, strides=st)
+        return tf.layers.conv3d(inputs=x,
+                                filters=ch,
+                                kernel_size=ks,
+                                padding=padding,
+                                activation=activ,
+                                strides=st,
+                                kernel_initializer=self.weight_init,
+                                bias_initializer=self.weight_init)
 
     def deconv_3d(self, x, ch, ks, padding, activ, st = (1,1,1)):
-        return tf.layers.conv3d_transpose(inputs=x, filters=ch, kernel_size=ks, padding=padding, activation=activ, strides=st)
+        return tf.layers.conv3d_transpose(inputs=x,
+                                          filters=ch,
+                                          kernel_size=ks,
+                                          padding=padding,
+                                          activation=activ,
+                                          strides=st,
+                                          kernel_initializer=self.weight_init,
+                                          bias_initializer=self.weight_init)
 
     def maxpool_3d(self, x, ps, st):
         return tf.layers.max_pooling3d(inputs=x, pool_size=ps, strides=st)
@@ -64,26 +78,6 @@ class Network:
             input = self.conv_3d(input, ch_out, ks, 'same', self.activ)
         return self.conv_3d(x, ch_out, ks, 'same', self.activ) + input
 
-    def CNN_nopool(self, x, ch = 32, scope = "CNN", reuse = False):
-        with tf.variable_scope(scope, reuse=reuse):
-            x = batch_norm(x)
-            kernel = [4,4,4]
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ, st=(2,2,2))
-
-            ch *= 2
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ, st=(2,2,2))
-
-            ch *= 2
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ, st=(2,2,2))
-
-            ch *= 2
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ)
-            x = self.conv_3d(x, ch, kernel, 'same', self.activ, st=(2,2,2))
-            return x
-
     def CNN_deep_layer(self, x, scope = "CNN", reuse = False):
         ch = 32
         with tf.variable_scope(scope, reuse=reuse):
@@ -115,12 +109,6 @@ class Network:
             x = self.conv_3d(x, ch, [3, 3, 3], 'same', self.activ)
             return x
 
-    def attention(self, x):
-        pass
-
-    def res_attention(self, x):
-        pass
-
     def CNN_res(self, x, ch, scope = "CNN", reuse = False):
         with tf.variable_scope(scope, reuse=reuse):
             with tf.variable_scope(scope, reuse=reuse):
@@ -143,72 +131,6 @@ class Network:
                 # x = self.conv_3d(x, ch, [3, 3, 3], 'same', self.activ)
                 # x = self.resblock(x, ch, [3, 3, 3])
                 return x
-
-def sample_save(self, x, is_training=True, reuse=False):
-    is_print = self.is_print
-    if is_print:
-        print('build neural network')
-        print(x.shape)
-    with tf.variable_scope("cnn", reuse=reuse):
-        ch = 64
-        x = conv(x, channels=ch, kernel=4, stride=2, pad=1, sn=self.sn, use_bias=False, scope='conv')
-        x = lrelu(x, 0.2)
-        for i in range(self.layer_num // 2):
-            x = conv(x, channels=ch * 2, kernel=4, stride=2, pad=1, sn=self.sn, use_bias=False, scope='conv_' + str(i))
-            x = batch_norm(x, is_training, scope='batch_norm' + str(i))
-            x = lrelu(x, 0.2)
-            ch = ch * 2
-        # Self Attention
-        x = self.attention(x, ch, sn=self.sn, scope="attention", reuse=reuse)
-        if is_print:
-            print('attention !')
-            print(x.shape)
-            print('repeat layer : {}'.format(self.layer_num))
-        # for i in range(self.layer_num // 2, self.layer_num):
-        for i in range(12):
-            x = resblock(x, ch, use_bias=True,sn=False, scope='resblock'+str(i))
-        x = conv(x, channels=4, stride=1, sn=self.sn, use_bias=False, scope='D_logit')
-        # assert False
-        return x
-
-def attention_nn(self, x, ch, sn=False, scope='attention', reuse=False):
-    with tf.variable_scope(scope, reuse=reuse):
-        ch_ = ch // 8
-        if ch_ == 0: ch_ = 1
-        f = conv(x, ch_, kernel=1, stride=1, sn=sn, scope='f_conv') # [bs, h, w, c']
-        g = conv(x, ch_, kernel=1, stride=1, sn=sn, scope='g_conv') # [bs, h, w, c']
-        h = conv(x, ch, kernel=1, stride=1, sn=sn, scope='h_conv') # [bs, h, w, c]
-
-        # N = h * w
-        s = tf.matmul(hw_flatten(g), hw_flatten(f), transpose_b=True) # # [bs, N, N]
-
-        beta = tf.nn.softmax(s, axis=-1)  # attention map
-
-        o = tf.matmul(beta, hw_flatten(h)) # [bs, N, C]
-        gamma = tf.get_variable("gamma", [1], initializer=tf.constant_initializer(0.0))
-        print(o.shape, s.shape, f.shape, g.shape, h.shape)
-
-        o = tf.reshape(o, shape=x.shape) # [bs, h, w, C]
-        x = gamma * o + x
-    return x
-
-def fc_layer(self, x, ch, scope):
-    with tf.name_scope(scope):
-        x = fully_connected(x, ch, weight_initializer=self.weight_initializer, \
-                            use_bias=True, scope=scope)
-        # tf.summary.histogram('active', x)
-        # x = lrelu(x, 0.1)
-        x = relu(x, scope=scope)
-    return x
-
-def cnn_layer(self, x, ch, ks, s, scope):
-    with tf.name_scope(scope):
-        # return lrelu(conv3d(x, ch, ks=ks, s=s, stddev=self.weight_stddev, name=scope))
-        return relu(conv3d(x, ch, ks=ks, s=s, stddev=self.weight_stddev, name=scope), scope=scope)
-
-def maxpool(self, x, ks, s, scope):
-    with tf.name_scope(scope):
-        return max_pooling(x, ks=ks, s=s)
 
 ##################################################################################
 # Convolutional Neural Network Model
@@ -490,6 +412,42 @@ class Attention(Network):
 
             return output
 
+    def attention(self, x, ch_in, ch = 16, depth = 1, scope = 'attention'):
+        k3 = [3, 3, 3]
+        k4 = [4, 4, 4]
+        k5 = [5, 5, 5]
+        k7 = [7, 7, 7]
+        st = 1
+        p = 2
+        t = 2
+        input = x
+        skip = []
+        with tf.variable_scope(scope):
+            with tf.variable_scope(scope+'_encode'):
+                for i in range(depth):
+                    x = self.conv_3d(x, ch, 3, 'same', self.activ)
+                    x = self.conv_3d(x, ch, 3, 'same', self.activ)
+                    skip.append(x)
+                    x = self.maxpool_3d(x, ps=2, st=2)
+
+            for i in range(p):
+                x = self.conv_3d(x, ch, k3, 'same', self.activ)
+
+            with tf.variable_scope(scope+'_decode'):
+                for i in range(depth):
+                    x = self.deconv_3d(x, ch, k3, 'same', self.activ, st=2)
+                    x = x + skip[depth - 1 - i]
+                    x = self.conv_3d(x, ch, 3, 'same', self.activ)
+                    # extract probability map by sigmoid activation function
+                    x = self.conv_3d(x, ch_in, 3, 'same', tf.nn.sigmoid)
+                    soft_mask = x
+
+            for i in range(t):
+                out = x = self.conv_3d(input, ch, k3, 'same', self.activ)
+                out = x = self.conv_3d(out, ch_in, k3, 'same', self.activ)
+                out = (1+soft_mask)*out
+            return out
+
     def model(self, images):
         is_print = False
         if is_print:
@@ -504,38 +462,59 @@ class Attention(Network):
             # lh, rh = tf.split(images, split_form, 1)
             split_array = tf.split(images, split_form, 1)
             cnn_features = []
-            for i, array in enumerate(split_array):
-                array = CNN(array, ch=channel, scope="CNN"+str(i), reuse=False)
-                array = self.maxpool_3d(array, ps=2, st=2)
-                array = CNN(array, ch=channel*2, scope="CNN2"+str(i), reuse=False)
-                array = self.maxpool_3d(array, ps=2, st=2)
-                # array = CNN(array, ch=channel*4, scope="CNN3"+str(i), reuse=False)
-                # array = self.maxpool_3d(array, ps=2, st=2)
+            for i, x in enumerate(split_array):
+                with tf.variable_scope("patch"+str(i)):
+                    x = self.attention(x, 1, channel, depth = 2, scope='attent1')
+                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.maxpool_3d(x, ps=2, st=2)
 
-                # we need to reduce the image size..
-                # if i use residual attention module only one block, i can't reduce the image
-                # for i in range(2):
-                #     array = self.resblock(array, channel, channel*2, ks=3)
-                #     # array = self.conv_3d(array, channel, 3, 'same', self.activ)
-                #     array = self.maxpool_3d(array, ps=2, st=2)
+                    x = self.attention(x, channel, channel*2, depth = 1, scope='attent2')
+                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.maxpool_3d(x, ps=2, st=2)
 
-                print(np.shape(array))
-                array = tf.layers.flatten(array)
-                cnn_features.append(array)
-            # CNN = self.CNN_deep_layer
+                    x = self.attention(x, channel*2, channel*4, depth = 1, scope='attent3')
+                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.maxpool_3d(x, ps=2, st=2)
 
-            # channel = 40
-            # lh = CNN(lh, ch = channel, scope= "LCNN", reuse=False)
-            # rh = CNN(rh, ch = channel, scope= "RCNN", reuse=False)
+                    x = self.attention(x, channel*4, channel*8, depth = 1, scope='attent4')
+                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.maxpool_3d(x, ps=2, st=2)
+
+                    x = self.attention(x, channel*4, channel*8, depth = 1, scope='attent5')
+                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.maxpool_3d(x, ps=2, st=2)
+
+                    # x = CNN(x, ch=channel, scope="CNN"+str(i), reuse=False)
+                    # x = self.maxpool_3d(x, ps=2, st=2)
+                    # x = CNN(x, ch=channel*2, scope="CNN2"+str(i), reuse=False)
+                    # x = self.maxpool_3d(x, ps=2, st=2)
+                    # x = CNN(x, ch=channel*4, scope="CNN3"+str(i), reuse=False)
+                    # x = self.maxpool_3d(x, ps=2, st=2)
+                    # x = CNN(x, ch=channel*4, scope="CNN4"+str(i), reuse=False)
+                    # x = self.maxpool_3d(x, ps=2, st=2)
+
+                    # we need to reduce the image size..
+                    # if i use residual attention module only one block, i can't reduce the image
+                    # for i in range(2):
+                    #     x = self.resblock(x, channel, channel*2, ks=3)
+                    #     # x = self.conv_3d(x, channel, 3, 'same', self.activ)
+                    #     x = self.maxpool_3d(x, ps=2, st=2)
+
+                print(np.shape(x))
+                x = tf.layers.flatten(x)
+                cnn_features.append(x)
             # print(np.shape(cnn_features))
             with tf.variable_scope("FCN"):
-                # lh = tf.layers.flatten(lh)
-                # rh = tf.layers.flatten(rh)
                 # x = tf.concat([lh, rh], -1)
                 x = tf.concat(cnn_features, -1)
                 x = tf.layers.dense(x, units=1024, activation=self.activ)
                 x = tf.layers.dense(x, units=512, activation=self.activ)
-                # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
-                x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)
+                x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
+                # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)
                 y = x
         return y

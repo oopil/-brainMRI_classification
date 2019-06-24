@@ -6,3 +6,5 @@ openpyxl
 pandas
 scipy
 keras
+sklearn
+pandas

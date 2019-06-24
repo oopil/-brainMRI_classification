@@ -3,7 +3,11 @@ import sys
 import argparse
 import numpy as np
 import tensorflow as tf
-from sklearn.utils import shuffle
+import time
+from sklearn.metrics import classification_report
+# report = classification_report(test_y, arg_ytest, target_names=['low','high'])
+# print(report)
+
 # from ConvNeuralNet.CNN_net import *
 
 sys.path.append('..')
@@ -67,6 +71,9 @@ def read_cnn_data(sv_set = 0):
     elif sv_set == 202:
         base_folder_path = '/home/soopil/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
         excel_path = '/home/soopil/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
+    elif sv_set == 144:
+        base_folder_path = '/user/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+        excel_path = '/user/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
     else:
         assert False
 
@@ -82,6 +89,10 @@ def read_cnn_data(sv_set = 0):
     # print(train_data)
     # print(type(train_data))
 
+def what_time():
+    now = time.gmtime(time.time())
+    now_list = [str(now.tm_year) , str(now.tm_mon ), str(now.tm_mday ), str(now.tm_hour ), str(now.tm_min ), str(now.tm_sec)]
+    return ''.join(now_list)
 
 ch = args.ch
 batch = args.batch_size # 10
@@ -168,6 +179,7 @@ valid_result = []
 train_accur = []
 valid_accur = []
 count = 0
+min_val_loss = 10
 for fold in whole_set:
     if count < args.fold_start:
         count += 1
@@ -199,7 +211,7 @@ for fold in whole_set:
     model_vars = tf.trainable_variables()
     tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
 
-    # saver = tf.train.Saver(max_to_keep=0)
+    saver = tf.train.Saver(max_to_keep=4, keep_checkpoint_every_n_hours=2)
     init = tf.global_variables_initializer()
     with tf.Session() as sess:
         sess.run(init)
@@ -219,8 +231,8 @@ for fold in whole_set:
         # print(test_label_ts)
         print(test_label_ts.shape)
 
-        train_writer = tf.summary.FileWriter('../log/train', sess.graph)
-        test_writer = tf.summary.FileWriter('../log/test')
+        train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
+        test_writer = tf.summary.FileWriter('../log/test/'+what_time())
 
         for epoch in range(epochs):
             train_data, train_label = sess.run(next_element)
@@ -249,18 +261,21 @@ for fold in whole_set:
                 print("Train loss = {}".format(loss_scr))
                 print("Train accuracy = {:03.4f}".format(acc_scr // 0.01))
 
-                val_acc, val_logit, test_summary = \
-                    sess.run((accuracy, y, merged_summary), feed_dict=test_feed_dict)
+                val_acc, val_logit, val_loss, test_summary = \
+                    sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
 
                 print("Validation accuracy = {:03.4f}".format(val_acc // 0.01))
                 pn = 4
                 print(logit[:pn]//0.01)
                 # print(val_logit[:pn]//0.01)
-                train_writer.add_summary(test_summary)
+                # train_writer.add_summary(test_summary)
                 train_accur.append(acc_scr)
                 valid_accur.append(val_acc)
-                # save trained model
-                # save_path = saver.save(sess, "../train/cnn_lh")
+
+                if val_loss < min_val_loss:
+                    print('save the checkpoint ...')
+                    # save trained model
+                    save_path = saver.save(sess, "../checkpoint/model")
 
     saturation_count = 5
     train_result.append(train_accur)
@@ -302,8 +317,8 @@ def int_list_to_str(int_list:list)->str:
     return my_str
 
 for i in range(len(train_result)):
-    print('<train>\n{}'.format(int_list_to_str(train_result)))
-    print('<valid>\n{}'.format(int_list_to_str(valid_result)))
+    print('<train>\n{}'.format(int_list_to_str(train_result[i])))
+    print('<valid>\n{}'.format(int_list_to_str(valid_result[i])))
     print('<index>\n{}'.format(int_list_to_str(top_valid_index_list)))
 print('<train top> {} <valid top> {}'.format(int_list_to_str(top_train_accur_list), int_list_to_str(top_valid_accur_list)))
 print('<train satur> {} <valid satur> {}'.format(int_list_to_str(saturation_train_accur_list), int_list_to_str(saturation_valid_accur_list)))

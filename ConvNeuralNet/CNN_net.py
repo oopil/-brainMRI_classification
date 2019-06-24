@@ -413,20 +413,16 @@ class Attention(Network):
             return output
 
     def attention(self, x, ch_in, ch = 16, depth = 1, scope = 'attention'):
-        k3 = [3, 3, 3]
-        k4 = [4, 4, 4]
-        k5 = [5, 5, 5]
-        k7 = [7, 7, 7]
-        st = 1
-        p = 2
-        t = 2
-        input = x
+        k3, k4, k5, k7 = 3,4,5,7
+        r,p,t = 2,2,2
         skip = []
+        input = x
         with tf.variable_scope(scope):
             with tf.variable_scope(scope+'_encode'):
+                x = self.conv_3d(x, ch, k7, 'same', self.activ)
                 for i in range(depth):
-                    x = self.conv_3d(x, ch, 3, 'same', self.activ)
-                    x = self.conv_3d(x, ch, 3, 'same', self.activ)
+                    for j in range(r):
+                        x = self.conv_3d(x, ch, 3, 'same', self.activ)
                     skip.append(x)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
@@ -437,10 +433,17 @@ class Attention(Network):
                 for i in range(depth):
                     x = self.deconv_3d(x, ch, k3, 'same', self.activ, st=2)
                     x = x + skip[depth - 1 - i]
-                    x = self.conv_3d(x, ch, 3, 'same', self.activ)
+                    for j in range(r):
+                        x = self.conv_3d(x, ch, 3, 'same', self.activ)
                     # extract probability map by sigmoid activation function
                     x = self.conv_3d(x, ch_in, 3, 'same', tf.nn.sigmoid)
                     soft_mask = x
+                    # tf.summary.image('rh',rh[0],max_outputs=output_num)
+                    print(scope)
+                    if scope == 'attent1':
+                        print('save image in tensorboard ...')
+                        visualize = soft_mask[0,:,:,:]
+                        tf.summary.image('attention_mask', visualize, max_outputs=5)
 
             for i in range(t):
                 out = x = self.conv_3d(input, ch, k3, 'same', self.activ)
@@ -454,9 +457,8 @@ class Attention(Network):
             print('build neural network')
             print(images.shape)
 
-        channel = 32
+        ch = 32
         CNN = self.CNN_attention_res
-
         split_form = [self.ps for _ in range(self.pn)]
         with tf.variable_scope("Model"):
             # lh, rh = tf.split(images, split_form, 1)
@@ -464,45 +466,47 @@ class Attention(Network):
             cnn_features = []
             for i, x in enumerate(split_array):
                 with tf.variable_scope("patch"+str(i)):
-                    x = self.attention(x, 1, channel, depth = 2, scope='attent1')
-                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
-                    x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.attention(x, 1, ch, depth = 2, scope='attent1')
+                    x = self.conv_3d(x, ch, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, ch, 3, 'same', self.activ, st=1)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
-                    x = self.attention(x, channel, channel*2, depth = 1, scope='attent2')
-                    x = self.conv_3d(x, channel*2, 3, 'same', self.activ, st=1)
-                    x = self.conv_3d(x, channel*2, 3, 'same', self.activ, st=1)
+                    x = self.attention(x, ch, ch*2, depth = 1, scope='attent2')
+                    x = self.conv_3d(x, ch*2, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, ch*2, 3, 'same', self.activ, st=1)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
-                    x = self.attention(x, channel*2, channel*4, depth = 1, scope='attent3')
-                    x = self.conv_3d(x, channel*4, 3, 'same', self.activ, st=1)
-                    x = self.conv_3d(x, channel*4, 3, 'same', self.activ, st=1)
+                    ch *= 2
+                    x = self.attention(x, ch, ch * 2, depth=1, scope='attent3')
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
-                    # x = self.attention(x, channel*4, channel*8, depth = 1, scope='attent4')
-                    # x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
-                    # x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
-                    # x = self.maxpool_3d(x, ps=2, st=2)
-                    #
-                    # x = self.attention(x, channel*4, channel*8, depth = 1, scope='attent5')
-                    # x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
-                    # x = self.conv_3d(x, channel, 3, 'same', self.activ, st=1)
+                    x = self.attention(x, ch, ch * 2, depth=1, scope='attent4')
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    x = self.maxpool_3d(x, ps=2, st=2)
+
+                    # ch *= 2
+                    # x = self.attention(x, ch, ch * 2, depth=1, scope='attent4')
+                    # x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    # x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
                     # x = self.maxpool_3d(x, ps=2, st=2)
 
-                    # x = CNN(x, ch=channel, scope="CNN"+str(i), reuse=False)
+                    # x = CNN(x, ch=ch, scope="CNN"+str(i), reuse=False)
                     # x = self.maxpool_3d(x, ps=2, st=2)
-                    # x = CNN(x, ch=channel*2, scope="CNN2"+str(i), reuse=False)
+                    # x = CNN(x, ch=ch*2, scope="CNN2"+str(i), reuse=False)
                     # x = self.maxpool_3d(x, ps=2, st=2)
-                    # x = CNN(x, ch=channel*4, scope="CNN3"+str(i), reuse=False)
+                    # x = CNN(x, ch=ch*4, scope="CNN3"+str(i), reuse=False)
                     # x = self.maxpool_3d(x, ps=2, st=2)
-                    # x = CNN(x, ch=channel*4, scope="CNN4"+str(i), reuse=False)
+                    # x = CNN(x, ch=ch*4, scope="CNN4"+str(i), reuse=False)
                     # x = self.maxpool_3d(x, ps=2, st=2)
 
                     # we need to reduce the image size..
                     # if i use residual attention module only one block, i can't reduce the image
                     # for i in range(2):
-                    #     x = self.resblock(x, channel, channel*2, ks=3)
-                    #     # x = self.conv_3d(x, channel, 3, 'same', self.activ)
+                    #     x = self.resblock(x, ch, ch*2, ks=3)
+                    #     # x = self.conv_3d(x, ch, 3, 'same', self.activ)
                     #     x = self.maxpool_3d(x, ps=2, st=2)
 
                 print(np.shape(x))

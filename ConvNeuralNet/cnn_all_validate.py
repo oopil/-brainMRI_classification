@@ -1,9 +1,9 @@
 import os
 import sys
+import time
 import argparse
 import numpy as np
 import tensorflow as tf
-import time
 from sklearn.metrics import classification_report
 # report = classification_report(test_y, arg_ytest, target_names=['low','high'])
 # print(report)
@@ -257,14 +257,9 @@ for fold in whole_set:
 
             train_writer.add_summary(train_summary)
             if epoch % print_freq == 0:
-                print("Epoch: {}/{}".format(epoch, epochs))
-                print("Train loss = {}".format(loss_scr))
-                print("Train accuracy = {:03.4f}".format(acc_scr // 0.01))
-
                 val_acc, val_logit, val_loss, test_summary = \
                     sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
-
-                print("Validation accuracy = {:03.4f}".format(val_acc // 0.01))
+                print("Epoch: {}/{} - train loss : {:02.4} - train accur : {:02.3} - val loss : {:02.4} - val accur : {:02.3}".format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
                 pn = 4
                 print(logit[:pn]//0.01)
                 # print(val_logit[:pn]//0.01)
@@ -273,6 +268,7 @@ for fold in whole_set:
                 valid_accur.append(val_acc)
 
                 if val_loss < min_val_loss:
+                    min_val_loss = val_loss
                     print('save the checkpoint ...')
                     # save trained model
                     save_path = saver.save(sess, "../checkpoint/model")

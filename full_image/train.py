@@ -4,6 +4,9 @@ import time
 import argparse
 import numpy as np
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
+sys.path.append('.')
+from data import *
 
 def parse_args() -> argparse:
     def str2bool(v):
@@ -32,10 +35,17 @@ def what_time():
     now_list = [str(now.tm_year) , str(now.tm_mon ), str(now.tm_mday ), str(now.tm_hour ), str(now.tm_min ), str(now.tm_sec)]
     return ''.join(now_list)
 
-
-def autoencoder():
+def classifier(sv_set, args):
     # ----------------- data load part ---------------- #
-    tr_x, tr_y, tst_x, tst_y = dataloader()
+    whole_set = read_cnn_data(sv_set)
+    tr_x, tr_y, tst_x, tst_y = whole_set[args.fold_start]
+    tr_x, val_x, tr_y, val_y = train_test_split(tr_x, tr_y, test_size = 0.33, random_state = 42)
+    print(tr_y)
+    print(tst_y)
+    print(val_y)
+    print(len(tr_y),len(tst_y),len(val_y))
+    tr_x, tr_y = over_sampling(tr_x, tr_y, "SIMPLE")
+    assert False
     # ----------------- graph build part ---------------- #
     batch_size = 1000
     buff_size = 1000
@@ -145,6 +155,4 @@ if __name__ == "__main__":
         "sv202": 202,
     }
     sv_set = sv_set_dict[args.setting]
-
-    # neuralnet()
-    autoencoder()
+    classifier(sv_set, args)

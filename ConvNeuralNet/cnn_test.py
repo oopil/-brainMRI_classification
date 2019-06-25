@@ -40,7 +40,6 @@ def parse_args() -> argparse:
     parser.add_argument('--fold_try',           default=1, type=int)
     parser.add_argument('--fold_start',           default=1, type=int)
     parser.add_argument('--batch_size',         default=10, type=int)
-    parser.add_argument('--save_model',         default=False, type=str2bool)
     return parser.parse_args()
 
 # %%
@@ -80,11 +79,7 @@ def read_cnn_data(sv_set = 0):
 
     diag_type = 'clinic'
     class_option = 'CN vs AD'
-    class_num = 2
-    test_num = 20
     fold_num = 5
-    is_split_by_num = False
-    sampling_option = "RANDOM"
     whole_set = CNN_dataloader(base_folder_path, diag_type, class_option, excel_path, fold_num)
     return whole_set
     # print(train_data)
@@ -100,7 +95,7 @@ batch = args.batch_size # 10
 dropout_prob = 0.5
 epochs = args.epoch
 is_mask = args.mask
-print_freq = 1
+print_freq = 5
 learning_rate = args.lr
 '''
     model building parts
@@ -132,7 +127,6 @@ assert network != None
 
 # patch_num = 2
 initializer = tf.contrib.layers.xavier_initializer()
-# initializer = tf.initializers.random_normal(stddev=0.001)
 # initializer = tf.truncated_normal_initializer
 
 my_model = network(weight_initializer=initializer,
@@ -200,7 +194,6 @@ for fold in whole_set:
         train_data, train_label = over_sampling(train_data, train_label, sampling_option)
         train_label = one_hot_pd(train_label)
 
-    data_count = len(train_label)
     print()
     print("Loading data...")
     print()
@@ -226,47 +219,29 @@ for fold in whole_set:
         # tensorflow dataset setting
         next_element, iterator = get_patch_dataset(train_data, train_label, args.buffer_scale, is_mask, batch)
         sess.run(iterator.initializer)
-
-        # test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
-        # sess.run(test_iterator.initializer)
-        # val_data_ts, test_label_ts = sess.run(test_element)
         val_data_ts, test_label_ts = read_test_data(val_data, val_label, is_masking=is_mask)
         test_label_ts = one_hot_pd(val_label)
-        # print(test_label_ts)
         print(test_label_ts.shape)
 
-        train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
+        # train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
         test_writer = tf.summary.FileWriter('../log/test/'+what_time())
 
         for epoch in range(epochs):
-            iters = data_count // args.batch_size
-            # if data_count % args.batch_size != 0:
-            #     iters += 1
-            for iter in range(iters):
-                train_data, train_label = sess.run(next_element)
-                # print(train_data.shape, train_label.shape)
-                # train_data, train_label = over_sampling(train_data, train_label, "RANDOM")
-                # print(train_data.shape, train_label.shape)
-                # assert False
+            train_data, train_label = sess.run(next_element)
+            train_feed_dict = {
+                images: train_data,
+                y_gt: train_label
+            }
+            test_feed_dict = {
+                images: val_data_ts,
+                y_gt: test_label_ts
+            }
+            accum_loss = 0
+            accum_acc = 0
 
-                train_feed_dict = {
-                    images: train_data,
-                    y_gt: train_label
-                }
-                test_feed_dict = {
-                    images: val_data_ts,
-                    y_gt: test_label_ts
-                }
-                accum_loss = 0
-                accum_acc = 0
+            _, loss_scr, acc_scr, logit, train_summary = \
+                sess.run((train_step, loss, accuracy, y, merged_summary), feed_dict=train_feed_dict)
 
-                _, loss_scr, acc_scr, logit, train_summary = \
-                    sess.run((train_step, loss, accuracy, y, merged_summary), feed_dict=train_feed_dict)
-                print("epoch : {} iter: {}/{} - train loss : {:02.4} - train accur : {:02.3}".format(epoch, iter, iters, loss_scr, acc_scr // 0.01))
-                print(logit[:2]//0.01)
-
-
-            train_writer.add_summary(train_summary, global_step=epoch)
             # train_writer.add_summary(train_summary, global_step=epoch)
             if epoch % print_freq == 0:
                 val_acc, val_logit, val_loss, test_summary = \
@@ -279,14 +254,13 @@ for fold in whole_set:
                 train_accur.append(acc_scr)
                 valid_accur.append(val_acc)
 
-                if val_loss < min_val_loss and epoch > 3 and args.save_model:
+                if val_loss < min_val_loss and epoch > 200:
                     min_val_loss = val_loss
                     check_position = epoch
                     print('save the checkpoint ... ', epoch)
                     # save trained model
                     save_path = saver.save(sess, "../checkpoint/model")
         print('last check point epoch : ' ,check_position)
-
     saturation_count = 5
     train_result.append(train_accur)
     valid_result.append(valid_accur)
@@ -302,73 +276,3 @@ for fold in whole_set:
     if count >= args.fold_try:
         break
 file_contents = []
-
-for i in range(len(train_result)):
-    file_contents.append("<< fold {} result>>".format(i))
-    file_contents.append("CNN lh and rh model")
-    file_contents.append("masking : {}".format(args.mask))
-    file_contents.append("train : {}".format(train_result[i]))
-    file_contents.append("valid : {}".format(valid_result[i]))
-file_contents.append("top train : {}".format(top_train_accur_list))
-file_contents.append("top valid : {}".format(top_valid_accur_list))
-file_contents.append("top valid index : {}".format(top_valid_index_list))
-file_contents.append("avg train top : {} , avg vaidation top : {}".format(np.mean(top_train_accur_list), np.mean(top_valid_accur_list)))
-file_contents.append("saturation train : {}".format(saturation_train_accur_list))
-file_contents.append("saturation valid : {}".format(saturation_valid_accur_list))
-file_contents.append("avg saturation train : {} , avg saturation vaidation : {}".format(np.mean(saturation_train_accur_list), np.mean(saturation_valid_accur_list)))
-
-for result in file_contents:
-    print(result)
-
-def int_list_to_str(int_list:list)->str:
-    for i in range(len(int_list)):
-        int_list[i] = str(int_list[i])
-    my_str = ','.join(int_list)
-    return my_str
-
-for i in range(len(train_result)):
-    print('<train>\n{}'.format(int_list_to_str(train_result[i])))
-    print('<valid>\n{}'.format(int_list_to_str(valid_result[i])))
-    print('<index>\n{}'.format(int_list_to_str(top_valid_index_list)))
-print('<train top> {} <valid top> {}'.format(int_list_to_str(top_train_accur_list), int_list_to_str(top_valid_accur_list)))
-print('<train satur> {} <valid satur> {}'.format(int_list_to_str(saturation_train_accur_list), int_list_to_str(saturation_valid_accur_list)))
-
-assert False
-result_file_name = '../nn_result_'+args.network+'/cv.txt'
-file = open(result_file_name, 'a+t')
-for result in file_contents:
-    result += '\n'
-    file.writelines(result)
-
-"""
-
-with tf.variable_scope("Model"):
-    with tf.variable_scope("Left"):
-        lh = batch_norm(lh)
-        lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
-        lh = tf.layers.conv3d(inputs=lh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
-        lh = tf.layers.conv3d(inputs=lh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
-        lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.flatten(lh)
-
-    with tf.variable_scope("Right", reuse=False):
-        rh = batch_norm(rh)
-        rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-        rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-        rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-        rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.flatten(rh)
-
-    with tf.variable_scope("FCN"):
-        x = tf.concat([lh, rh], -1)
-        x = tf.layers.dense(x, units=2048, activation=tf.nn.relu)
-        x = tf.layers.dense(x, units=512, activation=tf.nn.relu)
-        x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
-        y = x
-"""

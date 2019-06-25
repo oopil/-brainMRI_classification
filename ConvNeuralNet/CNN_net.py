@@ -165,8 +165,8 @@ class Simple(Network):
                 x = tf.concat(cnn_features, -1)
                 x = tf.layers.dense(x, units=1024, activation=self.activ)
                 x = tf.layers.dense(x, units=512, activation=self.activ)
-                x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
-                # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)
+                # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
+                x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)
                 y = x
         return y
 
@@ -419,6 +419,10 @@ class Attention(Network):
         input = x
         with tf.variable_scope(scope):
             with tf.variable_scope(scope+'_encode'):
+                if scope == 'attent1':
+                    print('save image in tensorboard ...')
+                    visualize = input[0, :, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
+                    tf.summary.image('input', visualize, max_outputs=5)
                 x = self.conv_3d(x, ch, k7, 'same', self.activ)
                 for i in range(depth):
                     for j in range(r):
@@ -440,10 +444,10 @@ class Attention(Network):
                     soft_mask = x
                     # tf.summary.image('rh',rh[0],max_outputs=output_num)
                     print(scope)
-                    if scope == 'attent1':
-                        print('save image in tensorboard ...')
-                        visualize = soft_mask[0,:,:,:]
-                        tf.summary.image('attention_mask', visualize, max_outputs=5)
+                if scope == 'attent1':
+                    print('save image in tensorboard ...')
+                    visualize = soft_mask[0,:,:,:,:]  #[48 - batch,48 - w,48 - h,1 - channel]
+                    tf.summary.image('attention_mask', visualize, max_outputs=5)
 
             for i in range(t):
                 out = x = self.conv_3d(input, ch, k3, 'same', self.activ)

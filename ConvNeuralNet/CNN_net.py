@@ -164,6 +164,7 @@ class Simple(Network):
                 # rh = tf.layers.flatten(rh)
                 # x = tf.concat([lh, rh], -1)
                 x = tf.concat(cnn_features, -1)
+                x = tf.layers.dense(x, units=4096, activation=self.activ)
                 x = tf.layers.dense(x, units=1024, activation=self.activ)
                 x = tf.layers.dense(x, units=512, activation=self.activ)
                 # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
@@ -422,8 +423,8 @@ class Attention(Network):
             with tf.variable_scope(scope+'_encode'):
                 if scope == 'attent1':
                     visualize_1 = input[0, :, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
-                    # print('save image in tensorboard ...')
-                    # tf.summary.image('input', visualize_1, max_outputs=48)
+                    print('save image in tensorboard ...')
+                    tf.summary.image('input', visualize_1, max_outputs=24)
 
                 x = self.conv_3d(x, ch, k7, 'same', self.activ)
                 for i in range(depth):
@@ -448,8 +449,8 @@ class Attention(Network):
                 if scope == 'attent1':
                     print('save image in tensorboard ...')
                     visualize = soft_mask[0, :, :, :, :]  #[48 - batch,48 - w,48 - h,1 - channel]
-                    visualize = tf.concat([visualize_1, visualize], 1)
-                    tf.summary.image('attention_mask', visualize, max_outputs=48)
+                    # visualize = tf.concat([visualize_1, visualize], 1)
+                    tf.summary.image('attention_mask', visualize, max_outputs=24)
 
             for i in range(t):
                 out = self.conv_3d(input, ch, k3, 'same', self.activ)
@@ -471,7 +472,7 @@ class Attention(Network):
             split_array = tf.split(images, split_form, 1)
             cnn_features = []
             for i, x in enumerate(split_array):
-                with tf.variable_scope("patch"+str(i)):
+                with tf.variable_scope("patch"+str(i), reuse=False):
                     x = self.attention(x, 1, ch, depth = 2, scope='attent1') #2
                     x = self.conv_3d(x, ch, 3, 'same', self.activ, st=1)
                     x = self.conv_3d(x, ch, 3, 'same', self.activ, st=1)
@@ -524,8 +525,8 @@ class Attention(Network):
             with tf.variable_scope("FCN"):
                 # x = tf.concat([lh, rh], -1)
                 x = tf.concat(cnn_features, -1)
-                x = tf.layers.dense(x, units=1024, activation=self.activ)
-                x = tf.layers.dense(x, units=512, activation=self.activ)
+                x = tf.layers.dense(x, units=4096, activation=self.activ) #1024
+                x = tf.layers.dense(x, units=1024, activation=self.activ) #512
                 x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
                 # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)
                 y = x

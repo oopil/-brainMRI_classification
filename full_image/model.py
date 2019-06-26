@@ -40,35 +40,6 @@ class Network:
     def maxpool_3d(self, x, ps, st):
         return tf.layers.max_pooling3d(inputs=x, pool_size=ps, strides=st)
 
-    def CNN_simple(self, x, ch = 32, scope = "CNN", reuse = False):
-        k3 = [3,3,3]
-        k4 = [4,4,4]
-        k5 = [5,5,5]
-        k7 = [7,7,7]
-        # kernel_pool = [2,2,2]
-        kernel_pool = [3,3,3]
-        with tf.variable_scope(scope, reuse=reuse):
-            x = batch_norm(x)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.maxpool_3d(x, kernel_pool, st=2)
-
-            ch *= 2
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.maxpool_3d(x, kernel_pool, st=2)
-
-            ch *= 2
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.maxpool_3d(x, kernel_pool, st=2)
-
-            ch *= 2
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.maxpool_3d(x, kernel_pool, st=2)
-            return x
-
     def resblock(self, input, ch_in, ch_out, ks):
         x = self.conv_3d(input, ch_out, 1, 'same', self.activ)
         x = self.conv_3d(x, ch_out, ks, 'same', self.activ)
@@ -134,33 +105,58 @@ class Network:
 # Convolutional Neural Network Model
 ##################################################################################
 class Simple(Network):
-    def model(self, images):
+    def CNN_simple(self, x, ch = 32, scope = "CNN", reuse = False):
+        k3, k4, k5, k7 = 3, 4, 5, 7
+        r, p, t = 2, 2, 2
+        # kernel_pool = [2,2,2]
+        kernel_pool = [3,3,3]
+        with tf.variable_scope(scope, reuse=reuse):
+            with tf.variable_scope('0'):
+                x = batch_norm(x)
+
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.maxpool_3d(x, kernel_pool, st=2)
+
+            ch *= 2
+            with tf.variable_scope('1'):
+                x = batch_norm(x)
+
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.maxpool_3d(x, kernel_pool, st=2)
+
+            ch *= 2
+            with tf.variable_scope('2'):
+                x = batch_norm(x)
+
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.maxpool_3d(x, kernel_pool, st=2)
+
+            ch *= 2
+            with tf.variable_scope('3'):
+                x = batch_norm(x)
+
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = self.maxpool_3d(x, kernel_pool, st=2)
+            return x
+
+    def model(self, inputs):
         is_print = False
         if is_print:
             print('build neural network')
-            print(images.shape)
+            print(inputs.shape)
 
         channel = 32
         CNN = self.CNN_simple
         split_form = [self.ps for _ in range(self.pn)]
         with tf.variable_scope("Model"):
-            # lh, rh = tf.split(images, split_form, 1)
-            split_array = tf.split(images, split_form, 1)
-            cnn_features = []
-            for i, array in enumerate(split_array):
-                array = CNN(array, ch=channel, scope="CNN"+str(i), reuse=False)
-                array = tf.layers.flatten(array)
-                cnn_features.append(array)
-            # CNN = self.CNN_deep_layer
-
-            # channel = 40
-            # lh = CNN(lh, ch = channel, scope= "LCNN", reuse=False)
-            # rh = CNN(rh, ch = channel, scope= "RCNN", reuse=False)
+            x = CNN(inputs, ch=channel, scope="CNN", reuse=False)
+            x = tf.layers.flatten(x)
             with tf.variable_scope("FCN"):
-                # lh = tf.layers.flatten(lh)
-                # rh = tf.layers.flatten(rh)
-                # x = tf.concat([lh, rh], -1)
-                x = tf.concat(cnn_features, -1)
+                x = tf.layers.flatten(x)
                 x = tf.layers.dense(x, units=1024, activation=self.activ)
                 x = tf.layers.dense(x, units=512, activation=self.activ)
                 x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)

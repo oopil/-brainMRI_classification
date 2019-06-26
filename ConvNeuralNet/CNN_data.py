@@ -195,7 +195,7 @@ def _read_py_function_1_patch(path, label, is_masking=False):
 def label_size_check(label_array, label_num, isp):
     '''
     print the size of label square
-    :return: return the center position
+    :return: return the center position - avg, median, center, etc ...
     '''
     # print(label_array, label_num)
     position_array = np.where(label_array == label_num)
@@ -204,8 +204,11 @@ def label_size_check(label_array, label_num, isp):
     # print(np.amax(position_array, axis=1))
     max_pos = np.amax(position_array, axis=1)
     min_pos = np.amin(position_array, axis=1)
+    median_pos = np.median(position_array, axis=1).astype(np.int32)
+
     if isp: print('label square size  {}'.format(max_pos - min_pos))
-    return (max_pos+min_pos)//2
+    return median_pos
+    # return (max_pos+min_pos)//2
 
 def get_patch_dataset(img_l, label_l, buffer_scale = 3, is_masking=False, batch_size = 1):
     patch_read_func = _read_py_function_hippo_patch
@@ -220,36 +223,19 @@ def get_patch_dataset(img_l, label_l, buffer_scale = 3, is_masking=False, batch_
     dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l, mask_l))
     dataset = dataset.map(lambda img_l, label_l, mask_l:
         tuple(tf.py_func(patch_read_func, [img_l, label_l, mask_l], [tf.float32, tf.int32])), num_parallel_calls=5)
-    # dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + buffer_scale * batch_size)).batch(batch_size)
-    dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + buffer_scale * batch_size)).repeat().batch(batch_size)
-    # dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + 3 * batch_size))
-    # dataset = dataset.shuffle(buffer_size=(len(img_l) * batch_size))
-    # dataset = dataset.shuffle(buffer_size=batch_size)
+    dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + buffer_scale * batch_size))
+    # dataset = dataset.repeat()
+    dataset = dataset.batch(batch_size)
+
+    # iteration = len(label_l) // batch_size
+    # if (len(label_l) % batch_size) != 0:
+    #     iteration -= 1
+    # iteration = np.cast(iteration, np.int32)
+    # dataset = dataset.range(iteration)
     print(dataset)
-
-    # handle = tf.placeholder(tf.string, shape=[])
     iterator = dataset.make_initializable_iterator()
-    # iterator = tf.data.Iterator.from_string_handle(
-    #     handle, dataset.output_types, ([None, 212, 320, 240, 1], [None, 1]))  # image dimension[212, 320, 240]
     next_element = iterator.get_next()
     return next_element, iterator
-
-def get_patch_dataset_handler(img_l, label_l, buffer_scale = 3, is_masking=False, batch_size = 1):
-    print(type(img_l), np.shape(img_l))
-    mask_l = [False for _ in range(len(label_l))]
-    if is_masking:
-        mask_l = [True for _ in range(len(label_l))]
-    dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l, mask_l))
-    dataset = dataset.map(lambda img_l, label_l, mask_l:
-                          tuple(tf.py_func(_read_py_function_1_patch, [img_l, label_l, mask_l], [tf.float32, tf.int32])), num_parallel_calls=5)
-    dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + buffer_scale * batch_size)).repeat().batch(batch_size)
-    # handle = tf.placeholder(tf.string, shape=[])
-    iterator = dataset.make_initializable_iterator()
-    # iterator = tf.data.Iterator.from_string_handle(
-    #     handle, dataset.output_types, ([None, 212, 320, 240, 1], [None, 1]))  # image dimension[212, 320, 240]
-    next_element = iterator.get_next()
-    return next_element, iterator
-
 
 def normalize_np(X_):
     print('normalize the data ... ')

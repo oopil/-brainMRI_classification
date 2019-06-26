@@ -33,13 +33,14 @@ def parse_args() -> argparse:
     parser.add_argument('--setting',            default='desktop', type=str) # desktop sv186 sv202 sv144
     parser.add_argument('--mask',               default=False, type=str2bool)
     parser.add_argument('--buffer_scale',       default=30, type=int)
-    parser.add_argument('--epoch',              default=400, type=int)
+    parser.add_argument('--epoch',              default=50, type=int)
     parser.add_argument('--network',            default='simple', type=str) # simple attention siam
     parser.add_argument('--lr',                 default=1e-5, type=float)
     parser.add_argument('--ch',                 default=32, type=int)
     parser.add_argument('--fold_try',           default=1, type=int)
     parser.add_argument('--fold_start',           default=1, type=int)
     parser.add_argument('--batch_size',         default=10, type=int)
+    parser.add_argument('--save_model',         default=False, type=str2bool)
     return parser.parse_args()
 
 # %%
@@ -53,12 +54,6 @@ sv_set_dict = {
     "sv202":202,
 }
 sv_set = sv_set_dict[args.setting]
-# is_mask = args.mask
-# print(is_mask)
-# print(type(is_mask))
-# assert False
-# %%
-
 def read_cnn_data(sv_set = 0):
     base_folder_path = ''
     excel_path = ''
@@ -82,8 +77,6 @@ def read_cnn_data(sv_set = 0):
     fold_num = 5
     whole_set = CNN_dataloader(base_folder_path, diag_type, class_option, excel_path, fold_num)
     return whole_set
-    # print(train_data)
-    # print(type(train_data))
 
 def what_time():
     now = time.gmtime(time.time())
@@ -95,7 +88,7 @@ batch = args.batch_size # 10
 dropout_prob = 0.5
 epochs = args.epoch
 is_mask = args.mask
-print_freq = 5
+print_freq = 1
 learning_rate = args.lr
 '''
     model building parts
@@ -127,42 +120,37 @@ assert network != None
 
 # patch_num = 2
 initializer = tf.contrib.layers.xavier_initializer()
-# initializer = tf.truncated_normal_initializer
-
 my_model = network(weight_initializer=initializer,
                   activation=tf.nn.relu,
                   class_num=class_num,
                   patch_size=s1,
                   patch_num=patch_num)
 y = my_model.model(images)
-# %%
+
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)
 
-# with tf.name_scope('learning_rate_decay'):
-#     start_lr = learning_rate
-#     global_step = tf.Variable(0, trainable=False)
-#     total_learning = epochs
-#     lr = tf.train.exponential_decay(start_lr, global_step, total_learning, 0.99999, staircase=True)
 with tf.name_scope('learning_rate_decay'):
     start_lr = learning_rate
     global_step = tf.Variable(0, trainable=False)
     total_learning = epochs
+    lr = learning_rate
     # lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
-    lr = tf.train.exponential_decay(start_lr, global_step, decay_steps=epochs // 100, decay_rate=.96, staircase=True)
+    # decay_step = epochs // 100
+    # if epochs // 100 < 1:
+    #     decay_step = 10
+    # lr = tf.train.exponential_decay(start_lr, global_step, decay_steps=decay_step, decay_rate=.96, staircase=True)
 
 with tf.variable_scope('optimizer'):
     optimizer = tf.train.AdamOptimizer(lr)
     train_step = optimizer.minimize(loss)
     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_gt, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
 # Summarize
 tf.summary.scalar("loss", loss)
 tf.summary.scalar("accuracy", accuracy)
 merged_summary = tf.summary.merge_all()
-
-# model_vars = tf.trainable_variables()
-# tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
 
 whole_set = read_cnn_data(sv_set)
 top_train_accur_list = []
@@ -185,8 +173,6 @@ for fold in whole_set:
     train_accur = []
     valid_accur = []
     class_num = 2
-    # sampling_option = "None"
-    # sampling_option = "RANDOM"
     sampling_option = "SIMPLE"
     train_data, train_label, val_data, val_label = fold
     val_data, val_label = valence_class(val_data, val_label, class_num)
@@ -194,13 +180,7 @@ for fold in whole_set:
         train_data, train_label = over_sampling(train_data, train_label, sampling_option)
         train_label = one_hot_pd(train_label)
 
-    print()
-    print("Loading data...")
-    print()
-    print()
-    print("train data: {}".format(train_data.shape))
-    print("train label: {}".format(train_label.shape))
-    print()
+    data_count = len(train_label)
     print("validation data: {}".format(val_data.shape))
     print("validation label: {}".format(val_label.shape))
     print()
@@ -219,60 +199,32 @@ for fold in whole_set:
         # tensorflow dataset setting
         next_element, iterator = get_patch_dataset(train_data, train_label, args.buffer_scale, is_mask, batch)
         sess.run(iterator.initializer)
+
+        # test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
+        # sess.run(test_iterator.initializer)
+        # val_data_ts, test_label_ts = sess.run(test_element)
         val_data_ts, test_label_ts = read_test_data(val_data, val_label, is_masking=is_mask)
         test_label_ts = one_hot_pd(val_label)
+        # print(test_label_ts)
         print(test_label_ts.shape)
 
-        # train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
-        test_writer = tf.summary.FileWriter('../log/test/'+what_time())
+        train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
+        # test_writer = tf.summary.FileWriter('../log/test/'+what_time())
 
-        for epoch in range(epochs):
-            train_data, train_label = sess.run(next_element)
-            train_feed_dict = {
-                images: train_data,
-                y_gt: train_label
-            }
-            test_feed_dict = {
-                images: val_data_ts,
-                y_gt: test_label_ts
-            }
-            accum_loss = 0
-            accum_acc = 0
+        iters = data_count // args.batch_size
+        if data_count % args.batch_size != 0:
+            iters -= 1
 
-            _, loss_scr, acc_scr, logit, train_summary = \
-                sess.run((train_step, loss, accuracy, y, merged_summary), feed_dict=train_feed_dict)
-
-            # train_writer.add_summary(train_summary, global_step=epoch)
-            if epoch % print_freq == 0:
-                val_acc, val_logit, val_loss, test_summary = \
-                    sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
-                print("Epoch: {}/{} - train loss : {:02.4} - train accur : {:02.3} - val loss : {:02.4} - val accur : {:02.3}".format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
-                pn = 4
-                print(logit[:pn]//0.01)
-                # print(val_logit[:pn]//0.01)
-                # train_writer.add_summary(test_summary)
-                train_accur.append(acc_scr)
-                valid_accur.append(val_acc)
-
-                if val_loss < min_val_loss and epoch > 200:
-                    min_val_loss = val_loss
-                    check_position = epoch
-                    print('save the checkpoint ... ', epoch)
-                    # save trained model
-                    save_path = saver.save(sess, "../checkpoint/model")
-        print('last check point epoch : ' ,check_position)
-    saturation_count = 5
-    train_result.append(train_accur)
-    valid_result.append(valid_accur)
-    top_train_accur = np.max(train_accur, 0)
-    top_valid_accur = np.max(valid_accur, 0)
-    top_valid_index = np.where(valid_accur == top_valid_accur)
-    top_train_accur_list.append(top_train_accur)
-    top_valid_accur_list.append(top_valid_accur)
-    top_valid_index_list.append(top_valid_index)
-    saturation_train_accur_list.append(np.mean(train_accur[-saturation_count:]))
-    saturation_valid_accur_list.append(np.mean(valid_accur[-saturation_count:]))
+            val_acc, val_logit, val_loss, test_summary = \
+            sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
+        print("Epoch: {}/{} val loss : {:02.4} - val accur : {:02.3}"
+              .format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
+        pn = 4
+        print(val_logit[:pn]//0.01)
+        # print(val_logit[:pn]//0.01)
+        # train_writer.add_summary(test_summary)
+        train_accur.append(acc_scr)
+        valid_accur.append(val_acc)
     count += 1
     if count >= args.fold_try:
         break
-file_contents = []

@@ -42,10 +42,10 @@ def label_size_check(label_array, label_num, isp):
     print the size of label square
     :return: return the center position
     '''
-    lh_hippo_pos = np.where(label_array == label_num)
-    max_pos = np.amax(lh_hippo_pos, axis=1)
-    min_pos = np.amin(lh_hippo_pos, axis=1)
-    median_pos = np.median(lh_hippo_pos, axis=1).astype(np.int32)
+    hippo_pos = np.where(label_array == label_num)
+    max_pos = np.amax(hippo_pos, axis=1)
+    min_pos = np.amin(hippo_pos, axis=1)
+    median_pos = np.median(hippo_pos, axis=1).astype(np.int32)
     if isp:
         print('label square size  {}'.format(max_pos - min_pos))
         print('median point : {}'.format(median_pos))

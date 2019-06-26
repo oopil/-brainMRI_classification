@@ -6,22 +6,7 @@ sys.path.append('..')
 sys.path.append('/home/soopil/Desktop/Dataset/github/brainMRI_classification/ConvNeuralNet')
 from data_merge import *
 
-def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48, is_decode=True, is_aug = True):
-    def label_size_check(label_array, label_num, isp):
-        '''
-        print the size of label square
-        :return: return the center position
-        '''
-        # print(label_array, label_num)
-        position_array = np.where(label_array == label_num)
-        # print(position_array[0], label_num)
-        # print(position_array)
-        # print(np.amax(position_array, axis=1))
-        max_pos = np.amax(position_array, axis=1)
-        min_pos = np.amin(position_array, axis=1)
-        if isp: print('label square size  {}'.format(max_pos - min_pos))
-        return (max_pos + min_pos) // 2
-
+def _read_py_func(path, label, is_aug = True, is_decode = True):
     isp = False
     if isp:print("file path : {}" .format(path))
     if is_decode:
@@ -31,39 +16,26 @@ def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48
     img_path_decoded, label_path_decoded = path_decoded.split(',')
     itk_file = sitk.ReadImage(img_path_decoded)
     array = sitk.GetArrayFromImage(itk_file)
-    label_itk_file = sitk.ReadImage(label_path_decoded)
-    label_array = sitk.GetArrayFromImage(label_itk_file)
-    hs = patch_size // 2
-
-    left_subcort = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26]  # 14 -(6,25,30,28)
-    right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
-
-    index = 0
-    lh_hippo = left_subcort[index] # 17
-    rh_hippo = right_subcort[index] # 53
-    label_list = [lh_hippo, rh_hippo]
-    patch_list = []
-    for label_num in label_list:
-        x,y,z = label_size_check(label_array, label_num, isp)
-        # transition augmentation
-        if is_aug:
-            ran = np.random.randint(6, size=(3))
-            x += ran[0]
-            y += ran[1]
-            z += ran[2]
-
-        image_patch = array[x - hs:x + hs, y - hs:y + hs, z - hs:z + hs]
-        if is_masking:
-            label_patch = label_array[x - hs:x + hs, y - hs:y + hs, z - hs:z + hs]
-            image_patch = mask_dilation(image_patch, label_patch, label_num, patch_size)
-        patch_list.append(image_patch)
-    patch_array = np.concatenate(patch_list, axis=0)
-    if isp: print(patch_array.shape, type(patch_array))
-    patch_array = np.expand_dims(patch_array, 3)
+    # label_itk_file = sitk.ReadImage(label_path_decoded)
+    # label_array = sitk.GetArrayFromImage(label_itk_file)
+    shape = np.shape(array)
+    hs = (shape[0] - shape[0]//4 ) // 2
+    x,y,z = shape[0]//2, shape[1]//2, shape[2]//2,
+    print(hs*2)
+    print(x,y,z)
+    # transition augmentation
+    if is_aug:
+        ran = np.random.randint(10, size=(3))
+        x += ran[0]
+        y += ran[1]
+        z += ran[2]
+    print(x,y,z)
+    image_cropped = array[x - hs:x + hs, y - hs:y + hs, z - hs:z + hs]
+    image_cropped = np.expand_dims(image_cropped, 3)
     if is_decode:
-        return patch_array.astype(np.float32), label.astype(np.int32)
+        return image_cropped.astype(np.float32), label.astype(np.int32)
     else:
-        return patch_array.astype(np.float32), label
+        return image_cropped.astype(np.float32), label
 
 def dataloader():
     # -------- Read data ---------#
@@ -80,31 +52,56 @@ def dataloader():
     print(np.shape(x_train_norm), np.shape(train_t))
     return x_train_norm, train_t, x_test_norm, test_t
 
-def define_dataset(tr_x, tr_y, batch_size, buffer_size):
-    # dataset1 = tf.data.Dataset.from_tensor_slices(tr_x)
-    # dataset2 = tf.data.Dataset.from_tensor_slices(tr_y)
-    # dataset3 = tf.data.Dataset.zip((dataset1, dataset2))
-    # print(dataset1.output_types)  # ==> "tf.float32"
-    # print(dataset1.output_shapes)  # ==> "(10,)"
-    #
-    # print(dataset2.output_types)  # ==> "(tf.float32, tf.int32)"
-    # print(dataset2.output_shapes)  # ==> "((), (100,))"
-    #
-    # print(dataset3.output_types)  # ==> (tf.float32, (tf.float32, tf.int32))
-    # print(dataset3.output_shapes)  # ==> "(10, ((), (100,)))"
+def get_patch_dataset(img_l, label_l, buffer_scale = 3, is_masking=False, batch_size = 1):
+    patch_read_func = _read_py_function_hippo_patch
+    # patch_read_func = _read_py_function_subcort_patch
+    # patch_read_func = _read_py_function_hippo_cort_patch
+    # patch_read_func = _read_py_function_1_patch
 
-    dataset = tf.data.Dataset.from_tensor_slices(
-        {"x": tr_x,
-         "y": tr_y})
-    print(dataset.output_types)  # ==> "{'a': tf.float32, 'b': tf.int32}"
-    print(dataset.output_shapes)  # ==> "{'a': (), 'b': (100,)}"
-    dataset = dataset.repeat()
-    dataset = dataset.shuffle(buffer_size=buffer_size)
-    dataset = dataset.batch(batch_size)
-    iterator = dataset.make_one_shot_iterator()
+    print(type(img_l), np.shape(img_l))
+    mask_l = [False for _ in range(len(label_l))]
+    if is_masking:
+        mask_l = [True for _ in range(len(label_l))]
+    dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l, mask_l))
+    dataset = dataset.map(lambda img_l, label_l, mask_l:
+        tuple(tf.py_func(patch_read_func, [img_l, label_l, mask_l], [tf.float32, tf.int32])), num_parallel_calls=5)
+    dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + buffer_scale * batch_size)).repeat().batch(batch_size)
+    iteration = len(label_l) // batch_size
+    if (len(label_l) % batch_size) != 0:
+        iteration -= 1
+    dataset = dataset.range(iteration)
+    print(dataset)
+    iterator = dataset.make_initializable_iterator()
     next_element = iterator.get_next()
     return next_element, iterator
 
+def define_dataset(tr_x, tr_y, batch_size, buffer_size):
+    dataset = tf.data.Dataset.from_tensor_slices((tr_x,tr_y))
+    dataset = dataset.map(
+        lambda tr_x, tr_y:
+        tuple(tf.py_func(_read_py_func, [tr_x, tr_y], [tf.float32, tf.int32])),
+        num_parallel_calls=5)
+
+    print(dataset.output_types)
+    print(dataset.output_shapes)
+    print(dataset)
+    # dataset = dataset.repeat()
+    dataset = dataset.shuffle(buffer_size=buffer_size)
+    dataset = dataset.batch(batch_size)
+
+    # define iterations
+    iterations = len(tr_y) // batch_size
+    if (len(tr_y) % batch_size) != 0:
+        iterations -= 1
+    # dataset = dataset.range(iterations)
+
+    img_size = 192
+    # handle = tf.placeholder(tf.string, shape=[])
+    # iterator = tf.data.Iterator.from_string_handle(handle, dataset.output_types,([None,img_size,img_size,img_size,1],[None]))
+
+    iterator = dataset.make_one_shot_iterator()
+    next_element = iterator.get_next()
+    return next_element, iterator,iterations # handle,
 
 def read_cnn_data(sv_set = 0):
     base_folder_path = ''
@@ -131,3 +128,11 @@ def read_cnn_data(sv_set = 0):
     sampling_option = "SIMPLE"
     whole_set = CNN_dataloader(base_folder_path, diag_type, class_option, excel_path, fold_num)
     return whole_set
+
+if __name__ == '__main__':
+    whole_set = read_cnn_data(0)
+    tr_x, tr_y, tst_x, tst_y = whole_set[1]
+    _read_py_func(tr_x[0], tr_y[0], is_decode=False)
+    sess = tf.Session()
+
+    pass

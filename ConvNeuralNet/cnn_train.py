@@ -148,17 +148,19 @@ with tf.name_scope('learning_rate_decay'):
     start_lr = learning_rate
     global_step = tf.Variable(0, trainable=False)
     total_learning = epochs
+    lr = learning_rate
     # lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
-    decay_step = epochs // 100
-    if epochs // 100 < 1:
-        decay_step = 2
-    lr = tf.train.exponential_decay(start_lr, global_step, decay_steps=decay_step, decay_rate=.96, staircase=True)
+    # decay_step = epochs // 100
+    # if epochs // 100 < 1:
+    #     decay_step = 10
+    # lr = tf.train.exponential_decay(start_lr, global_step, decay_steps=decay_step, decay_rate=.96, staircase=True)
 
 with tf.variable_scope('optimizer'):
     optimizer = tf.train.AdamOptimizer(lr)
     train_step = optimizer.minimize(loss)
     correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_gt, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
 # Summarize
 tf.summary.scalar("loss", loss)
 tf.summary.scalar("accuracy", accuracy)
@@ -222,7 +224,7 @@ for fold in whole_set:
         print()
         # tensorflow dataset setting
         next_element, iterator = get_patch_dataset(train_data, train_label, args.buffer_scale, is_mask, batch)
-        sess.run(iterator.initializer)
+
 
         # test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
         # sess.run(test_iterator.initializer)
@@ -231,35 +233,31 @@ for fold in whole_set:
         test_label_ts = one_hot_pd(val_label)
         # print(test_label_ts)
         print(test_label_ts.shape)
+        test_feed_dict = {
+            images: val_data_ts,
+            y_gt: test_label_ts
+        }
 
         train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
-        test_writer = tf.summary.FileWriter('../log/test/'+what_time())
+
+        iters = data_count // args.batch_size
+        if data_count % args.batch_size != 0:
+            iters -= 1
 
         for epoch in range(epochs):
-            iters = data_count // args.batch_size
-            if data_count % args.batch_size != 0:
-                iters += -1
+            sess.run(iterator.initializer)
             for iter in range(iters):
                 train_data, train_label = sess.run(next_element)
-                # print(train_data.shape, train_label.shape)
-                # train_data, train_label = over_sampling(train_data, train_label, "RANDOM")
-                # print(train_data.shape, train_label.shape)
-                # assert False
-
                 train_feed_dict = {
                     images: train_data,
                     y_gt: train_label
-                }
-                test_feed_dict = {
-                    images: val_data_ts,
-                    y_gt: test_label_ts
                 }
                 accum_loss = 0
                 accum_acc = 0
 
                 _, loss_scr, acc_scr, logit, train_summary = \
                     sess.run((train_step, loss, accuracy, y, merged_summary), feed_dict=train_feed_dict)
-                print("epoch : {}/{} iter: {}/{} - train loss : {:02.4} - train accur : {:02.3}"
+                print("epoch : {}/{} - iter: {}/{} - train loss : {:02.4} - train accur : {:02.3}"
                       .format(epoch, epochs, iter, iters, loss_scr, acc_scr // 0.01))
                 print(logit[:2]//0.01)
 
@@ -268,8 +266,8 @@ for fold in whole_set:
             if epoch % print_freq == 0:
                 val_acc, val_logit, val_loss, test_summary = \
                     sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
-                print("Epoch: {}/{} val loss : {:02.4} - val accur : {:02.3}"
-                      .format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
+                print("Epoch: {}/{} - val loss : {:02.4} - val accur : {:02.3}"
+                      .format(epoch, epochs, val_loss, val_acc // 0.01))
                 pn = 4
                 print(val_logit[:pn]//0.01)
                 # print(val_logit[:pn]//0.01)
@@ -331,43 +329,3 @@ for i in range(len(train_result)):
     print('<index>\n{}'.format(int_list_to_str(top_valid_index_list)))
 print('<train top> {} <valid top> {}'.format(int_list_to_str(top_train_accur_list), int_list_to_str(top_valid_accur_list)))
 print('<train satur> {} <valid satur> {}'.format(int_list_to_str(saturation_train_accur_list), int_list_to_str(saturation_valid_accur_list)))
-
-assert False
-result_file_name = '../nn_result_'+args.network+'/cv.txt'
-file = open(result_file_name, 'a+t')
-for result in file_contents:
-    result += '\n'
-    file.writelines(result)
-
-"""
-
-with tf.variable_scope("Model"):
-    with tf.variable_scope("Left"):
-        lh = batch_norm(lh)
-        lh = tf.layers.conv3d(inputs=lh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
-        lh = tf.layers.conv3d(inputs=lh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
-        lh = tf.layers.conv3d(inputs=lh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.max_pooling3d(inputs=lh, pool_size=[2, 2, 2], strides=2)
-        lh = tf.layers.conv3d(inputs=lh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        lh = tf.layers.flatten(lh)
-
-    with tf.variable_scope("Right", reuse=False):
-        rh = batch_norm(rh)
-        rh = tf.layers.conv3d(inputs=rh, filters=32, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-        rh = tf.layers.conv3d(inputs=rh, filters=64, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-        rh = tf.layers.conv3d(inputs=rh, filters=128, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.max_pooling3d(inputs=rh, pool_size=[2, 2, 2], strides=2)
-        rh = tf.layers.conv3d(inputs=rh, filters=256, kernel_size=[3, 3, 3], padding='same', activation=tf.nn.relu)
-        rh = tf.layers.flatten(rh)
-
-    with tf.variable_scope("FCN"):
-        x = tf.concat([lh, rh], -1)
-        x = tf.layers.dense(x, units=2048, activation=tf.nn.relu)
-        x = tf.layers.dense(x, units=512, activation=tf.nn.relu)
-        x = tf.layers.dense(x, units=class_num, activation=tf.nn.sigmoid)
-        y = x
-"""

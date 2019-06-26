@@ -43,10 +43,8 @@ class Network:
         return tf.layers.max_pooling3d(inputs=x, pool_size=ps, strides=st)
 
     def CNN_simple(self, x, ch = 32, scope = "CNN", reuse = False):
-        k3 = [3,3,3]
-        k4 = [4,4,4]
-        k5 = [5,5,5]
-        k7 = [7,7,7]
+        k3, k4, k5, k7 = 3, 4, 5, 7
+        r, p, t = 2, 2, 2
         # kernel_pool = [2,2,2]
         kernel_pool = [3,3,3]
         with tf.variable_scope(scope, reuse=reuse):
@@ -56,16 +54,19 @@ class Network:
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
+            # x = batch_norm(x)
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
+            # x = batch_norm(x)
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
+            # x = batch_norm(x)
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
@@ -420,9 +421,10 @@ class Attention(Network):
         with tf.variable_scope(scope):
             with tf.variable_scope(scope+'_encode'):
                 if scope == 'attent1':
-                    print('save image in tensorboard ...')
-                    visualize = input[0, :, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
-                    tf.summary.image('input', visualize, max_outputs=5)
+                    visualize_1 = input[0, :, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
+                    # print('save image in tensorboard ...')
+                    # tf.summary.image('input', visualize_1, max_outputs=48)
+
                 x = self.conv_3d(x, ch, k7, 'same', self.activ)
                 for i in range(depth):
                     for j in range(r):
@@ -442,16 +444,16 @@ class Attention(Network):
                     # extract probability map by sigmoid activation function
                     x = self.conv_3d(x, ch_in, 3, 'same', tf.nn.sigmoid)
                     soft_mask = x
-                    # tf.summary.image('rh',rh[0],max_outputs=output_num)
-                    print(scope)
+
                 if scope == 'attent1':
                     print('save image in tensorboard ...')
-                    visualize = soft_mask[0,:,:,:,:]  #[48 - batch,48 - w,48 - h,1 - channel]
-                    tf.summary.image('attention_mask', visualize, max_outputs=5)
+                    visualize = soft_mask[0, :, :, :, :]  #[48 - batch,48 - w,48 - h,1 - channel]
+                    visualize = tf.concat([visualize_1, visualize], 1)
+                    tf.summary.image('attention_mask', visualize, max_outputs=48)
 
             for i in range(t):
-                out = x = self.conv_3d(input, ch, k3, 'same', self.activ)
-                out = x = self.conv_3d(out, ch_in, k3, 'same', self.activ)
+                out = self.conv_3d(input, ch, k3, 'same', self.activ)
+                out = self.conv_3d(out, ch_in, k3, 'same', self.activ)
                 out = (1+soft_mask)*out
             return out
 
@@ -470,12 +472,12 @@ class Attention(Network):
             cnn_features = []
             for i, x in enumerate(split_array):
                 with tf.variable_scope("patch"+str(i)):
-                    x = self.attention(x, 1, ch, depth = 2, scope='attent1')
+                    x = self.attention(x, 1, ch, depth = 2, scope='attent1') #2
                     x = self.conv_3d(x, ch, 3, 'same', self.activ, st=1)
                     x = self.conv_3d(x, ch, 3, 'same', self.activ, st=1)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
-                    x = self.attention(x, ch, ch*2, depth = 1, scope='attent2')
+                    x = self.attention(x, ch, ch*2, depth = 1, scope='attent2') #1
                     x = self.conv_3d(x, ch*2, 3, 'same', self.activ, st=1)
                     x = self.conv_3d(x, ch*2, 3, 'same', self.activ, st=1)
                     x = self.maxpool_3d(x, ps=2, st=2)
@@ -517,6 +519,8 @@ class Attention(Network):
                 x = tf.layers.flatten(x)
                 cnn_features.append(x)
             # print(np.shape(cnn_features))
+
+            # deeper
             with tf.variable_scope("FCN"):
                 # x = tf.concat([lh, rh], -1)
                 x = tf.concat(cnn_features, -1)

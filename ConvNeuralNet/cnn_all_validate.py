@@ -33,7 +33,7 @@ def parse_args() -> argparse:
     parser.add_argument('--setting',            default='desktop', type=str) # desktop sv186 sv202 sv144
     parser.add_argument('--mask',               default=False, type=str2bool)
     parser.add_argument('--buffer_scale',       default=30, type=int)
-    parser.add_argument('--epoch',              default=400, type=int)
+    parser.add_argument('--epoch',              default=50, type=int)
     parser.add_argument('--network',            default='simple', type=str) # simple attention siam
     parser.add_argument('--lr',                 default=1e-5, type=float)
     parser.add_argument('--ch',                 default=32, type=int)
@@ -80,15 +80,9 @@ def read_cnn_data(sv_set = 0):
 
     diag_type = 'clinic'
     class_option = 'CN vs AD'
-    class_num = 2
-    test_num = 20
     fold_num = 5
-    is_split_by_num = False
-    sampling_option = "RANDOM"
     whole_set = CNN_dataloader(base_folder_path, diag_type, class_option, excel_path, fold_num)
     return whole_set
-    # print(train_data)
-    # print(type(train_data))
 
 def what_time():
     now = time.gmtime(time.time())
@@ -141,7 +135,7 @@ my_model = network(weight_initializer=initializer,
                   patch_size=s1,
                   patch_num=patch_num)
 y = my_model.model(images)
-# %%
+
 cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
 loss = tf.reduce_mean(cross_entropy)
 
@@ -155,7 +149,10 @@ with tf.name_scope('learning_rate_decay'):
     global_step = tf.Variable(0, trainable=False)
     total_learning = epochs
     # lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
-    lr = tf.train.exponential_decay(start_lr, global_step, decay_steps=epochs // 100, decay_rate=.96, staircase=True)
+    decay_step = epochs // 100
+    if epochs // 100 < 1:
+        decay_step = 2
+    lr = tf.train.exponential_decay(start_lr, global_step, decay_steps=decay_step, decay_rate=.96, staircase=True)
 
 with tf.variable_scope('optimizer'):
     optimizer = tf.train.AdamOptimizer(lr)
@@ -240,8 +237,8 @@ for fold in whole_set:
 
         for epoch in range(epochs):
             iters = data_count // args.batch_size
-            # if data_count % args.batch_size != 0:
-            #     iters += 1
+            if data_count % args.batch_size != 0:
+                iters += -1
             for iter in range(iters):
                 train_data, train_label = sess.run(next_element)
                 # print(train_data.shape, train_label.shape)
@@ -262,30 +259,32 @@ for fold in whole_set:
 
                 _, loss_scr, acc_scr, logit, train_summary = \
                     sess.run((train_step, loss, accuracy, y, merged_summary), feed_dict=train_feed_dict)
-                print("epoch : {} iter: {}/{} - train loss : {:02.4} - train accur : {:02.3}".format(epoch, iter, iters, loss_scr, acc_scr // 0.01))
+                print("epoch : {}/{} iter: {}/{} - train loss : {:02.4} - train accur : {:02.3}"
+                      .format(epoch, epochs, iter, iters, loss_scr, acc_scr // 0.01))
                 print(logit[:2]//0.01)
-
 
             train_writer.add_summary(train_summary, global_step=epoch)
             # train_writer.add_summary(train_summary, global_step=epoch)
             if epoch % print_freq == 0:
                 val_acc, val_logit, val_loss, test_summary = \
                     sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
-                print("Epoch: {}/{} - train loss : {:02.4} - train accur : {:02.3} - val loss : {:02.4} - val accur : {:02.3}".format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
+                print("Epoch: {}/{} val loss : {:02.4} - val accur : {:02.3}"
+                      .format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
                 pn = 4
-                print(logit[:pn]//0.01)
+                print(val_logit[:pn]//0.01)
                 # print(val_logit[:pn]//0.01)
                 # train_writer.add_summary(test_summary)
                 train_accur.append(acc_scr)
                 valid_accur.append(val_acc)
 
-                if val_loss < min_val_loss and epoch > 3 and args.save_model:
+                if val_loss < min_val_loss and epoch > 3:
                     min_val_loss = val_loss
                     check_position = epoch
-                    print('save the checkpoint ... ', epoch)
-                    # save trained model
-                    save_path = saver.save(sess, "../checkpoint/model")
-        print('last check point epoch : ' ,check_position)
+                    if args.save_model:
+                        print('save the checkpoint ... ', epoch)
+                        # save trained model
+                        save_path = saver.save(sess, "../checkpoint/model")
+        print('last check point epoch : ',check_position)
 
     saturation_count = 5
     train_result.append(train_accur)

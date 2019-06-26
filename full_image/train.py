@@ -2,7 +2,6 @@ import os
 import sys
 import time
 import argparse
-import numpy as np
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 sys.path.append('.')

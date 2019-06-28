@@ -1,5 +1,8 @@
 import tensorflow as tf
 from ConvNeuralNet.CNN_ops import *
+
+def batch_norm(x, name="batch_norm"):
+    return tf.contrib.layers.batch_norm(x, decay=0.9, updates_collections=None, epsilon=1e-5, scale=True, scope=name)
 ##################################################################################
 # Custom Operation
 ##################################################################################
@@ -111,36 +114,31 @@ class Simple(Network):
         # kernel_pool = [2,2,2]
         kernel_pool = [3,3,3]
         with tf.variable_scope(scope, reuse=reuse):
-            with tf.variable_scope('0'):
-                x = batch_norm(x)
-
+            x = batch_norm(x, name='0')
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            # x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
-            with tf.variable_scope('1'):
-                x = batch_norm(x)
-
+            x = batch_norm(x, name='1')
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
-            ch *= 2
-            with tf.variable_scope('2'):
-                x = batch_norm(x)
-
+            # ch *= 2
+            ch /= 2
+            x = batch_norm(x, name='2')
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.conv_3d(x, ch, k5, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
-            ch *= 2
-            with tf.variable_scope('3'):
-                x = batch_norm(x)
-
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.maxpool_3d(x, kernel_pool, st=2)
+            # ch *= 2
+            # with tf.variable_scope('3'):
+            #     x = batch_norm(x)
+            #
+            # x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            # x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            # x = self.maxpool_3d(x, kernel_pool, st=2)
             return x
 
     def model(self, inputs):
@@ -149,7 +147,7 @@ class Simple(Network):
             print('build neural network')
             print(inputs.shape)
 
-        channel = 32
+        channel = 16
         CNN = self.CNN_simple
         split_form = [self.ps for _ in range(self.pn)]
         with tf.variable_scope("Model"):
@@ -187,7 +185,7 @@ class Siamese(Network):
             # CNN = self.CNN_deep_layer
             CNN = self.CNN_simple
 
-            channel = 32
+            channel = 16
             # channel = 40
             lh = CNN(lh, ch = channel, scope= "CNN", reuse=False)
             rh = CNN(rh, ch = channel, scope= "CNN", reuse=True)

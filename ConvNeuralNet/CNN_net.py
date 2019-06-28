@@ -187,9 +187,7 @@ class Siamese(Network):
             # tf.summary.image('lh_orig_1',lh[0],max_outputs=output_num)
             # tf.summary.image('lh_orig_2',lh[0],max_outputs=output_num)
             # tf.summary.image('rh_orig',rh[0],max_outputs=output_num)
-            flip_axis = 3 # 3
-            # axis = [False for i in range(5)]
-            # axis[flip_axis] = True
+            flip_axis = 3
             rh = tf.reverse(rh, axis=[flip_axis])
             # tf.summary.image('rh',rh[0],max_outputs=output_num)
             # CNN = self.CNN_deep_layer
@@ -420,37 +418,38 @@ class Attention(Network):
         skip = []
         input = x
         with tf.variable_scope(scope):
-            with tf.variable_scope(scope+'_encode'):
+            with tf.variable_scope('encode'):
                 if scope == 'attent1':
-                    visualize_1 = input[0, :, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
+                    visualize_1 = input[0, 12:, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
                     print('save image in tensorboard ...')
-                    tf.summary.image('input', visualize_1, max_outputs=24)
+                    tf.summary.image('input', visualize_1, max_outputs=12)
 
                 x = self.conv_3d(x, ch, k7, 'same', self.activ)
+                x = self.conv_3d(x, ch, k5, 'same', self.activ)
                 for i in range(depth):
                     for j in range(r):
-                        x = self.conv_3d(x, ch, 3, 'same', self.activ)
+                        x = self.conv_3d(x, ch, k3, 'same', self.activ)
                     skip.append(x)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
             for i in range(p):
                 x = self.conv_3d(x, ch, k3, 'same', self.activ)
 
-            with tf.variable_scope(scope+'_decode'):
+            with tf.variable_scope('decode'):
                 for i in range(depth):
                     x = self.deconv_3d(x, ch, k3, 'same', self.activ, st=2)
                     x = x + skip[depth - 1 - i]
                     for j in range(r):
-                        x = self.conv_3d(x, ch, 3, 'same', self.activ)
+                        x = self.conv_3d(x, ch, k3, 'same', self.activ)
                     # extract probability map by sigmoid activation function
-                    x = self.conv_3d(x, ch_in, 3, 'same', tf.nn.sigmoid)
+                    x = self.conv_3d(x, ch_in, k3, 'same', tf.nn.sigmoid)
                     soft_mask = x
 
                 if scope == 'attent1':
                     print('save image in tensorboard ...')
-                    visualize = soft_mask[0, :, :, :, :]  #[48 - batch,48 - w,48 - h,1 - channel]
+                    visualize = soft_mask[0, 12:, :, :, :]  #[48 - batch,48 - w,48 - h,1 - channel]
                     # visualize = tf.concat([visualize_1, visualize], 1)
-                    tf.summary.image('attention_mask', visualize, max_outputs=24)
+                    tf.summary.image('attention_mask', visualize, max_outputs=12)
 
             for i in range(t):
                 out = self.conv_3d(input, ch, k3, 'same', self.activ)
@@ -494,28 +493,6 @@ class Attention(Network):
                     x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
-                    # ch *= 2
-                    # x = self.attention(x, ch, ch * 2, depth=1, scope='attent4')
-                    # x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
-                    # x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
-                    # x = self.maxpool_3d(x, ps=2, st=2)
-
-                    # x = CNN(x, ch=ch, scope="CNN"+str(i), reuse=False)
-                    # x = self.maxpool_3d(x, ps=2, st=2)
-                    # x = CNN(x, ch=ch*2, scope="CNN2"+str(i), reuse=False)
-                    # x = self.maxpool_3d(x, ps=2, st=2)
-                    # x = CNN(x, ch=ch*4, scope="CNN3"+str(i), reuse=False)
-                    # x = self.maxpool_3d(x, ps=2, st=2)
-                    # x = CNN(x, ch=ch*4, scope="CNN4"+str(i), reuse=False)
-                    # x = self.maxpool_3d(x, ps=2, st=2)
-
-                    # we need to reduce the image size..
-                    # if i use residual attention module only one block, i can't reduce the image
-                    # for i in range(2):
-                    #     x = self.resblock(x, ch, ch*2, ks=3)
-                    #     # x = self.conv_3d(x, ch, 3, 'same', self.activ)
-                    #     x = self.maxpool_3d(x, ps=2, st=2)
-
                 print(np.shape(x))
                 x = tf.layers.flatten(x)
                 cnn_features.append(x)
@@ -529,5 +506,76 @@ class Attention(Network):
                 x = tf.layers.dense(x, units=1024, activation=self.activ) #512
                 x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
                 # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)
+                y = x
+        return y
+
+class AttentionSiamese(Network):
+    def attention(self, x, ch_in, ch = 16, depth = 1, scope = 'attention'):
+        k3, k4, k5, k7 = 3,4,5,7
+        r,p,t = 2,2,2
+        skip = []
+        input = x
+        with tf.variable_scope(scope):
+            with tf.variable_scope('encode'):
+                if scope == 'attent1':
+                    visualize_1 = input[0, 12:, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
+                    print('save image in tensorboard ...')
+                    tf.summary.image('input', visualize_1, max_outputs=12)
+
+                x = self.conv_3d(x, ch, k7, 'same', self.activ)
+                x = self.conv_3d(x, ch, k5, 'same', self.activ)
+                for i in range(depth):
+                    for j in range(r):
+                        x = self.conv_3d(x, ch, k3, 'same', self.activ)
+                    skip.append(x)
+                    x = self.maxpool_3d(x, ps=2, st=2)
+
+            for i in range(p):
+                x = self.conv_3d(x, ch, k3, 'same', self.activ)
+
+            with tf.variable_scope('decode'):
+                for i in range(depth):
+                    x = self.deconv_3d(x, ch, k3, 'same', self.activ, st=2)
+                    x = x + skip[depth - 1 - i]
+                    for j in range(r):
+                        x = self.conv_3d(x, ch, k3, 'same', self.activ)
+                    # extract probability map by sigmoid activation function
+                    x = self.conv_3d(x, ch_in, k3, 'same', tf.nn.sigmoid)
+                    soft_mask = x
+
+                if scope == 'attent1':
+                    print('save image in tensorboard ...')
+                    visualize = soft_mask[0, 12:, :, :, :]  #[48 - batch,48 - w,48 - h,1 - channel]
+                    # visualize = tf.concat([visualize_1, visualize], 1)
+                    tf.summary.image('attention_mask', visualize, max_outputs=12)
+
+            for i in range(t):
+                out = self.conv_3d(input, ch, k3, 'same', self.activ)
+                out = self.conv_3d(out, ch_in, k3, 'same', self.activ)
+                out = (1+soft_mask)*out
+            return out
+
+    def model(self, images):
+        is_print = False
+        # is_print = self.is_print
+        if is_print:
+            print('build neural network')
+            print(images.shape)
+
+        with tf.variable_scope("Model"):
+            lh, rh = tf.split(images, [self.ps, self.ps], 1)
+            flip_axis = 3
+            rh = tf.reverse(rh, axis=[flip_axis])
+            CNN = self.attention
+            channel = 16
+            lh = CNN(lh, ch = channel, scope= "L_attention")
+            rh = CNN(rh, ch = channel, scope= "R_attention")
+            with tf.variable_scope("FCN"):
+                lh = tf.layers.flatten(lh)
+                rh = tf.layers.flatten(rh)
+                x = tf.concat([lh, rh], -1)
+                x = tf.layers.dense(x, units=2048, activation=self.activ)
+                x = tf.layers.dense(x, units=512, activation=self.activ)
+                x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
                 y = x
         return y

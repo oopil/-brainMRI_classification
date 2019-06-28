@@ -27,7 +27,7 @@ def parse_args() -> argparse:
     parser.add_argument('--network',            default='simple', type=str) # simple attention siam
     parser.add_argument('--lr',                 default=1e-5, type=float)
     parser.add_argument('--ch',                 default=32, type=int)
-    parser.add_argument('--fold',           default=1, type=int)
+    parser.add_argument('--fold',               default=1, type=int)
     parser.add_argument('--batch_size',         default=10, type=int)
     return parser.parse_args()
 
@@ -44,9 +44,9 @@ def classifier(sv_set, args):
     tr_x, tr_y = over_sampling(tr_x, tr_y, "SIMPLE")
     print(len(tr_y), len(val_y), len(tst_y))
     # ----------------- graph build part ---------------- #
-    batch_size = 10
-    buff_size = 1000
-    img_size = 192
+    batch_size = 4
+    buff_size = 20
+    img_size = 170 #192
     class_num = 2
     next_element, iterator, iters = define_dataset(tr_x, tr_y, batch_size, buffer_size=buff_size)
     x = tf.reshape(next_element[0], shape=[batch_size,img_size,img_size,img_size,1])
@@ -68,10 +68,10 @@ def classifier(sv_set, args):
     initializer = tf.contrib.layers.xavier_initializer()
     # initializer = tf.truncated_normal_initializer
     net = network(weight_initializer=initializer,
-                       activation=tf.nn.relu,
-                       class_num=class_num,
-                       patch_size=1,
-                       patch_num=1)
+                   activation=tf.nn.relu,
+                   class_num=class_num,
+                   patch_size=1,
+                   patch_num=1)
     y_pred = net.model(x)
 
     cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y_pred)
@@ -81,8 +81,6 @@ def classifier(sv_set, args):
         rate = tf.placeholder(dtype=tf.float32)
         optimizer = tf.train.AdamOptimizer(rate)
         train_step = optimizer.minimize(loss)
-        # print(y_pred.shape)
-        # print(y_pred)
         correct_prediction = tf.equal(tf.argmax(y_pred, 1), tf.argmax(y_gt, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
@@ -90,15 +88,13 @@ def classifier(sv_set, args):
     tf.summary.scalar("loss", loss)
     tf.summary.scalar("accuracy", accuracy)
     merged_summary = tf.summary.merge_all()
-
-    sess = tf.Session()
-    init = tf.global_variables_initializer()
-    sess.run(init)
-
     model_vars = tf.trainable_variables()
     tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
+    sess = tf.Session()
+    init = tf.global_variables_initializer()
+    sess.run(init, options=tf.RunOptions(report_tensor_allocations_upon_oom = True))
 
-    epochs = 1000
+    epochs = 10
     lr = 0.001
     for epoch in range(epochs):
         for iter in range(iters):

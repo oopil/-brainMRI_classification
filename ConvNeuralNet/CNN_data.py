@@ -17,7 +17,7 @@ def mask_dilation(image_patch, label_patch, label_num, patch_size):
     image_patch[np.where(mask_label == 0)] = 0
     return image_patch
 
-def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48, is_decode=True, is_aug = True):
+def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48, is_decode=True, is_aug = False): # is_aug = False
     isp = False
     if isp:print("file path : {}" .format(path))
     if is_decode:
@@ -34,7 +34,7 @@ def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48
     left_subcort = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26]  # 14 -(6,25,30,28)
     right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
 
-    index = 0
+    index = 5 # 7 is hippocampus
     lh_hippo = left_subcort[index] # 17
     rh_hippo = right_subcort[index] # 53
     label_list = [lh_hippo, rh_hippo]
@@ -94,12 +94,12 @@ def _read_py_function_hippo_cort_patch(path, label, is_masking=False, patch_size
     # 46 is the label of cerebellum
     left_subcort = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26]  # 14 -(6,25,30,28)
     right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
-    left_cort = [1000.0, 1002.0, 1003.0, 1005.0, 1006.0, 1007.0, 1008.0, 1009.0, 1010.0, 1011.0,
-                 1012.0, 1013.0, 1014.0, 1015.0, 1016.0, 1017.0, 1018.0, 1019.0, 1020.0, 1021.0,
-                 1022.0, 1023.0, 1024.0, 1025.0, 1026.0, 1027.0, 1028.0, 1029.0, 1030.0, 1031.0, 1034.0, 1035.0]  # 32
-    right_cort = [2000.0, 2002.0, 2003.0, 2005.0, 2006.0, 2007.0, 2008.0, 2009.0, 2010.0, 2011.0,
-                  2012.0, 2013.0, 2014.0, 2015.0, 2016.0, 2017.0, 2018.0, 2019.0, 2020.0, 2021.0,
-                  2022.0, 2023.0, 2024.0, 2025.0, 2026.0, 2027.0, 2028.0, 2029.0, 2030.0, 2031.0, 2034.0, 2035.0] # 32
+    left_cort = [1000, 1002, 1003, 1005, 1006, 1007, 1008, 1009, 1010, 1011,
+                 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021,
+                 1022, 1023, 1024, 1025, 1026, 1027, 1028, 1029, 1030, 1031, 1034, 1035]  # 32
+    right_cort = [2000, 2002, 2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011,
+                  2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021,
+                  2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2034, 2035] # 32
     cort = left_cort + right_cort # too big ...
     # cort = [e for i, e in enumerate(cort) if i % 2 == 0] # half
     # subcort = left_subcort + right_subcort

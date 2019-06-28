@@ -19,17 +19,17 @@ def _read_py_func(path, label, is_aug = True, is_decode = True):
     # label_itk_file = sitk.ReadImage(label_path_decoded)
     # label_array = sitk.GetArrayFromImage(label_itk_file)
     shape = np.shape(array)
-    hs = (shape[0] - shape[0]//4 ) // 2
+    hs = (shape[0] - shape[0]//3 ) // 2
     x,y,z = shape[0]//2, shape[1]//2, shape[2]//2,
-    print(hs*2)
-    print(x,y,z)
+    # print(hs*2)
+    # print(x,y,z)
     # transition augmentation
     if is_aug:
         ran = np.random.randint(10, size=(3))
         x += ran[0]
         y += ran[1]
         z += ran[2]
-    print(x,y,z)
+    # print(x,y,z)
     image_cropped = array[x - hs:x + hs, y - hs:y + hs, z - hs:z + hs]
     image_cropped = np.expand_dims(image_cropped, 3)
     if is_decode:
@@ -52,29 +52,6 @@ def dataloader():
     print(np.shape(x_train_norm), np.shape(train_t))
     return x_train_norm, train_t, x_test_norm, test_t
 
-def get_patch_dataset(img_l, label_l, buffer_scale = 3, is_masking=False, batch_size = 1):
-    patch_read_func = _read_py_function_hippo_patch
-    # patch_read_func = _read_py_function_subcort_patch
-    # patch_read_func = _read_py_function_hippo_cort_patch
-    # patch_read_func = _read_py_function_1_patch
-
-    print(type(img_l), np.shape(img_l))
-    mask_l = [False for _ in range(len(label_l))]
-    if is_masking:
-        mask_l = [True for _ in range(len(label_l))]
-    dataset = tf.data.Dataset.from_tensor_slices((img_l, label_l, mask_l))
-    dataset = dataset.map(lambda img_l, label_l, mask_l:
-        tuple(tf.py_func(patch_read_func, [img_l, label_l, mask_l], [tf.float32, tf.int32])), num_parallel_calls=5)
-    dataset = dataset.shuffle(buffer_size=(int(len(img_l)* 0.4) + buffer_scale * batch_size)).repeat().batch(batch_size)
-    iteration = len(label_l) // batch_size
-    if (len(label_l) % batch_size) != 0:
-        iteration -= 1
-    dataset = dataset.range(iteration)
-    print(dataset)
-    iterator = dataset.make_initializable_iterator()
-    next_element = iterator.get_next()
-    return next_element, iterator
-
 def define_dataset(tr_x, tr_y, batch_size, buffer_size):
     dataset = tf.data.Dataset.from_tensor_slices((tr_x,tr_y))
     dataset = dataset.map(
@@ -95,7 +72,7 @@ def define_dataset(tr_x, tr_y, batch_size, buffer_size):
         iterations -= 1
     # dataset = dataset.range(iterations)
 
-    img_size = 192
+    # img_size = 192
     # handle = tf.placeholder(tf.string, shape=[])
     # iterator = tf.data.Iterator.from_string_handle(handle, dataset.output_types,([None,img_size,img_size,img_size,1],[None]))
 
@@ -118,6 +95,9 @@ def read_cnn_data(sv_set = 0):
     elif sv_set == 144:
         base_folder_path = '/user/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
         excel_path = '/user/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
+    elif sv_set == 185:
+        base_folder_path = '/user/Datasets/MRI_chosun/ADAI_MRI_Result_V1_0_processed'
+        excel_path = '/user/Datasets/MRI_chosun/ADAI_MRI_test.xlsx'
     else:
         assert False
 
@@ -133,6 +113,5 @@ if __name__ == '__main__':
     whole_set = read_cnn_data(0)
     tr_x, tr_y, tst_x, tst_y = whole_set[1]
     _read_py_func(tr_x[0], tr_y[0], is_decode=False)
-    sess = tf.Session()
+    # sess = tf.Session()
 
-    pass

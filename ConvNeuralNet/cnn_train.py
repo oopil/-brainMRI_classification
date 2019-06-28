@@ -119,7 +119,9 @@ if args.network == 'simple':
 elif args.network == 'siam':
     network = Siamese
 elif args.network == 'attention':
-    network = Attention
+    network = Siamese
+elif args.network == 'attention_siam':
+    network = AttentionSiamese
 else:
     assert False
 assert network != None
@@ -260,20 +262,30 @@ for fold in whole_set:
                 print("epoch : {}/{} - iter: {}/{} - train loss : {:02.4} - train accur : {:02.3}"
                       .format(epoch, epochs, iter, iters, loss_scr, acc_scr // 0.01))
                 print(logit[:2]//0.01)
+                train_accur.append(acc_scr)
 
             train_writer.add_summary(train_summary, global_step=epoch)
             # train_writer.add_summary(train_summary, global_step=epoch)
             if epoch % print_freq == 0:
                 val_acc, val_logit, val_loss, test_summary = \
                     sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
+                print()
                 print("Epoch: {}/{} - val loss : {:02.4} - val accur : {:02.3}"
                       .format(epoch, epochs, val_loss, val_acc // 0.01))
                 pn = 4
                 print(val_logit[:pn]//0.01)
+
                 # print(val_logit[:pn]//0.01)
                 # train_writer.add_summary(test_summary)
-                train_accur.append(acc_scr)
+
                 valid_accur.append(val_acc)
+
+                target = list(test_label_ts)
+                pred = list(np.argmax(val_logit,axis=1))
+                print(target)
+                print(pred)
+                report = classification_report(target, pred, target_names=['NC','AD'])
+                print(report)
 
                 if val_loss < min_val_loss and epoch > 3:
                     min_val_loss = val_loss

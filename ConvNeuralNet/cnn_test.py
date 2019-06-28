@@ -37,8 +37,7 @@ def parse_args() -> argparse:
     parser.add_argument('--network',            default='simple', type=str) # simple attention siam
     parser.add_argument('--lr',                 default=1e-5, type=float)
     parser.add_argument('--ch',                 default=32, type=int)
-    parser.add_argument('--fold_try',           default=1, type=int)
-    parser.add_argument('--fold_start',           default=1, type=int)
+    parser.add_argument('--fold',           default=1, type=int)
     parser.add_argument('--batch_size',         default=10, type=int)
     parser.add_argument('--save_model',         default=False, type=str2bool)
     return parser.parse_args()
@@ -135,11 +134,6 @@ with tf.name_scope('learning_rate_decay'):
     global_step = tf.Variable(0, trainable=False)
     total_learning = epochs
     lr = learning_rate
-    # lr = tf.train.exponential_decay(start_lr, global_step,total_learning,0.99999, staircase=True)
-    # decay_step = epochs // 100
-    # if epochs // 100 < 1:
-    #     decay_step = 10
-    # lr = tf.train.exponential_decay(start_lr, global_step, decay_steps=decay_step, decay_rate=.96, staircase=True)
 
 with tf.variable_scope('optimizer'):
     optimizer = tf.train.AdamOptimizer(lr)
@@ -153,78 +147,67 @@ tf.summary.scalar("accuracy", accuracy)
 merged_summary = tf.summary.merge_all()
 
 whole_set = read_cnn_data(sv_set)
-top_train_accur_list = []
-top_valid_accur_list = []
-top_valid_index_list = []
-saturation_train_accur_list = []
-saturation_valid_accur_list = []
-train_result = []
-valid_result = []
-train_accur = []
-valid_accur = []
 count = 0
 check_position = 0
-min_val_loss = 10
-for fold in whole_set:
-    if count < args.fold_start:
-        count += 1
-        continue
-    acc_scr, val_acc = 0,0
-    train_accur = []
-    valid_accur = []
-    class_num = 2
-    sampling_option = "SIMPLE"
-    train_data, train_label, val_data, val_label = fold
-    val_data, val_label = valence_class(val_data, val_label, class_num)
-    if sampling_option != "None":
-        train_data, train_label = over_sampling(train_data, train_label, sampling_option)
-        train_label = one_hot_pd(train_label)
+min_val_loss = 100
 
-    data_count = len(train_label)
-    print("validation data: {}".format(val_data.shape))
-    print("validation label: {}".format(val_label.shape))
+fold = args.fold
+acc_scr, val_acc = 0,0
+valid_accur = []
+class_num = 2
+sampling_option = "SIMPLE"
+train_data, train_label, val_data, val_label = fold
+val_data, val_label = valence_class(val_data, val_label, class_num)
+if sampling_option != "None":
+    train_data, train_label = over_sampling(train_data, train_label, sampling_option)
+    train_label = one_hot_pd(train_label)
+
+data_count = len(train_label)
+print("validation data: {}".format(val_data.shape))
+print("validation label: {}".format(val_label.shape))
+print()
+
+model_vars = tf.trainable_variables()
+tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
+
+
+# --------------------- tensorflow dataset setting --------------------- #
+# test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
+# sess.run(test_iterator.initializer)
+# val_data_ts, test_label_ts = sess.run(test_element)
+val_data_ts, _ = read_test_data(val_data, val_label, is_masking=is_mask)
+test_label_ts = one_hot_pd(val_label)
+
+# --------------------- network construction  --------------------- #
+saver = tf.train.import_meta_graph('my_test_model-1000.meta')
+init = tf.global_variables_initializer()
+with tf.Session() as sess:
+    saver.restore(sess, tf.train.latest_checkpoint('../checkpoint'))
+    # print(sess.run(''))
+    assert False
+
+    sess.run(init)
+    print()
+    print('testing ... ')
+    print('<< Try fold {} .. >>'.format(fold))
     print()
 
-    model_vars = tf.trainable_variables()
-    tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
 
-    saver = tf.train.Saver(max_to_keep=4, keep_checkpoint_every_n_hours=2)
-    init = tf.global_variables_initializer()
-    with tf.Session() as sess:
-        sess.run(init)
-        print()
-        print('Cross Validation Step ... ')
-        print('<< Try fold {} .. >>'.format(count))
-        print()
-        # tensorflow dataset setting
-        next_element, iterator = get_patch_dataset(train_data, train_label, args.buffer_scale, is_mask, batch)
-        sess.run(iterator.initializer)
 
-        # test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
-        # sess.run(test_iterator.initializer)
-        # val_data_ts, test_label_ts = sess.run(test_element)
-        val_data_ts, test_label_ts = read_test_data(val_data, val_label, is_masking=is_mask)
-        test_label_ts = one_hot_pd(val_label)
-        # print(test_label_ts)
-        print(test_label_ts.shape)
+    train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
+    # test_writer = tf.summary.FileWriter('../log/test/'+what_time())
 
-        train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
-        # test_writer = tf.summary.FileWriter('../log/test/'+what_time())
+    iters = data_count // args.batch_size
+    if data_count % args.batch_size != 0:
+        iters -= 1
 
-        iters = data_count // args.batch_size
-        if data_count % args.batch_size != 0:
-            iters -= 1
-
-            val_acc, val_logit, val_loss, test_summary = \
-            sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
-        print("Epoch: {}/{} val loss : {:02.4} - val accur : {:02.3}"
-              .format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
-        pn = 4
-        print(val_logit[:pn]//0.01)
-        # print(val_logit[:pn]//0.01)
-        # train_writer.add_summary(test_summary)
-        train_accur.append(acc_scr)
-        valid_accur.append(val_acc)
-    count += 1
-    if count >= args.fold_try:
-        break
+        val_acc, val_logit, val_loss, test_summary = \
+        sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
+    print("Epoch: {}/{} val loss : {:02.4} - val accur : {:02.3}"
+          .format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
+    pn = 4
+    print(val_logit[:pn]//0.01)
+    # print(val_logit[:pn]//0.01)
+    # train_writer.add_summary(test_summary)
+    train_accur.append(acc_scr)
+    valid_accur.append(val_acc)

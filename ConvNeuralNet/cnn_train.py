@@ -231,7 +231,7 @@ for fold in whole_set:
         # test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
         # sess.run(test_iterator.initializer)
         # val_data_ts, test_label_ts = sess.run(test_element)
-        val_data_ts, test_label_ts = read_test_data(val_data, val_label, is_masking=is_mask)
+        val_data_ts, val_label = read_test_data(val_data, val_label, is_masking=is_mask)
         test_label_ts = one_hot_pd(val_label)
         # print(test_label_ts)
         print(test_label_ts.shape)
@@ -280,10 +280,8 @@ for fold in whole_set:
 
                 valid_accur.append(val_acc)
 
-                target = list(test_label_ts)
+                target = list(val_label)
                 pred = list(np.argmax(val_logit,axis=1))
-                print(target)
-                print(pred)
                 report = classification_report(target, pred, target_names=['NC','AD'])
                 print(report)
 

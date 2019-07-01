@@ -93,7 +93,8 @@ class MRI_chosun_data():
         self.input_image_path_list = []
         for class_name in folder_name:
             self.input_image_path_list = self.input_image_path_list + bot.MRI_chosun_patch_cnn(class_name)
-        print(folder_name, len(self.input_image_path_list), self.input_image_path_list)
+        print(folder_name, len(self.input_image_path_list))
+        # print(self.input_image_path_list)
         del bot
         return self.input_image_path_list
 

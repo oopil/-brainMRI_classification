@@ -119,7 +119,7 @@ if args.network == 'simple':
 elif args.network == 'siam':
     network = Siamese
 elif args.network == 'attention':
-    network = Siamese
+    network = Attention
 elif args.network == 'attention_siam':
     network = AttentionSiamese
 else:
@@ -240,7 +240,7 @@ for fold in whole_set:
             y_gt: test_label_ts
         }
 
-        train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
+        train_writer = tf.summary.FileWriter('../log/train/'+args.network+what_time(), sess.graph)
 
         iters = data_count // args.batch_size
         if data_count % args.batch_size != 0:
@@ -261,7 +261,7 @@ for fold in whole_set:
                     sess.run((train_step, loss, accuracy, y, merged_summary), feed_dict=train_feed_dict)
                 print("epoch : {}/{} - iter: {}/{} - train loss : {:02.4} - train accur : {:02.3}"
                       .format(epoch, epochs, iter, iters, loss_scr, acc_scr // 0.01))
-                print(logit[:2]//0.01)
+                # print(logit[:2]//0.01)
                 train_accur.append(acc_scr)
 
             train_writer.add_summary(train_summary, global_step=epoch)
@@ -273,8 +273,6 @@ for fold in whole_set:
                 print("Epoch: {}/{} - val loss : {:02.4} - val accur : {:02.3}"
                       .format(epoch, epochs, val_loss, val_acc // 0.01))
                 pn = 4
-                print(val_logit[:pn]//0.01)
-
                 # print(val_logit[:pn]//0.01)
                 # train_writer.add_summary(test_summary)
 
@@ -314,8 +312,8 @@ for i in range(len(train_result)):
     file_contents.append("<< fold {} result>>".format(i))
     file_contents.append("CNN lh and rh model")
     file_contents.append("masking : {}".format(args.mask))
-    file_contents.append("train : {}".format(train_result[i]))
-    file_contents.append("valid : {}".format(valid_result[i]))
+    # file_contents.append("train : {}".format(train_result[i]))
+    # file_contents.append("valid : {}".format(valid_result[i]))
 file_contents.append("top train : {}".format(top_train_accur_list))
 file_contents.append("top valid : {}".format(top_valid_accur_list))
 file_contents.append("top valid index : {}".format(top_valid_index_list))
@@ -334,8 +332,8 @@ def int_list_to_str(int_list:list)->str:
     return my_str
 
 for i in range(len(train_result)):
-    print('<train>\n{}'.format(int_list_to_str(train_result[i])))
-    print('<valid>\n{}'.format(int_list_to_str(valid_result[i])))
+    # print('<train>\n{}'.format(int_list_to_str(train_result[i])))
+    # print('<valid>\n{}'.format(int_list_to_str(valid_result[i])))
     print('<index>\n{}'.format(int_list_to_str(top_valid_index_list)))
 print('<train top> {} <valid top> {}'.format(int_list_to_str(top_train_accur_list), int_list_to_str(top_valid_accur_list)))
 print('<train satur> {} <valid satur> {}'.format(int_list_to_str(saturation_train_accur_list), int_list_to_str(saturation_valid_accur_list)))

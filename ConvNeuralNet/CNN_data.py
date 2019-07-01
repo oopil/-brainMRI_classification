@@ -17,7 +17,7 @@ def mask_dilation(image_patch, label_patch, label_num, patch_size):
     image_patch[np.where(mask_label == 0)] = 0
     return image_patch
 
-def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48, is_decode=True, is_aug = False): # is_aug = False
+def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48, is_decode=True, is_aug = True): # is_aug = False
     isp = False
     if isp:print("file path : {}" .format(path))
     if is_decode:
@@ -34,7 +34,7 @@ def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48
     left_subcort = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26]  # 14 -(6,25,30,28)
     right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
 
-    index = 5 # 7 is hippocampus
+    index = 1 # 7 is hippocampus
     lh_hippo = left_subcort[index] # 17
     rh_hippo = right_subcort[index] # 53
     label_list = [lh_hippo, rh_hippo]

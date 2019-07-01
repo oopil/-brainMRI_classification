@@ -82,132 +82,144 @@ def what_time():
     now_list = [str(now.tm_year) , str(now.tm_mon ), str(now.tm_mday ), str(now.tm_hour ), str(now.tm_min ), str(now.tm_sec)]
     return ''.join(now_list)
 
-ch = args.ch
-batch = args.batch_size # 10
-dropout_prob = 0.5
-epochs = args.epoch
-is_mask = args.mask
-print_freq = 1
-learning_rate = args.lr
-'''
-    model building parts
-'''
-class_num = 2
-patch_size = 48
-# patch_size = 16
-patch_num = 2 # hippocampus labels
-# patch_num = 70 # cortical labels
-# patch_num = 2 + 32 + 32 # hippo + cortical labels
-# patch_num = 34 #2 + 32 + 32 # hippo + cortical labels
-# patch_num = 20 # subcortical labels
-s1, s2, s3 = patch_size, patch_size, patch_size
-images = tf.placeholder(tf.float32, (None, s1 * patch_num, s2, s3, 1), name='inputs')
-# lh, rh = tf.split(images, [patch_size, patch_size], 1)
-y_gt = tf.placeholder(tf.float32, (None, 2))
-keep_prob = tf.placeholder(tf.float32)
-
-network = None
-if args.network == 'simple':
-    network = Simple
-elif args.network == 'siam':
-    network = Siamese
-elif args.network == 'attention':
-    network = Attention
-else:
-    assert False
-assert network != None
-
-# patch_num = 2
-initializer = tf.contrib.layers.xavier_initializer()
-my_model = network(weight_initializer=initializer,
-                  activation=tf.nn.relu,
-                  class_num=class_num,
-                  patch_size=s1,
-                  patch_num=patch_num)
-y = my_model.model(images)
-
-cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
-loss = tf.reduce_mean(cross_entropy)
-
-with tf.name_scope('learning_rate_decay'):
-    start_lr = learning_rate
-    global_step = tf.Variable(0, trainable=False)
-    total_learning = epochs
-    lr = learning_rate
-
-with tf.variable_scope('optimizer'):
-    optimizer = tf.train.AdamOptimizer(lr)
-    train_step = optimizer.minimize(loss)
-    correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_gt, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-
-# Summarize
-tf.summary.scalar("loss", loss)
-tf.summary.scalar("accuracy", accuracy)
-merged_summary = tf.summary.merge_all()
-
-whole_set = read_cnn_data(sv_set)
-count = 0
-check_position = 0
-min_val_loss = 100
-
-fold = args.fold
-acc_scr, val_acc = 0,0
-valid_accur = []
-class_num = 2
-sampling_option = "SIMPLE"
-train_data, train_label, val_data, val_label = fold
-val_data, val_label = valence_class(val_data, val_label, class_num)
-if sampling_option != "None":
-    train_data, train_label = over_sampling(train_data, train_label, sampling_option)
-    train_label = one_hot_pd(train_label)
-
-data_count = len(train_label)
-print("validation data: {}".format(val_data.shape))
-print("validation label: {}".format(val_label.shape))
-print()
-
-model_vars = tf.trainable_variables()
-tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
-
-
-# --------------------- tensorflow dataset setting --------------------- #
-# test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
-# sess.run(test_iterator.initializer)
-# val_data_ts, test_label_ts = sess.run(test_element)
-val_data_ts, _ = read_test_data(val_data, val_label, is_masking=is_mask)
-test_label_ts = one_hot_pd(val_label)
-
-# --------------------- network construction  --------------------- #
-saver = tf.train.import_meta_graph('my_test_model-1000.meta')
-init = tf.global_variables_initializer()
-with tf.Session() as sess:
-    saver.restore(sess, tf.train.latest_checkpoint('../checkpoint'))
-    # print(sess.run(''))
+def test():
+    a = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    b = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1]
+    report = classification_report(a, b, target_names=['NC', 'AD'])
+    report = report.split(' ')
+    for e in reversed(report):
+        if e == '':
+            report.remove('')
+    # print(report)
+    # report.remove('')
+    print(report)
     assert False
 
-    sess.run(init)
+if __name__ == '__main__':
+    # test()
+
+    ch = args.ch
+    batch = args.batch_size # 10
+    dropout_prob = 0.5
+    epochs = args.epoch
+    is_mask = args.mask
+    print_freq = 1
+    learning_rate = args.lr
+
+    class_num = 2
+    patch_size = 48
+    # patch_size = 16
+    patch_num = 2 # hippocampus labels
+    # patch_num = 70 # cortical labels
+    # patch_num = 2 + 32 + 32 # hippo + cortical labels
+    # patch_num = 34 #2 + 32 + 32 # hippo + cortical labels
+    # patch_num = 20 # subcortical labels
+    s1, s2, s3 = patch_size, patch_size, patch_size
+    images = tf.placeholder(tf.float32, (None, s1 * patch_num, s2, s3, 1), name='inputs')
+    # lh, rh = tf.split(images, [patch_size, patch_size], 1)
+    y_gt = tf.placeholder(tf.float32, (None, 2))
+    keep_prob = tf.placeholder(tf.float32)
+
+    network = None
+    if args.network == 'simple':
+        network = Simple
+    elif args.network == 'siam':
+        network = Siamese
+    elif args.network == 'attention':
+        network = Attention
+    else:
+        assert False
+    assert network != None
+
+    # patch_num = 2
+    initializer = tf.contrib.layers.xavier_initializer()
+    my_model = network(weight_initializer=initializer,
+                      activation=tf.nn.relu,
+                      class_num=class_num,
+                      patch_size=s1,
+                      patch_num=patch_num)
+    y = my_model.model(images)
+
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=y_gt, logits=y)
+    loss = tf.reduce_mean(cross_entropy)
+
+    with tf.name_scope('learning_rate_decay'):
+        start_lr = learning_rate
+        global_step = tf.Variable(0, trainable=False)
+        total_learning = epochs
+        lr = learning_rate
+
+    with tf.variable_scope('optimizer'):
+        optimizer = tf.train.AdamOptimizer(lr)
+        train_step = optimizer.minimize(loss)
+        correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_gt, 1))
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
+    # Summarize
+    tf.summary.scalar("loss", loss)
+    tf.summary.scalar("accuracy", accuracy)
+    merged_summary = tf.summary.merge_all()
+
+    whole_set = read_cnn_data(sv_set)
+    count = 0
+    check_position = 0
+    min_val_loss = 100
+
+    fold = args.fold
+    acc_scr, val_acc = 0,0
+    valid_accur = []
+    class_num = 2
+    sampling_option = "SIMPLE"
+    train_data, train_label, val_data, val_label = whole_set[fold]
+    val_data, val_label = valence_class(val_data, val_label, class_num)
+    # if sampling_option != "None":
+    #     train_data, train_label = over_sampling(train_data, train_label, sampling_option)
+    #     train_label = one_hot_pd(train_label)
+
+    data_count = len(train_label)
+    print("validation data: {}".format(val_data.shape))
+    print("validation label: {}".format(val_label.shape))
     print()
-    print('testing ... ')
-    print('<< Try fold {} .. >>'.format(fold))
-    print()
+
+    model_vars = tf.trainable_variables()
+    tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
+    # --------------------- tensorflow dataset setting --------------------- #
+    # test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
+    # sess.run(test_iterator.initializer)
+    # val_data_ts, test_label_ts = sess.run(test_element)
+    val_data_ts, _ = read_test_data(val_data, val_label, is_masking=is_mask)
+    test_label_ts = one_hot_pd(val_label)
+
+    # --------------------- network construction  --------------------- #
+    saver = tf.train.import_meta_graph('my_test_model-1000.meta')
+    init = tf.global_variables_initializer()
+    with tf.Session() as sess:
+        saver.restore(sess, tf.train.latest_checkpoint('../checkpoint'))
+        # print(sess.run(''))
+        assert False
+
+        sess.run(init)
+        print()
+        print('testing ... ')
+        print('<< Try fold {} .. >>'.format(fold))
+        print()
 
 
 
-    train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
-    # test_writer = tf.summary.FileWriter('../log/test/'+what_time())
+        train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
+        # test_writer = tf.summary.FileWriter('../log/test/'+what_time())
 
-    iters = data_count // args.batch_size
-    if data_count % args.batch_size != 0:
-        iters -= 1
+        iters = data_count // args.batch_size
+        if data_count % args.batch_size != 0:
+            iters -= 1
 
-        val_acc, val_logit, val_loss, test_summary = \
-        sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
-    print("Epoch: {}/{} val loss : {:02.4} - val accur : {:02.3}"
-          .format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
-    pn = 4
-    print(val_logit[:pn]//0.01)
-    # print(val_logit[:pn]//0.01)
-    # train_writer.add_summary(test_summary)
-    train_accur.append(acc_scr)
-    valid_accur.append(val_acc)
+            val_acc, val_logit, val_loss, test_summary = \
+            sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
+        print("Epoch: {}/{} val loss : {:02.4} - val accur : {:02.3}"
+              .format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
+        pn = 4
+        print(val_logit[:pn]//0.01)
+        # print(val_logit[:pn]//0.01)
+        # train_writer.add_summary(test_summary)
+        train_accur.append(acc_scr)
+        valid_accur.append(val_acc)

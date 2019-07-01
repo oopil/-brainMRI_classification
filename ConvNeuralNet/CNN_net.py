@@ -398,26 +398,26 @@ class Attention(Network):
         input = x
         with tf.variable_scope(scope):
             with tf.variable_scope('encode'):
-                x = self.conv_3d(x, ch, k7, 'same', self.activ)
+                # x = self.conv_3d(x, ch, k7, 'same', self.activ)
                 x = self.conv_3d(x, ch, k5, 'same', self.activ)
                 # x = self.conv_3d(x, ch, k3, 'same', self.activ)
                 for i in range(depth):
                     for j in range(r):
-                        x = self.conv_3d(x, ch, k3, 'same', self.activ)
+                        x = self.conv_3d(x, ch, k4, 'same', self.activ)
                     skip.append(x)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
             for i in range(p):
-                x = self.conv_3d(x, ch, k3, 'same', self.activ)
+                x = self.conv_3d(x, ch, k4, 'same', self.activ)
 
             with tf.variable_scope('decode'):
                 for i in range(depth):
-                    x = self.deconv_3d(x, ch, k3, 'same', self.activ, st=2)
+                    x = self.deconv_3d(x, ch, k4, 'same', self.activ, st=2)
                     x = x + skip[depth - 1 - i]
                     for j in range(r):
-                        x = self.conv_3d(x, ch, k3, 'same', self.activ)
+                        x = self.conv_3d(x, ch, k4, 'same', self.activ)
                     # extract probability map by sigmoid activation function
-                    x = self.conv_3d(x, ch_in, k3, 'same', tf.nn.sigmoid)
+                    x = self.conv_3d(x, ch_in, k4, 'same', tf.nn.sigmoid)
                     soft_mask = x
 
                 print(scope)
@@ -436,8 +436,8 @@ class Attention(Network):
 
             with tf.variable_scope('truck'):
                 for i in range(t):
-                    out = self.conv_3d(input, ch, k3, 'same', self.activ)
-                out = self.conv_3d(out, ch_in, k3, 'same', self.activ)
+                    out = self.conv_3d(input, ch, k4, 'same', self.activ)
+                out = self.conv_3d(out, ch_in, k4, 'same', self.activ)
             out = (1+soft_mask)*out
             return out
 

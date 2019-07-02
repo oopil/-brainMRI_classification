@@ -413,7 +413,8 @@ class Attention(Network):
             with tf.variable_scope('decode'):
                 for i in range(depth):
                     x = self.deconv_3d(x, ch, k4, 'same', self.activ, st=2)
-                    x = x + skip[depth - 1 - i]
+                    # x = x + skip[depth - 1 - i]
+                    x = tf.concat([x, skip[depth - 1 - i]], axis=-1)
                     for j in range(r):
                         x = self.conv_3d(x, ch, k4, 'same', self.activ)
                     # extract probability map by sigmoid activation function
@@ -423,21 +424,47 @@ class Attention(Network):
                 print(scope)
                 if scope == 'attent1':
                     print('save image in tensorboard ...')
-                    visualize_1 = input[0, 12:, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
-                    tf.summary.image('input0', visualize_1, max_outputs=12)
-                    visualize_1 = input[1, 12:, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
-                    tf.summary.image('input1', visualize_1, max_outputs=12)
+                    number_to_show = 3
+                    for _ in range(number_to_show):
+                        visualize_1 = input[_, 12:, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
+                        tf.summary.image('input'+str(_), visualize_1, max_outputs=12)
+                        visualize = soft_mask[_, 12:, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
+                        tf.summary.image('attention_mask', visualize, max_outputs=12)
 
-                    visualize = soft_mask[0, 12:, :, :, :]  #[48 - batch,48 - w,48 - h,1 - channel]
-                    tf.summary.image('attention_mask0', visualize, max_outputs=12)
-                    visualize = soft_mask[1, 12:, :, :, :]  #[48 - batch,48 - w,48 - h,1 - channel]
-                    tf.summary.image('attention_mask1', visualize, max_outputs=12)
+                if scope == 'attent2':
+                    print('save image in tensorboard ...')
+                    # visualize_1 = soft_mask[0, 12:, :, :, 0:3]  # [48 - batch,48 - w,48 - h,1 - channel]
+                    avg_mask = tf.reduce_mean(soft_mask, axis=4)
+                    avg_mask = tf.expand_dims(avg_mask, axis=4)
+                    visualize_1 = avg_mask[0,12:,:,:,:]
+                    tf.summary.image('mask2', visualize_1, max_outputs=3)
+
+                if scope == 'attent3':
+                    print('save image in tensorboard ...')
+                    # 12 is out of index here ...
+                    avg_mask = tf.reduce_mean(soft_mask, axis=4)
+                    avg_mask = tf.expand_dims(avg_mask, axis=4)
+
+                    visualize_1 = avg_mask[0, 6:, :, :, :]
+                    # visualize_1 = soft_mask[0, 6:, :, :, 0:3]  # [48 - batch,48 - w,48 - h,1 - channel]
+                    tf.summary.image('mask3', visualize_1, max_outputs=3)
+
+                if scope == 'attent4':
+                    print('save image in tensorboard ...')
+                    avg_mask = tf.reduce_mean(soft_mask, axis=4)
+                    avg_mask = tf.expand_dims(avg_mask, axis=4)
+
+                    visualize_1 = avg_mask[0, :, :, :, :]
+                    # visualize_1 = soft_mask[0, :, :, :, 0:3]  # [48 - batch,48 - w,48 - h,1 - channel]
+                    tf.summary.image('mask4', visualize_1, max_outputs=3)
+
                     # visualize = tf.concat([visualize_1, visualize], 1)
 
             with tf.variable_scope('truck'):
                 for i in range(t):
                     out = self.conv_3d(input, ch, k4, 'same', self.activ)
                 out = self.conv_3d(out, ch_in, k4, 'same', self.activ)
+
             out = (1+soft_mask)*out
             return out
 
@@ -463,9 +490,9 @@ class Attention(Network):
                     x = self.conv_3d(x, ch, 3, 'same', self.activ, st=1)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
-                    x = self.attention(x, ch, ch*2, depth = 1, scope='attent2') #1
-                    x = self.conv_3d(x, ch*2, 3, 'same', self.activ, st=1)
-                    x = self.conv_3d(x, ch*2, 3, 'same', self.activ, st=1)
+                    x = self.attention(x, ch, ch * 2, depth = 1, scope='attent2') #1
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
                     x = self.maxpool_3d(x, ps=2, st=2)
 
                     ch *= 2

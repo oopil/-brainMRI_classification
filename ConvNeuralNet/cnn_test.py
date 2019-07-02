@@ -39,7 +39,6 @@ def parse_args() -> argparse:
     parser.add_argument('--ch',                 default=32, type=int)
     parser.add_argument('--fold',           default=1, type=int)
     parser.add_argument('--batch_size',         default=10, type=int)
-    parser.add_argument('--save_model',         default=False, type=str2bool)
     return parser.parse_args()
 
 # %%
@@ -166,23 +165,18 @@ if __name__ == '__main__':
     min_val_loss = 100
 
     fold = args.fold
-    acc_scr, val_acc = 0,0
-    valid_accur = []
     class_num = 2
     sampling_option = "SIMPLE"
     train_data, train_label, val_data, val_label = whole_set[fold]
     val_data, val_label = valence_class(val_data, val_label, class_num)
-    # if sampling_option != "None":
-    #     train_data, train_label = over_sampling(train_data, train_label, sampling_option)
-    #     train_label = one_hot_pd(train_label)
 
     data_count = len(train_label)
     print("validation data: {}".format(val_data.shape))
     print("validation label: {}".format(val_label.shape))
     print()
 
-    model_vars = tf.trainable_variables()
-    tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
+    # model_vars = tf.trainable_variables()
+    # tf.contrib.slim.model_analyzer.analyze_vars(model_vars, print_info=True)
     # --------------------- tensorflow dataset setting --------------------- #
     # test_element, test_iterator = get_patch_dataset(val_data, val_label, args.buffer_scale, is_mask, len(val_label))
     # sess.run(test_iterator.initializer)
@@ -191,35 +185,41 @@ if __name__ == '__main__':
     test_label_ts = one_hot_pd(val_label)
 
     # --------------------- network construction  --------------------- #
-    saver = tf.train.import_meta_graph('my_test_model-1000.meta')
+    ckpt_state = tf.train.get_checkpoint_state('../checkpoint')
+    recent_ckpt_job_path = tf.train.latest_checkpoint("saved")
+
+    print(ckpt_state.model_checkpoint_path)
+    print(ckpt_state.all_model_checkpoint_paths)
+    print(recent_ckpt_job_path)
+    # assert False
+    saver = tf.train.import_meta_graph('../checkpoint/model.meta')
     init = tf.global_variables_initializer()
     with tf.Session() as sess:
-        saver.restore(sess, tf.train.latest_checkpoint('../checkpoint'))
+        # saver.restore(sess, tf.train.latest_checkpoint('../checkpoint'))
+        saver.restore(sess, '../checkpoint/model')
         # print(sess.run(''))
-        assert False
-
-        sess.run(init)
+        # assert False
+        # sess.run(init)
         print()
         print('testing ... ')
         print('<< Try fold {} .. >>'.format(fold))
         print()
+        x = tf.get_collection('images')[0]
+        y = tf.get_collection('y_gt')[0]
+        test_feed_dict = {
+            x: val_data_ts,
+            y_gt: test_label_ts
+        }
 
-
-
-        train_writer = tf.summary.FileWriter('../log/train/'+what_time(), sess.graph)
-        # test_writer = tf.summary.FileWriter('../log/test/'+what_time())
-
-        iters = data_count // args.batch_size
-        if data_count % args.batch_size != 0:
-            iters -= 1
-
-            val_acc, val_logit, val_loss, test_summary = \
+        test_writer = tf.summary.FileWriter('../log/test/'+args.network+what_time(), sess.graph)
+        val_acc, val_logit, val_loss, test_summary = \
             sess.run((accuracy, y, loss, merged_summary), feed_dict=test_feed_dict)
-        print("Epoch: {}/{} val loss : {:02.4} - val accur : {:02.3}"
-              .format(epoch, epochs, loss_scr, acc_scr // 0.01, val_loss, val_acc // 0.01))
+
         pn = 4
         print(val_logit[:pn]//0.01)
         # print(val_logit[:pn]//0.01)
-        # train_writer.add_summary(test_summary)
-        train_accur.append(acc_scr)
-        valid_accur.append(val_acc)
+        test_writer.add_summary(test_summary)
+        target = list(val_label)
+        pred = list(np.argmax(val_logit, axis=1))
+        report = classification_report(target, pred, target_names=['NC', 'AD'])
+        print(report)

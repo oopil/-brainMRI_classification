@@ -126,6 +126,8 @@ if __name__ == '__main__':
         network = Siamese
     elif args.network == 'attention':
         network = Attention
+    elif args.network == 'attention2':
+        network = Attention2
     else:
         assert False
     assert network != None

@@ -120,6 +120,8 @@ elif args.network == 'siam':
     network = Siamese
 elif args.network == 'attention':
     network = Attention
+elif args.network == 'attention2':
+    network = Attention2
 elif args.network == 'attention_siam':
     network = AttentionSiamese
 else:
@@ -181,9 +183,10 @@ train_result = []
 valid_result = []
 train_accur = []
 valid_accur = []
+valid_loss_list = []
 count = 0
 check_position = 0
-min_val_loss = 10
+min_val_loss, satur_val_loss = 10, 0
 for fold in whole_set:
     if count < args.fold_start:
         count += 1
@@ -277,6 +280,7 @@ for fold in whole_set:
                 # train_writer.add_summary(test_summary)
 
                 valid_accur.append(val_acc)
+                valid_loss_list.append(val_loss)
 
                 target = list(val_label)
                 pred = list(np.argmax(val_logit,axis=1))
@@ -313,7 +317,7 @@ for i in range(len(train_result)):
     file_contents.append("CNN lh and rh model")
     file_contents.append("masking : {}".format(args.mask))
     # file_contents.append("train : {}".format(train_result[i]))
-    # file_contents.append("valid : {}".format(valid_result[i]))
+    file_contents.append("valid : {}".format(valid_result[i]))
 file_contents.append("top train : {}".format(top_train_accur_list))
 file_contents.append("top valid : {}".format(top_valid_accur_list))
 file_contents.append("top valid index : {}".format(top_valid_index_list))
@@ -324,6 +328,9 @@ file_contents.append("avg saturation train : {} , avg saturation vaidation : {}"
 
 for result in file_contents:
     print(result)
+
+saturation_count = 5
+print('validation loss min and saturation : ',min_val_loss, ' / ', np.mean(valid_loss_list[-saturation_count:]))
 
 def int_list_to_str(int_list:list)->str:
     for i in range(len(int_list)):

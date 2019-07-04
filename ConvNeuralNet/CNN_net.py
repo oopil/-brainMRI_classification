@@ -58,27 +58,28 @@ class Network:
         # kernel_pool = [2,2,2]
         kernel_pool = [3,3,3]
         with tf.variable_scope(scope, reuse=reuse):
-            x = batch_norm(x)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = batch_norm(x, name='0')
+            x = self.conv_3d(x, ch, k4, 'same', self.activ)
+            x = self.conv_3d(x, ch, k4, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
-            # x = batch_norm(x)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = batch_norm(x, name='1')
+
+            x = self.conv_3d(x, ch, k4, 'same', self.activ)
+            x = self.conv_3d(x, ch, k4, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
-            # x = batch_norm(x)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = batch_norm(x, name='2')
+            x = self.conv_3d(x, ch, k4, 'same', self.activ)
+            x = self.conv_3d(x, ch, k4, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
 
             ch *= 2
-            # x = batch_norm(x)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
-            x = self.conv_3d(x, ch, k5, 'same', self.activ)
+            x = batch_norm(x, name='3')
+            x = self.conv_3d(x, ch, k4, 'same', self.activ)
+            x = self.conv_3d(x, ch, k4, 'same', self.activ)
             x = self.maxpool_3d(x, kernel_pool, st=2)
             return x
 
@@ -412,6 +413,144 @@ class Attention(Network):
 
             with tf.variable_scope('decode'):
                 for i in range(depth):
+                    x = self.deconv_3d(x, ch, 2, 'same', self.activ, st=2)
+                    # x = x + skip[depth - 1 - i]
+                    x = tf.concat([x, skip[depth - 1 - i]], axis=-1)
+                    for j in range(r):
+                        x = self.conv_3d(x, ch, k4, 'same', self.activ)
+                    # extract probability map by sigmoid activation function
+                    x = self.conv_3d(x, ch_in, 1, 'same', tf.nn.sigmoid)
+                    soft_mask = x
+
+            with tf.variable_scope('truck'):
+                for i in range(t):
+                    out = self.conv_3d(input, ch, k4, 'same', self.activ)
+                out = self.conv_3d(out, ch_in, k4, 'same', self.activ)
+
+            # with tf.variable_scope('truck'):
+            #     for i in range(t):
+            #         out = self.conv_3d(input, ch, k4, 'same', self.activ)
+            #     out = self.conv_3d(out, ch_in, k4, 'same', self.activ)
+
+            # out = soft_mask*out
+            out = (1+soft_mask)*out
+
+            print(scope)
+            if scope == 'attent1':
+                print('save image in tensorboard ...')
+                number_to_show = 3
+                for _ in range(number_to_show):
+                    visualize_1 = input[_, 12:, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
+                    tf.summary.image('input' + str(_), visualize_1, max_outputs=12)
+                    visualize = soft_mask[_, 12:, :, :, :]  # [48 - batch,48 - w,48 - h,1 - channel]
+                    tf.summary.image('attention_mask', visualize, max_outputs=12)
+
+            if scope == 'attent2':
+                print('save image in tensorboard ...')
+                # visualize_1 = soft_mask[0, 12:, :, :, 0:3]  # [48 - batch,48 - w,48 - h,1 - channel]
+                avg_mask = tf.reduce_mean(soft_mask, axis=4)
+                avg_mask = tf.expand_dims(avg_mask, axis=4)
+                visualize_1 = avg_mask[0, 12:, :, :, :]
+                tf.summary.image('mask2', visualize_1, max_outputs=3)
+
+            if scope == 'attent3':
+                print('save image in tensorboard ...')
+                # 12 is out of index here ...
+                avg_mask = tf.reduce_mean(soft_mask, axis=4)
+                avg_mask = tf.expand_dims(avg_mask, axis=4)
+
+                visualize_1 = avg_mask[0, 6:, :, :, :]
+                # visualize_1 = soft_mask[0, 6:, :, :, 0:3]  # [48 - batch,48 - w,48 - h,1 - channel]
+                tf.summary.image('mask3', visualize_1, max_outputs=3)
+
+            if scope == 'attent4':
+                print('save image in tensorboard ...')
+                avg_mask = tf.reduce_mean(soft_mask, axis=4)
+                avg_mask = tf.expand_dims(avg_mask, axis=4)
+
+                visualize_1 = avg_mask[0, :, :, :, :]
+                # visualize_1 = soft_mask[0, :, :, :, 0:3]  # [48 - batch,48 - w,48 - h,1 - channel]
+                tf.summary.image('mask4', visualize_1, max_outputs=3)
+
+                # visualize = tf.concat([visualize_1, visualize], 1)
+            return out
+
+    def model(self, images):
+        is_print = False
+        if is_print:
+            print('build neural network')
+            print(images.shape)
+
+        CNN = self.CNN_attention_res
+        split_form = [self.ps for _ in range(self.pn)]
+        with tf.variable_scope("Model"):
+            # lh, rh = tf.split(images, split_form, 1)
+            split_array = tf.split(images, split_form, 1)
+            cnn_features = []
+
+            for i, patch in enumerate(split_array):
+                ch = 32
+                x = patch
+                with tf.variable_scope("patch"+str(i), reuse=False):
+                    x = self.attention(x, 1, ch, depth = 2, scope='attent1') #2
+                    x = self.conv_3d(x, ch, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, ch, 3, 'same', self.activ, st=1)
+                    x = self.maxpool_3d(x, ps=2, st=2)
+
+                    x = self.attention(x, ch, ch * 2, depth = 1, scope='attent2') #1
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    x = self.maxpool_3d(x, ps=2, st=2)
+
+                    ch *= 2
+                    x = self.attention(x, ch, ch * 2, depth=1, scope='attent3')
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    x = self.maxpool_3d(x, ps=2, st=2)
+
+                    x = self.attention(x, ch, ch * 2, depth=1, scope='attent4')
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    x = self.conv_3d(x, ch * 2, 3, 'same', self.activ, st=1)
+                    x = self.maxpool_3d(x, ps=2, st=2)
+
+                print(np.shape(x),np.shape(patch))
+                x = tf.layers.flatten(x)
+                cnn_features.append(x)
+            # print(np.shape(cnn_features))
+
+            # deeper
+            with tf.variable_scope("FCN"):
+                # x = tf.concat([lh, rh], -1)
+                x = tf.concat(cnn_features, -1)
+                x = tf.layers.dense(x, units=4096, activation=self.activ) #1024
+                x = tf.layers.dense(x, units=1024, activation=self.activ) #512
+                x = tf.layers.dense(x, units=self.cn, activation=tf.nn.softmax)
+                # x = tf.layers.dense(x, units=self.cn, activation=tf.nn.sigmoid)
+                y = x
+        return y
+
+class Attention2(Network):
+    def attention(self, x, ch_in, ch = 16, depth = 1, scope = 'attention'):
+        k3, k4, k5, k7 = 3,4,5,7
+        r,p,t = 2,2,2
+        skip = []
+        input = x
+        with tf.variable_scope(scope):
+            with tf.variable_scope('encode'):
+                # x = self.conv_3d(x, ch, k7, 'same', self.activ)
+                x = self.conv_3d(x, ch, k5, 'same', self.activ)
+                # x = self.conv_3d(x, ch, k3, 'same', self.activ)
+                for i in range(depth):
+                    for j in range(r):
+                        x = self.conv_3d(x, ch, k4, 'same', self.activ)
+                    skip.append(x)
+                    x = self.maxpool_3d(x, ps=2, st=2)
+
+            for i in range(p):
+                x = self.conv_3d(x, ch, k4, 'same', self.activ)
+
+            with tf.variable_scope('decode'):
+                for i in range(depth):
                     x = self.deconv_3d(x, ch, k4, 'same', self.activ, st=2)
                     # x = x + skip[depth - 1 - i]
                     x = tf.concat([x, skip[depth - 1 - i]], axis=-1)
@@ -463,8 +602,9 @@ class Attention(Network):
             with tf.variable_scope('truck'):
                 for i in range(t):
                     out = self.conv_3d(input, ch, k4, 'same', self.activ)
-                out = self.conv_3d(out, ch_in, k4, 'same', self.activ)
+                out = self.conv_3d(out, ch_in, 1, 'same', self.activ)
 
+            # out = soft_mask*out
             out = (1+soft_mask)*out
             return out
 

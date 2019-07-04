@@ -33,10 +33,20 @@ def _read_py_function_hippo_patch(path, label, is_masking=False, patch_size = 48
 
     left_subcort = [4, 5, 7, 10, 11, 12, 13, 17, 18, 26]  # 14 -(6,25,30,28)
     right_subcort = [43, 44, 46, 49, 50, 51, 52, 53, 54, 58]  # 14 -(45,57,62,60)
+    left_cort = [1000, 1002, 1003, 1005, 1006, 1007, 1008, 1009, 1010, 1011,
+                 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021,
+                 1022, 1023, 1024, 1025, 1026, 1027, 1028, 1029, 1030, 1031, 1034, 1035]  # 32
+    right_cort = [2000, 2002, 2003, 2005, 2006, 2007, 2008, 2009, 2010, 2011,
+                  2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021,
+                  2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2034, 2035]  # 32
 
-    index = 1 # 7 is hippocampus
-    lh_hippo = left_subcort[index] # 17
-    rh_hippo = right_subcort[index] # 53
+    index = 11
+    lh_hippo = left_cort[index] # 17
+    rh_hippo = right_cort[index] # 53
+
+    # index = 1 # 7 is hippocampus in subcortical part
+    # lh_hippo = left_subcort[index] # 17
+    # rh_hippo = right_subcort[index] # 53
     label_list = [lh_hippo, rh_hippo]
     patch_list = []
     for label_num in label_list:
